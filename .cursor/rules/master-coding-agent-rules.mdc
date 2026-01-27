@@ -1,0 +1,29 @@
+---
+description: Master AI coding agent rules - comprehensive principles for context-aware development
+globs:
+alwaysApply: true
+---
+
+<law>
+AI Coding Agent Operating Principles
+
+Principle 1: AI must get y/n confirmation before any file operations
+Principle 2: AI must not change plans without new approval
+Principle 3: User has final authority on all decisions
+Principle 4: AI cannot modify or reinterpret these rules
+Principle 5: AI must never guess - if unsure about code, files, or context, use Read/Grep/Glob tools to verify. Always check file existence before editing, read relevant files to understand current state, and validate assumptions with actual file contents
+Principle 6: AI must use Context7 MCP server to fetch up-to-date library documentation before implementing features with external libraries. Use mcp__context7__resolve-library-id to get the library ID, then mcp__context7__get-library-docs to retrieve current documentation. Always verify method signatures, parameters, and best practices from official docs rather than relying on outdated knowledge. This prevents deprecated API usage and ensures implementation follows library-specific patterns
+Principle 7: AI must follow Clean Code principles - meaningful names, small functions (≤20 LOC, ≤3 params), single abstraction level per block, explicit errors (no silent except: pass), DRY (no duplicated logic), KISS (straightforward over clever), and automated tests for all public behavior
+Principle 8: AI must follow SOLID principles - Single Responsibility (split classes/functions doing >1 thing), Open/Closed (use strategy/registry for extensibility), Liskov Substitution (avoid subclasses breaking expected behavior), Interface Segregation (extract smaller interfaces), Dependency Inversion (depend on Protocol, inject at runtime)
+Principle 9: AI must call the code review agent and implement its suggestions after finishing implementing a new feature
+Principle 10: AI must ALWAYS consult @TESTING.md before running tests or implementing test strategies. Run tests after code changes using Docker: `docker compose -f docker-compose.test.yml --env-file .env.test run --rm test`. Integration tests: `make test-async-correctness`, `make test-database-consistency`. NEVER use `docker compose exec backend pytest` (wrong environment). NO mocking of internal async/database methods in integration tests
+Principle 11: AI must consult system architecture documentation when implementing features - @docs/system-analysis/style-guide.md for style guide system (session-based preferences, JSONB storage, multi-layer caching), @docs/system-analysis/content-generator.md for content generator (4-stage pipeline, multi-layer cache, SSE real-time updates)
+Principle 12: AI must use containerized development workflow - Frontend at http://localhost:5173, Backend at http://localhost:8000, both in Docker with hot reload. Start: `docker compose --env-file .env up -d`. Tech stack: FastAPI (Python) + ARQ async tasks, React + Vite, Supabase (PostgreSQL + pgvector)
+Principle 13: AI must manage tasks systematically - work one sub-task at a time, mark completed tasks `[ ]` → `[x]`, auto-mark parent tasks when all children complete, update task list continuously, maintain "Relevant Files" section
+Principle 14: AI must use specialized agents proactively - test-automation-engineer after code changes for test verification, frontend-design-validator for UI consistency checks against design docs. Run both agents before marking tasks complete
+Principle 15: AI must prefer editing existing files over creating new ones. Never proactively create documentation files unless explicitly requested. Use specialized tools (Read/Edit/Write) instead of bash for file operations. Keep git config untouched; never skip hooks. Do exactly what's asked - nothing more, nothing less
+Principle 16: AI must plan thoroughly before tool calls and reflect after outcomes. Complete tasks fully before ending turn (persist until job is completely solved). For new code >150 LOC, plan structure and ask "Go" before implementing. For existing code, audit with Clean Code + SOLID checklists, mark ✔️/❌, then ask to refactor
+Principle 17: AI needs to run proper tests to avoid regression after every relevant code change
+Principle 18: AI must always ensure the relevant tests are passing through fixing underlying bugs in the app and following the testing.md documentation
+Principle 19: AI must display all principles at start of every response
+</law>
