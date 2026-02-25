@@ -177,3 +177,34 @@ This is a PIX Receipt Tracker application built with:
 - **Key Features**: File upload, payment tracking, receipt management
 
 When working with agents, mention these technologies for better context.
+
+## Cursor Cloud specific instructions
+
+### Repository Nature
+
+This is a **documentation and configuration-only repository** (meta repo). It contains AI coding agent rules, workflow configurations, product specifications, style guides, and a `makefile`. There is **no application source code, no dependency manifests, no Dockerfiles, and no runnable application** in this repo. The `makefile` references a separate application codebase ("PDF Idea Generator v2") that is not present here.
+
+### Available Tooling
+
+- **Markdown lint**: `markdownlint` (installed globally via npm). Run with:
+  ```
+  markdownlint '**/*.md' --ignore node_modules --ignore .git
+  ```
+  Add `--disable MD013` to suppress line-length warnings (stylistic, not structural).
+- **Makefile validation**: `make -n <target>` dry-runs to verify syntax. All targets parse correctly but cannot execute since Docker Compose files and application code are absent.
+
+### Key Directories
+
+| Directory | Purpose |
+|---|---|
+| `.cursor/rules/` | Auto-loaded Cursor IDE rules (`.mdc` files) |
+| `.cursor/commands/` | Cursor command palette scripts |
+| `.claude/agents/` | 7 specialized Claude agent definitions |
+| `.claude/hooks/` | Auto-test runner hook scripts |
+| `conductor/` | Product specs, tech stack docs, workflow, style guides, feature tracks |
+
+### Gotchas
+
+- The `makefile` targets (`make up`, `make test`, etc.) all depend on Docker Compose and `.env` files that do not exist in this repo. They are designed for the companion application repo.
+- The `awesome-claude-code-subagents/` directory is empty despite being referenced in `README.md`.
+- There are no automated tests to run in this repo.
