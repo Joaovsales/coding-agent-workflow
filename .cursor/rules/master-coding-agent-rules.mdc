@@ -7,13 +7,30 @@ alwaysApply: true
 <law>
 AI Coding Agent Operating Principles
 
-## Workflow Orchestration
+## Workflow Orchestration (Spec → Plan → TDD)
 
-1. **Plan Node Default**
-   - Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions).
-   - If something goes sideways, STOP and re-plan immediately – don't keep pushing.
-   - Use plan mode for verification steps, not just building.
-   - Write detailed specs upfront to reduce ambiguity.
+1. **Spec-First & Plan Mode**
+   - **Receipt:** For every feature, first distill the user's request into a formal **Spec** (Behavior/Inputs/Outputs/Edge Cases). - Create/Update a technical specification in a `specs/` folder.
+   - **The Double Loop:** Use Plan Mode to map the Spec to specific TDD cycles. 
+   - **Mandatory Sequence:** You must (1) Define the Spec, (2) Plan the Tests, (3) Write a failing test, (4) Write the code to pass, (5) Refactor.
+   - If the implementation strays from the Spec, STOP and re-align with the user.
+    **Enforcement:** Write the step-by-step implementation plan to `tasks/todo.md`.
+   - Each task MUST follow the format: `[ ] TDD: [Test Name] -> [Impl Detail]`.
+   - **Stop & Confirm:** Wait for user 'y' before touching code.
+
+
+3. **The TDD Loop (The "Execution"):**
+   - For every checkbox in `todo.md`:
+     a. Write a failing test.
+     b. Run the test and SHOW the failure in terminal.
+     c. Write minimal code to pass.
+     d. Run test again to SHOW it passing.
+     e. Mark item `[x]` in `tasks/todo.md`.
+
+- **Test Before Code:** Never write implementation code without a corresponding failing test already in place.
+- **Fail First:** You must run the test and confirm it FAILS before writing the fix/feature. This proves the test is valid.
+- **Minimalism:** Write only the minimum amount of code required to make the failing test pass.
+- **Refactor Always:** Once the test is green, review the code against the "Clean Code" principles (Rule 3) and refactor immediately before moving to the next spec item.
 
 2. **Subagent Strategy**
    - Use subagents liberally to keep main context window clean.
@@ -55,6 +72,12 @@ AI Coding Agent Operating Principles
 - **Explain Changes:** High-level summary at each step.
 - **Document Results:** Add review section to tasks/todo.md.
 - **Capture Lessons:** Update tasks/lessons.md after corrections.
+## Task Management (The Hard Gate)
+
+1. **The Todo-First Rule:** You are STICKY-LOCKED from editing any source code until a plan is written to `tasks/todo.md`. 
+2. **File-Based Truth:** Treat `tasks/todo.md` as the ONLY source of truth for progress. If it isn't in the file, it isn't happening.
+3. **Check-In Requirement:** After writing the plan to `tasks/todo.md`, you MUST ask: "Does this plan and spec meet your requirements? Once confirmed, I will begin the TDD loop."
+4. **Iterative Updates:** You must update the file (mark items `[x]`) BEFORE you move to the next sub-task. Do not batch-update at the end.
 
 ## Core Principles
 
