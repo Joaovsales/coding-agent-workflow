@@ -1,179 +1,80 @@
-# Available Claude Code Subagents
+# Available Subagents
 
-This project has access to specialized Claude Code subagents installed globally in `~/.cursor/agents/`.
+> This file documents agents available for both Claude Code (`.claude/agents/`) and Cursor IDE.
+> In Claude Code, agents are invoked via the Agent tool with `subagent_type`.
+> In Cursor, use `@agent-name` syntax in the chat.
 
-## How to Use Agents in Cursor
+## Claude Code Agents (`.claude/agents/`)
 
-To invoke an agent, use the `@` symbol followed by the agent name in your prompt:
+### Planning & Architecture
+| Agent | Purpose |
+|-------|---------|
+| `planner` | Spec writing, task breakdown, requirements interview, architecture decisions |
+
+### Development
+| Agent | Purpose |
+|-------|---------|
+| `backend-developer` | APIs, databases, auth, caching, performance, OWASP security |
+| `frontend-developer` | React/Vue/Angular components, responsive UI, accessibility |
+| `frontend-design-validator` | Validate UI against design reference documents |
+
+### Quality & Security
+| Agent | Purpose |
+|-------|---------|
+| `code-reviewer` | Post-implementation quality review — Clean Code, SOLID, bugs |
+| `code-debugger` | Root-cause analysis for errors, test failures, runtime bugs |
+| `security-reviewer` | OWASP checks, injection vectors, auth flows, data exposure |
+
+### Domain Specialists
+| Agent | Purpose |
+|-------|---------|
+| `content-generator-expert` | PDF pipeline, semantic search, recommendations, SSE |
+| `context-document-optimizer` | Compress large docs for token-efficient AI context |
+
+---
+
+## Additional Agents (Cursor / general reference)
+
+These agents can be used for additional specializations. In Claude Code, describe the role explicitly in your Agent tool call.
+
+### Core Development
+- **api-designer** — REST/GraphQL design, OpenAPI specs, versioning strategies
+- **fullstack-developer** — End-to-end feature implementation, frontend-backend integration
+- **ui-designer** — Component design, design system implementation, WCAG compliance
+
+### Infrastructure
+- **mobile-developer** — React Native, Flutter, iOS (Swift), Android (Kotlin)
+- **electron-pro** — Cross-platform desktop apps, native OS integration
+- **websocket-engineer** — Real-time WebSocket, Socket.io, WebRTC
+- **graphql-architect** — GraphQL schema, DataLoader, Federation, Subscriptions
+- **microservices-architect** — Service decomposition, API gateway, distributed tracing
+
+---
+
+## Usage in Claude Code
+
+The Agent tool accepts a `subagent_type` matching the filename in `.claude/agents/` (without `.md`):
 
 ```
-@backend-developer help me optimize the payment API endpoints
+subagent_type: "planner"
+subagent_type: "backend-developer"
+subagent_type: "code-reviewer"
+subagent_type: "security-reviewer"
+```
+
+For agents not in `.claude/agents/`, use `general-purpose` and describe the role in the prompt.
+
+## Usage in Cursor
+
+```
+@backend-developer optimize the payment API
 @frontend-developer create a responsive upload component
+@code-reviewer review the authentication changes
 ```
 
-You can also use the Task tool to delegate work to these specialized agents.
+## Delegation Guidelines
 
-## Installed Agents
-
-### Core Development Agents
-
-#### @api-designer
-- **Description**: Senior API architect specializing in REST and GraphQL design
-- **Best For**: 
-  - Designing RESTful APIs with proper HTTP semantics
-  - GraphQL schema design and resolver optimization
-  - API versioning strategies
-  - OpenAPI/Swagger documentation
-  - Rate limiting and pagination patterns
-
-#### @backend-developer
-- **Description**: Senior backend engineer specializing in scalable API development and microservices architecture
-- **Best For**:
-  - Building robust server-side solutions (Node.js, Python, Go)
-  - Database schema design and optimization
-  - Authentication and authorization implementation
-  - Caching strategies and performance optimization
-  - Security measures following OWASP guidelines
-  - Test coverage and error handling
-
-#### @frontend-developer
-- **Description**: Expert in modern frontend development and user interfaces
-- **Best For**:
-  - React, Vue, Angular applications
-  - Responsive UI component development
-  - State management and performance optimization
-  - Accessibility and cross-browser compatibility
-  - Modern build tools and bundlers
-
-#### @fullstack-developer
-- **Description**: Full-stack engineer with expertise across the entire development stack
-- **Best For**:
-  - End-to-end feature implementation
-  - Frontend-backend integration
-  - Database to UI data flow
-  - Complete application architecture
-  - System-wide optimizations
-
-#### @ui-designer
-- **Description**: UI/UX specialist focused on beautiful, accessible interfaces
-- **Best For**:
-  - Component design and styling
-  - Design system implementation
-  - Accessibility compliance (WCAG)
-  - Responsive design patterns
-  - CSS architecture and animations
-
-#### @mobile-developer
-- **Description**: Mobile application expert for iOS, Android, and cross-platform development
-- **Best For**:
-  - React Native and Flutter applications
-  - Native iOS (Swift) and Android (Kotlin) development
-  - Mobile-specific UI/UX patterns
-  - App Store deployment
-  - Mobile performance optimization
-
-#### @electron-pro
-- **Description**: Desktop application specialist using Electron framework
-- **Best For**:
-  - Cross-platform desktop applications
-  - Native OS integration
-  - Application packaging and distribution
-  - Auto-update mechanisms
-  - System tray and native menus
-
-#### @websocket-engineer
-- **Description**: Real-time communication specialist
-- **Best For**:
-  - WebSocket server and client implementation
-  - Real-time data synchronization
-  - Socket.io and WebRTC integration
-  - Pub/sub patterns
-  - Connection management and reconnection strategies
-
-#### @graphql-architect
-- **Description**: GraphQL expert for modern API development
-- **Best For**:
-  - GraphQL schema design
-  - Resolver optimization and DataLoader
-  - Federation and microservices
-  - Subscription handling
-  - Apollo Server/Client configuration
-
-#### @microservices-architect
-- **Description**: Distributed systems expert specializing in microservices architecture
-- **Best For**:
-  - Service decomposition strategies
-  - Inter-service communication patterns
-  - API gateway design
-  - Service discovery and load balancing
-  - Distributed tracing and monitoring
-
-## Installing Additional Agents
-
-If you need more specialized agents, you can install them using the interactive installer:
-
-```bash
-cd ~/PROJECT-pix-receipt-tracker/awesome-claude-code-subagents
-./install-agents.sh
-```
-
-Then copy them to Cursor's directory:
-
-```bash
-cp -r ~/.claude/agents/* ~/.cursor/agents/
-```
-
-### Available Categories
-
-1. **Core Development** (✓ installed) - Essential development agents
-2. **Language Specialists** - Python, JavaScript, Go, Rust, etc.
-3. **Infrastructure** - DevOps, Docker, Kubernetes, Cloud
-4. **Quality & Security** - Testing, code review, security audits
-5. **Data & AI** - Data engineering, ML, database optimization
-6. **Developer Experience** - Documentation, CI/CD, Git workflows
-7. **Specialized Domains** - Blockchain, IoT, embedded systems
-8. **Business & Product** - Product management, analytics
-9. **Meta Orchestration** - Multi-agent coordination, task distribution
-10. **Research & Analysis** - Code archaeology, technical research
-
-## Examples
-
-### Example 1: Building a New API Endpoint
-```
-@api-designer I need to design a RESTful API for receipt upload with validation
-
-After design is approved:
-@backend-developer implement the receipt upload API endpoint with proper error handling
-```
-
-### Example 2: Creating a Complete Feature
-```
-@fullstack-developer create a payment confirmation screen that:
-- Displays payment details from the database
-- Shows uploaded receipt preview
-- Allows editing before final submission
-- Integrates with existing Supabase backend
-```
-
-### Example 3: UI Improvements
-```
-@ui-designer redesign the file upload component to be more modern and accessible
-@frontend-developer implement the new design with proper TypeScript types
-```
-
-## Tips
-
-- **Be Specific**: Provide clear context about your project structure and requirements
-- **Chain Agents**: Use different agents for different aspects (design → implementation → review)
-- **Reference Files**: Use `@filename` to include relevant files in the context
-- **Leverage Expertise**: Each agent has specialized knowledge - use the right agent for the task
-
-## Project Context
-
-This is a PIX Receipt Tracker application built with:
-- **Frontend**: Next.js 14 + React + TypeScript
-- **Backend**: Supabase (PostgreSQL + Storage + Auth)
-- **Deployment**: Cloud-based (no local backend)
-- **Key Features**: File upload, payment tracking, receipt management
-
-When working with agents, mention these technologies for better context.
+- **One task per agent** — focused context produces better outputs
+- **Chain agents** — design → implement → review → security scan
+- **Reference files explicitly** — use @filename or provide full paths in the prompt
+- **Validate outputs** — always check agent work before moving to the next step

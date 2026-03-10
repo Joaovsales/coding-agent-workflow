@@ -1,112 +1,130 @@
-# Coding Agent Rules Repository
+# Coding Agent Workflow
 
-This repository consolidates all rules, subagents, commands, and workflow configurations from multiple projects.
+A reusable coding agent configuration system for **Claude Code** — consolidating rules, subagents, skills, hooks, and workflows that enforce spec-driven, TDD-first development.
+
+## Quick Start
+
+1. Copy this repo's `.claude/` directory and `CLAUDE.md` into your project root
+2. Optionally copy `.cursor/` for Cursor IDE support
+3. Claude Code reads `CLAUDE.md` automatically on every session
+
+---
 
 ## Directory Structure
 
 ```
-PROJECT-Coding-agent-rules/
-├── .cursor/                          # Cursor IDE configurations
-│   ├── AGENTS.md                     # Agent configuration file
-│   ├── commands/                     # Custom commands
-│   │   ├── orchestrate-subagents.md
-│   │   ├── pre-qa-smoke-test.md
-│   │   └── wrap-up-session.md
-│   └── rules/                        # Cursor coding rules
-│       ├── create-prd.mdc
-│       ├── master-coding-agent-rules.mdc
-│       └── process-task-list.mdc
-├── .claude/                          # Claude AI configurations
-│   ├── agents/                       # Specialized Claude agents (7 agents)
+.
+├── CLAUDE.md                        ← Primary Claude Code config (read this first)
+├── .claude/
+│   ├── memory.md                    ← Persistent project memory (updated via /learn)
+│   ├── settings.json                ← Hook configuration
+│   ├── agents/                      ← Specialized Claude Code subagents
+│   │   ├── planner.md               ← Spec writing + task planning
 │   │   ├── backend-developer.md
-│   │   ├── code-debugger.md
-│   │   ├── code-reviewer.md
-│   │   ├── content-generator-expert.md
-│   │   ├── context-document-optimizer.md
+│   │   ├── frontend-developer.md
 │   │   ├── frontend-design-validator.md
-│   │   └── frontend-developer.md
-│   └── hooks/                        # Pre/Post hooks
-│       ├── auto-test-runner.ps1
-│       └── auto-test-runner.sh
-├── awesome-claude-code-subagents/    # 72+ specialized subagents
-│   └── categories/
-│       ├── 01-core-development/      # Core development roles
-│       ├── 02-language-specialists/  # Language-specific experts
-│       ├── 03-infrastructure/        # DevOps & Infrastructure
-│       ├── 04-quality-security/      # QA, Testing, Security
-│       ├── 05-data-ai/              # Data Science & AI/ML
-│       ├── 06-developer-experience/ # DX & Tooling
-│       ├── 07-specialized-domains/  # Domain-specific experts
-│       ├── 08-business-product/     # Business & Product roles
-│       ├── 09-meta-orchestration/   # Orchestration & Coordination
-│       └── 10-research-analysis/    # Research & Analysis
-├── conductor/                        # Project management & workflows
-│   ├── code_styleguides/            # Code style guides
-│   │   ├── python.md
-│   │   └── typescript.md
-│   ├── product-guidelines.md
-│   ├── product.md
-│   ├── tech-stack.md
-│   ├── tracks/                      # Feature tracks
-│   ├── tracks.md
-│   └── workflow.md
-└── makefile                         # Build and automation commands
+│   │   ├── code-reviewer.md
+│   │   ├── code-debugger.md
+│   │   ├── security-reviewer.md     ← OWASP security audits
+│   │   ├── content-generator-expert.md
+│   │   └── context-document-optimizer.md
+│   ├── commands/                    ← Skills invokable with /command-name
+│   │   ├── plan.md                  ← /plan — spec + plan mode
+│   │   ├── tdd.md                   ← /tdd — TDD workflow
+│   │   ├── learn.md                 ← /learn — capture session learnings
+│   │   ├── checkpoint.md            ← /checkpoint — save session snapshot
+│   │   ├── security-scan.md         ← /security-scan — security review
+│   │   ├── wrap-up-session.md       ← /wrap-up-session — review, test, commit
+│   │   ├── orchestrate-subagents.md ← /orchestrate-subagents — multi-agent execution
+│   │   └── pre-qa-smoke-test.md     ← /pre-qa-smoke-test — pre-push checks
+│   └── hooks/
+│       ├── session-start.sh         ← Prints memory + active tasks at session start
+│       └── auto-test-runner.sh      ← Runs tests on file save, creates failure tasks
+├── .cursor/                         ← Cursor IDE integration (secondary)
+│   ├── AGENTS.md                    ← Agent reference for Cursor + Claude Code
+│   ├── commands/                    ← Cursor command palette entries
+│   └── rules/                       ← Auto-loaded Cursor rules (.mdc)
+├── conductor/                       ← Project management
+│   ├── workflow.md                  ← Task workflow + verification protocol
+│   ├── tech-stack.md                ← Technology decisions
+│   ├── product.md                   ← Product overview
+│   ├── product-guidelines.md        ← UX + brand guidelines
+│   └── code_styleguides/            ← Python + TypeScript style guides
+├── tasks/
+│   └── todo.md                      ← Active task plan (single source of truth)
+├── awesome-claude-code-subagents/   ← 72+ categorized subagent library
+└── makefile                         ← Build + test automation
 ```
+
+---
+
+## Skills (Claude Code Commands)
+
+Invoke with `/skill-name` in any Claude Code session:
+
+| Skill | What It Does |
+|-------|-------------|
+| `/plan` | Interviews you about requirements, writes a spec + TDD task plan |
+| `/tdd` | Walks through the TDD loop for tasks in `tasks/todo.md` |
+| `/learn` | Extracts session patterns and saves them to `.claude/memory.md` |
+| `/checkpoint` | Saves a progress snapshot to `tasks/checkpoint.md` |
+| `/security-scan` | Audits changed files for OWASP vulnerabilities |
+| `/wrap-up-session` | Parallel code review, runs tests, commits and pushes |
+| `/orchestrate-subagents` | Coordinates specialized agents for complex features |
+| `/pre-qa-smoke-test` | Pre-push quality checks |
+
+---
+
+## Agents
+
+| Agent | Use When |
+|-------|---------|
+| `planner` | Before any feature — spec and task planning |
+| `backend-developer` | APIs, databases, auth, performance |
+| `frontend-developer` | UI components, responsive design |
+| `frontend-design-validator` | Verify UI matches design references |
+| `code-reviewer` | After implementation — quality review |
+| `code-debugger` | Debugging errors and test failures |
+| `security-reviewer` | Before merging — security audit |
+| `content-generator-expert` | PDF pipeline, search, AI content generation |
+| `context-document-optimizer` | Compress docs for AI consumption |
+
+---
+
+## Hooks
+
+| Hook | Trigger | What It Does |
+|------|---------|-------------|
+| `session-start.sh` | Session start | Prints memory, active tasks, git status |
+| `auto-test-runner.sh` | After Bash tool use | Runs tests on changed files, creates failure task files |
+
+---
+
+## Workflow
+
+```
+Feature Request
+    │
+    ▼
+/plan ──► spec + task list in tasks/todo.md
+    │
+    ▼ (user confirms 'y')
+/tdd ──► failing test → code → pass → refactor → [x]
+    │
+    ▼ (all tasks done)
+/security-scan ──► check changed files
+    │
+    ▼
+/wrap-up-session ──► parallel review → tests → commit → push
+    │
+    ▼
+/learn ──► save insights to .claude/memory.md
+```
+
+---
 
 ## Sources
 
-### From PROJECT-pix-receipt-tracker:
-- AGENTS.md configuration
-- `orchestrate-subagents.md` command
-- Complete awesome-claude-code-subagents library (72+ subagents)
-
-### From PROJETO_pdf-idea-generator:
-- 3 Cursor rules (mdc files)
-- 2 additional commands
-- 7 specialized Claude agents
-- 2 hook scripts (PowerShell and Bash)
-- Conductor workflow and project management files
-- makefile with build commands
-
-## Statistics
-
-- **Total markdown files**: 166+
-- **Subagent categories**: 10
-- **Specialized Claude agents**: 7
-- **Commands**: 3
-- **Rules**: 3
-- **Hooks**: 2
-
-## Usage
-
-### Cursor IDE
-The `.cursor/` directory contains rules and commands that integrate with Cursor IDE:
-- Rules in `.cursor/rules/` are automatically loaded by Cursor
-- Commands in `.cursor/commands/` can be invoked via Cursor's command palette
-- `AGENTS.md` configures available agents for the project
-
-### Claude AI
-The `.claude/` directory contains specialized agents and hooks:
-- Agents can be invoked for specific tasks
-- Hooks automate testing and validation workflows
-
-### Awesome Claude Code Subagents
-The `awesome-claude-code-subagents/` directory provides 72+ specialized subagents organized by category:
-- Use `install-agents.sh` to set up subagents
-- Browse categories to find the right expert for your task
-- Each subagent has specific expertise and capabilities
-
-### Conductor
-The `conductor/` directory provides project management and workflow structure:
-- Style guides for consistent code quality
-- Product guidelines and technical specifications
-- Feature tracking system
-- Workflow documentation
-
-### Makefile
-The `makefile` contains build commands and automation scripts for common development tasks.
-
-## License
-
-This is a consolidated repository. Original licenses from source projects apply to their respective components.
-# coding-agent-workflow
+- [shanraisshan/claude-code-best-practice](https://github.com/shanraisshan/claude-code-best-practice) — Command/agent/skill architecture
+- [affaan-m/everything-claude-code](https://github.com/affaan-m/everything-claude-code) — Memory system, hook lifecycle, continuous learning
+- Internal projects: PDF Idea Generator v2, PIX Receipt Tracker
