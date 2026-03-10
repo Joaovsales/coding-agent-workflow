@@ -31,9 +31,9 @@ For every task in `tasks/todo.md`:
 3. Refactor against Clean Code principles
 4. Mark `[x]` in `tasks/todo.md`
 
-### 4. Self-Improvement
-After any user correction: update `tasks/lessons.md` with the root cause and prevention rule.
-At session end: run `/learn` to persist insights to `.claude/memory.md`.
+### 4. Wrap Up
+After any user correction: note the root cause in `tasks/lessons.md`.
+At session end: run `/wrap-up-session` to sync learnings, tests, and push.
 
 ---
 
@@ -63,14 +63,12 @@ Invoke with `/skill-name` in the chat.
 
 | Skill | Purpose |
 |-------|---------|
-| `/plan` | Interactive spec + plan mode before coding |
-| `/tdd` | Enter TDD workflow for current `tasks/todo.md` |
-| `/learn` | Capture session learnings into `.claude/memory.md` |
-| `/checkpoint` | Snapshot current progress for handoff/pause |
-| `/security-scan` | Security audit on changed files |
-| `/wrap-up-session` | Parallel review, tests, cleanup, commit, push |
-| `/orchestrate-subagents` | Coordinate multi-agent implementation |
-| `/pre-qa-smoke-test` | Pre-push quality smoke test |
+| `/plan` | Interview user, write spec, create task breakdown in `tasks/todo.md` |
+| `/tdd` | Execute TDD loop for tasks in `tasks/todo.md` |
+| `/learn` | Extract session patterns and persist to `.claude/memory.md` |
+| `/checkpoint` | Snapshot progress to `tasks/checkpoint.md` for handoff or pause |
+| `/security-scan` | OWASP-focused audit on recently changed files |
+| `/wrap-up-session` | Sync learnings, update task/bug registers, run tests, push to main |
 
 ---
 
@@ -124,6 +122,7 @@ Before marking any task complete, confirm:
 .claude/commands/   → Skills invokable with /command-name
 .claude/hooks/      → Lifecycle automation scripts
 tasks/todo.md       → Active task plan (single source of truth)
+tasks/bugs.md       → Bug register (opened/fixed per session)
 tasks/lessons.md    → Self-improvement patterns
 tasks/checkpoint.md → Session snapshots
 conductor/          → Workflow, tech stack, product docs
