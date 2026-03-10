@@ -1,112 +1,221 @@
-# Coding Agent Rules Repository
+# Coding Agent Workflow
 
-This repository consolidates all rules, subagents, commands, and workflow configurations from multiple projects.
+A reusable Claude Code configuration system that enforces **spec-driven, TDD-first development** across all your projects — with persistent memory, specialized agents, and a structured session lifecycle.
+
+---
+
+## What's Included
+
+| Layer | What it does |
+|-------|-------------|
+| **CLAUDE.md** | Core rules: Spec → Plan → TDD workflow, Clean Code, SOLID, quality gate |
+| **Skills** (`.claude/commands/`) | `/plan`, `/tdd`, `/learn`, `/checkpoint`, `/security-scan`, `/wrap-up-session` |
+| **Agents** (`.claude/agents/`) | 9 specialized subagents for planning, coding, review, debugging, security |
+| **Hooks** (`.claude/hooks/`) | Session start orientation + auto test runner on file save |
+| **Memory** (`.claude/memory.md`) | Persistent patterns and session history, updated via `/learn` |
+
+---
+
+## Using This as Your Default for Every Project
+
+Run `install.sh` once. It sets up three layers of enforcement that activate automatically for every future project.
+
+### Step 1 — Clone and install
+
+```bash
+git clone <this-repo-url> ~/coding-agent-workflow
+cd ~/coding-agent-workflow
+bash install.sh
+```
+
+Then paste the printed `newproject()` function into your `~/.bashrc` or `~/.zshrc`:
+
+```bash
+source ~/.bashrc   # or source ~/.zshrc
+```
+
+### Step 2 — Start every new project with
+
+```bash
+newproject my-app
+cd my-app
+claude
+```
+
+That's it. Claude is fully oriented from the first message.
+
+---
+
+## What `install.sh` Does
+
+### Layer 1 — Global Claude config (`~/.claude/`)
+
+Copies your skills, agents, and CLAUDE.md into `~/.claude/`. Claude Code reads this directory for **every session in every project** — no per-project setup needed.
+
+```
+~/.claude/
+├── CLAUDE.md          ← global rules (applies everywhere)
+├── commands/          ← all skills available in every project
+├── agents/            ← all agents available in every project
+├── hooks/
+│   └── session-start.sh
+└── settings.json      ← registers the SessionStart hook globally
+```
+
+The **SessionStart hook** runs automatically at the start of every Claude Code session. It prints:
+- Active patterns and lessons from `.claude/memory.md`
+- Pending and in-progress tasks from `tasks/todo.md`
+- Recent lessons from `tasks/lessons.md`
+- Current git branch and uncommitted change count
+
+### Layer 2 — Git template directory (`~/.git-templates/`)
+
+Sets `git config --global init.templateDir ~/.git-templates`. Every time you run `git init`, a `post-init` hook fires and copies this scaffold into the new repo (only if files don't already exist):
+
+```
+tasks/todo.md       ← active task plan
+tasks/bugs.md       ← bug register
+tasks/lessons.md    ← session lessons
+specs/              ← feature specification directory
+CLAUDE.md           ← project-specific overrides
+```
+
+### Layer 3 — `newproject` shell function
+
+```bash
+newproject() {
+  local name="${1:?Usage: newproject <project-name>}"
+  mkdir -p "$name" && cd "$name"
+  git init                        # triggers post-init hook → copies Claude scaffold
+  echo "# $name" > README.md
+  git add . && git commit -m "chore: init project with Claude workflow scaffold"
+}
+```
+
+Wraps `git init` (which triggers layer 2) and makes an initial commit. One command from zero to a fully scaffolded, Claude-ready project.
+
+---
+
+## Keeping It Up to Date
+
+Re-running `install.sh` is safe — it overwrites `~/.claude/` with the latest version:
+
+```bash
+cd ~/coding-agent-workflow
+git pull
+bash install.sh
+```
+
+---
+
+## Adding to an Existing Project
+
+No need to use `newproject`. Just copy the scaffold files manually:
+
+```bash
+cp ~/coding-agent-workflow/project-template/tasks/todo.md tasks/
+cp ~/coding-agent-workflow/project-template/tasks/bugs.md tasks/
+cp ~/coding-agent-workflow/project-template/tasks/lessons.md tasks/
+cp ~/coding-agent-workflow/project-template/CLAUDE.md .
+mkdir -p specs
+```
+
+Then edit `CLAUDE.md` to fill in your project's stack and test commands.
+
+---
+
+## Session Workflow
+
+```
+Feature Request
+    │
+    ▼
+/plan ──► interviews you → writes spec → task list in tasks/todo.md
+    │
+    ▼  (confirm with 'y')
+/tdd ──► failing test → minimal code → pass → refactor → mark [x]
+    │
+    ▼  (all tasks done)
+/security-scan ──► audit changed files for OWASP issues
+    │
+    ▼
+/wrap-up-session ──► sync learnings → update tasks + bugs → run tests → push
+```
+
+---
+
+## Skills
+
+Invoke with `/skill-name` in any Claude Code session:
+
+| Skill | What It Does |
+|-------|-------------|
+| `/plan` | Interviews you, writes a spec to `specs/`, creates TDD task plan in `tasks/todo.md` |
+| `/tdd` | Walks through the TDD loop: failing test → code → pass → refactor → `[x]` |
+| `/learn` | Extracts session patterns and appends them to `.claude/memory.md` |
+| `/checkpoint` | Saves a progress snapshot to `tasks/checkpoint.md` for handoff or pause |
+| `/security-scan` | Audits changed files against OWASP top 10; blocks commit on HIGH/MEDIUM |
+| `/wrap-up-session` | Syncs learnings, updates task + bug registers, runs tests, pushes to main |
+
+---
+
+## Agents
+
+Claude delegates to these automatically (or you can invoke them via the Agent tool):
+
+| Agent | Best For |
+|-------|---------|
+| `planner` | Spec writing, task breakdown, architecture decisions |
+| `backend-developer` | APIs, databases, auth, performance, security |
+| `frontend-developer` | React/Vue/Angular components, responsive UI |
+| `frontend-design-validator` | Verify UI matches design references |
+| `code-reviewer` | Post-implementation quality review (invoked proactively) |
+| `code-debugger` | Debugging failing tests and runtime errors |
+| `security-reviewer` | OWASP checks, auth flows, injection vectors |
+| `content-generator-expert` | PDF pipeline, semantic search, AI content generation |
+| `context-document-optimizer` | Compress large docs for token efficiency |
+
+---
+
+## Hooks
+
+| Hook | Trigger | What It Does |
+|------|---------|-------------|
+| `session-start.sh` | Session start | Prints memory, active tasks, lessons, git status |
+| `auto-test-runner.sh` | After every Bash tool use | Runs tests on changed files; creates task entries on failure |
+
+---
 
 ## Directory Structure
 
 ```
-PROJECT-Coding-agent-rules/
-├── .cursor/                          # Cursor IDE configurations
-│   ├── AGENTS.md                     # Agent configuration file
-│   ├── commands/                     # Custom commands
-│   │   ├── orchestrate-subagents.md
-│   │   ├── pre-qa-smoke-test.md
-│   │   └── wrap-up-session.md
-│   └── rules/                        # Cursor coding rules
-│       ├── create-prd.mdc
-│       ├── master-coding-agent-rules.mdc
-│       └── process-task-list.mdc
-├── .claude/                          # Claude AI configurations
-│   ├── agents/                       # Specialized Claude agents (7 agents)
-│   │   ├── backend-developer.md
-│   │   ├── code-debugger.md
-│   │   ├── code-reviewer.md
-│   │   ├── content-generator-expert.md
-│   │   ├── context-document-optimizer.md
-│   │   ├── frontend-design-validator.md
-│   │   └── frontend-developer.md
-│   └── hooks/                        # Pre/Post hooks
-│       ├── auto-test-runner.ps1
+.
+├── install.sh                       ← Run once to set up global Claude config
+├── CLAUDE.md                        ← Core rules (copied to ~/.claude/CLAUDE.md)
+├── project-template/                ← Scaffold copied into new projects
+│   ├── CLAUDE.md                    ← Project-specific override template
+│   └── tasks/
+│       ├── todo.md
+│       ├── bugs.md
+│       └── lessons.md
+├── .claude/
+│   ├── memory.md                    ← Persistent project memory (updated via /learn)
+│   ├── settings.json                ← Hook configuration
+│   ├── agents/                      ← 9 specialized subagents
+│   ├── commands/                    ← 6 skills (/plan, /tdd, /learn, /checkpoint, /security-scan, /wrap-up-session)
+│   └── hooks/
+│       ├── session-start.sh
 │       └── auto-test-runner.sh
-├── awesome-claude-code-subagents/    # 72+ specialized subagents
-│   └── categories/
-│       ├── 01-core-development/      # Core development roles
-│       ├── 02-language-specialists/  # Language-specific experts
-│       ├── 03-infrastructure/        # DevOps & Infrastructure
-│       ├── 04-quality-security/      # QA, Testing, Security
-│       ├── 05-data-ai/              # Data Science & AI/ML
-│       ├── 06-developer-experience/ # DX & Tooling
-│       ├── 07-specialized-domains/  # Domain-specific experts
-│       ├── 08-business-product/     # Business & Product roles
-│       ├── 09-meta-orchestration/   # Orchestration & Coordination
-│       └── 10-research-analysis/    # Research & Analysis
-├── conductor/                        # Project management & workflows
-│   ├── code_styleguides/            # Code style guides
-│   │   ├── python.md
-│   │   └── typescript.md
-│   ├── product-guidelines.md
-│   ├── product.md
-│   ├── tech-stack.md
-│   ├── tracks/                      # Feature tracks
-│   ├── tracks.md
-│   └── workflow.md
-└── makefile                         # Build and automation commands
+├── tasks/
+│   └── todo.md                      ← Active task plan for this repo
+├── specs/                           ← Feature specifications
+├── awesome-claude-code-subagents/   ← Extended subagent library
+└── makefile                         ← Build + test automation
 ```
+
+---
 
 ## Sources
 
-### From PROJECT-pix-receipt-tracker:
-- AGENTS.md configuration
-- `orchestrate-subagents.md` command
-- Complete awesome-claude-code-subagents library (72+ subagents)
-
-### From PROJETO_pdf-idea-generator:
-- 3 Cursor rules (mdc files)
-- 2 additional commands
-- 7 specialized Claude agents
-- 2 hook scripts (PowerShell and Bash)
-- Conductor workflow and project management files
-- makefile with build commands
-
-## Statistics
-
-- **Total markdown files**: 166+
-- **Subagent categories**: 10
-- **Specialized Claude agents**: 7
-- **Commands**: 3
-- **Rules**: 3
-- **Hooks**: 2
-
-## Usage
-
-### Cursor IDE
-The `.cursor/` directory contains rules and commands that integrate with Cursor IDE:
-- Rules in `.cursor/rules/` are automatically loaded by Cursor
-- Commands in `.cursor/commands/` can be invoked via Cursor's command palette
-- `AGENTS.md` configures available agents for the project
-
-### Claude AI
-The `.claude/` directory contains specialized agents and hooks:
-- Agents can be invoked for specific tasks
-- Hooks automate testing and validation workflows
-
-### Awesome Claude Code Subagents
-The `awesome-claude-code-subagents/` directory provides 72+ specialized subagents organized by category:
-- Use `install-agents.sh` to set up subagents
-- Browse categories to find the right expert for your task
-- Each subagent has specific expertise and capabilities
-
-### Conductor
-The `conductor/` directory provides project management and workflow structure:
-- Style guides for consistent code quality
-- Product guidelines and technical specifications
-- Feature tracking system
-- Workflow documentation
-
-### Makefile
-The `makefile` contains build commands and automation scripts for common development tasks.
-
-## License
-
-This is a consolidated repository. Original licenses from source projects apply to their respective components.
-# coding-agent-workflow
+- [shanraisshan/claude-code-best-practice](https://github.com/shanraisshan/claude-code-best-practice) — Command/agent/skill architecture
+- [affaan-m/everything-claude-code](https://github.com/affaan-m/everything-claude-code) — Memory system, hook lifecycle, continuous learning

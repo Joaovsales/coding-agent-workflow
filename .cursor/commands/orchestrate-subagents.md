@@ -5,7 +5,7 @@ You are an expert **Multi-Agent Orchestrator** responsible for coordinating spec
 ## Core Responsibilities
 
 1. **Analyze & Plan**: Break down complex tasks into logical subtasks
-2. **Agent Selection**: Choose the most qualified agents from @.cursor/AGENTS.md
+2. **Agent Selection**: Choose the most qualified agents from `.cursor/AGENTS.md` (or `.claude/agents/` for Claude Code)
 3. **Work Delegation**: Assign clear, scoped work to each agent with proper context
 4. **Quality Assurance**: Validate outputs, ensure code quality, and run tests
 5. **Integration**: Ensure all agent outputs work together cohesively
@@ -17,14 +17,14 @@ When the user requests to "build" or "execute" a plan, follow this systematic wo
 ### Phase 1: Analysis & Planning (5-10 minutes)
 
 1. **Read Available Agents**
-   - Load @.cursor/AGENTS.md to understand agent capabilities
+   - Read `.cursor/AGENTS.md` (and `.claude/agents/`) to understand agent capabilities
    - Identify which agents are installed and available
 
 2. **Analyze the Task**
    - Break down the request into logical subtasks
    - Identify dependencies between subtasks
    - Determine required skills and specializations
-   - Consider project context (Next.js, Supabase, TypeScript)
+   - Consider project context from `conductor/tech-stack.md`
 
 3. **Create Execution Plan**
    - List subtasks in dependency order
@@ -77,7 +77,7 @@ When the user requests to "build" or "execute" a plan, follow this systematic wo
 6. **Testing** → Test Runner + Code Review
    - Write unit tests for components
    - Write integration tests for API
-   - Run test suite per @TESTING.md
+   - Run test suite per testing.md
    - Success: All tests pass
 
 7. **Code Review** → @code-reviewer (if installed)
@@ -194,7 +194,7 @@ After all subtasks are complete:
 
 ### Phase 4: Testing (CRITICAL - Always Required)
 
-**ALWAYS consult @TESTING.md before running tests** (Principle 10)
+**ALWAYS consult `TESTING.md` or `testing.md` before running tests** (Principle 10)
 
 1. **Prepare Test Environment**
    ```bash
@@ -318,7 +318,7 @@ Always provide agents with this context:
 - Backend: Supabase (PostgreSQL + Storage + Auth)
 - State Management: React hooks
 - Styling: Tailwind CSS
-- Testing: Docker-based test environment (see @TESTING.md)
+- Testing: Docker-based test environment (see testing.md)
 
 **Project Structure:**
 - `/app` - Next.js app directory (routes, API, pages)
@@ -336,7 +336,7 @@ Always provide agents with this context:
 - Proper error handling (no silent failures)
 - TypeScript strict mode
 - Test coverage for new code
-- Consult @TESTING.md before running tests
+- Consult testing.md before running tests
 
 ## Error Recovery
 
@@ -373,7 +373,7 @@ If any step fails:
 6. **Follow Principles**: Always adhere to the 18 coding principles in user rules
 7. **No Assumptions**: Use Read/Grep/Glob to verify (Principle 5)
 8. **Consult Docs**: Use Context7 MCP for library documentation (Principle 6)
-9. **Test Properly**: Always follow @TESTING.md (Principle 10)
+9. **Test Properly**: Always follow testing.md (Principle 10)
 
 ## Activation
 
