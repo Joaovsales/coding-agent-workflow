@@ -1,89 +1,97 @@
 # /start-qa — Start QA Session
 
-Restart the application, validate infrastructure health, launch a browser with log monitoring, and hand off to the user for manual QA.
+Restart the application, launch a browser for manual QA as fast as possible, and run health/smoke checks in the background.
 
 ---
 
-## Step 1 — Restart the Application
+## Step 1 — Discover the Project
 
-Bring the app down and back up cleanly:
+Before doing anything, understand how this specific project works. Read the project's configuration files to determine:
 
-```bash
-make down
-make build
-make up
-```
+1. **How to start the app** — Look for clues in this order:
+   - `Makefile` / `makefile` (e.g., `make up`, `make dev`, `make start`)
+   - `docker-compose.yml` / `compose.yml` (e.g., `docker compose up -d`)
+   - `package.json` scripts (e.g., `npm run dev`, `npm start`)
+   - `Procfile`, `pyproject.toml`, or framework-specific configs
+   - `README.md` for documented startup instructions
 
-Wait 5 seconds for services to initialize, then verify containers are running:
+2. **How to stop/restart the app** — Corresponding stop commands (e.g., `make down`, `docker compose down`, kill existing dev server process)
 
-```bash
-docker compose ps
-```
+3. **What URL the app runs on** — Check for port configuration in:
+   - Docker compose port mappings
+   - Vite/webpack config (`vite.config.ts`, `webpack.config.js`)
+   - `.env` files for `PORT` or `HOST` variables
+   - Framework defaults (Vite: 5173, Next.js: 3000, FastAPI: 8000, Rails: 3000, etc.)
 
-**If containers are not running or exited with errors**: inspect logs with `docker compose logs --tail=50`, diagnose the issue, fix it, and re-run `make down && make up`. Loop until all containers are healthy.
+4. **How to health-check the app** — Look for:
+   - Makefile targets like `pre-QA-tests`, `test-smoke`, `test-health`
+   - Health endpoints (`/health`, `/api/health`, `/healthz`)
+   - Smoke test scripts in `scripts/` or `tests/smoke/`
 
----
+5. **What pre-QA tests exist** — Look for:
+   - Makefile targets: `pre-QA-tests`, `test-smoke`, `test-critical`, `test-mvp`
+   - Test directories: `tests/smoke/`, `tests/e2e/`, `tests/integration/`
+   - Scripts: `scripts/pre_qa*.sh`, `scripts/smoke*.sh`
 
-## Step 2 — Health Check Loop
-
-Run the pre-QA smoke tests to validate infrastructure:
-
-```bash
-make pre-QA-tests
-```
-
-If `pre-QA-tests` is not available or the smoke test script does not exist, fall back to a manual health check:
-
-1. Identify the backend health endpoint (commonly `GET /health` or `GET /api/health`)
-2. Run: `curl -sf http://localhost:8000/health` (adjust port from docker-compose config)
-3. Verify HTTP 200 response
-
-**If health check fails**:
-1. Read the error output and container logs (`docker compose logs --tail=100`)
-2. Identify the root cause (missing env vars, DB connection issues, port conflicts, dependency errors)
-3. Fix the issue directly — edit config files, restart specific services, run migrations, etc.
-4. Re-run the health check
-5. **Loop until the health check passes** — do not proceed to Step 3 until the app is confirmed healthy
-
-Report each fix applied so the user has visibility into what was wrong.
+Store these findings — you'll use them in the following steps.
 
 ---
 
-## Step 3 — Launch Browser with Log Monitoring
+## Step 2 — Restart the Application
 
-Use Claude Code's built-in `/chrome` command to start a browser session:
+Using what you discovered in Step 1:
+
+1. Stop the currently running app (if applicable)
+2. Rebuild if the project uses a build step
+3. Start the app in the background
+
+Wait a few seconds for services to initialize, then do a quick liveness check (e.g., `curl -sf <url>` or check process/container status). If the app fails to start, inspect logs, fix the issue, and retry. Loop until the app is reachable.
+
+---
+
+## Step 3 — Launch Browser Immediately
+
+As soon as the app is reachable (basic liveness confirmed), launch the browser **without waiting for full test suites**:
 
 ```
 /chrome
 ```
 
-Then navigate to the app URL (e.g., `http://localhost:5173` for Vite frontend, or the appropriate URL from docker-compose).
+Navigate to the app URL discovered in Step 1. The `/chrome` session captures **console logs** and **network requests** automatically.
 
-The `/chrome` session provides built-in access to **console logs** and **network requests** — ensure both are being captured so issues can be debugged during QA.
-
----
-
-## Step 4 — Report QA Ready
-
-Once all steps succeed, report to the user:
+**Report QA ready immediately:**
 
 ```
 QA Session Ready
 ─────────────────────────────────────
-App Status:    Running (all containers healthy)
-Health Check:  PASS
+App Status:    Running
 Browser:       Launched at [URL]
 Log Monitoring:
-  - Console logs: Active (capturing log/warn/error/info)
-  - Network logs: Active (capturing all HTTP requests/responses)
+  - Console logs: Active
+  - Network logs: Active
 
-Issues Fixed During Startup: [list any fixes applied, or "None"]
+Background: Pre-QA smoke tests are running via /loop.
+            You'll be notified of any failures.
 
-You can now begin manual QA. I'm monitoring console and network
-logs — if you hit an issue, I can inspect the captured logs to
-help debug.
+You can start manual QA now.
 ─────────────────────────────────────
 ```
+
+---
+
+## Step 4 — Background Health & Smoke Tests via /loop
+
+Immediately after launching the browser, start a background loop to run pre-QA validation:
+
+```
+/loop 2m Run pre-QA smoke tests for this project. If any test fails or infrastructure issue is detected: diagnose the root cause from logs, fix it, and re-run. Report to the user only when something fails or when all checks pass. Do not interrupt QA for passing tests.
+```
+
+The `/loop` handles:
+- Running whatever smoke/health tests were discovered in Step 1
+- Auto-fixing infrastructure issues (missing services, failed migrations, env misconfigs)
+- Notifying the user only on failures or when all checks go green
+- Re-running after fixes to confirm resolution
 
 ---
 
@@ -92,5 +100,5 @@ help debug.
 While the user performs manual QA:
 - Keep the browser session and log monitoring active
 - When the user reports an issue, immediately check captured console errors and failed network requests
-- Correlate frontend errors with backend logs (`docker compose logs --tail=50 backend`)
+- Correlate frontend errors with backend logs (use the project's log access method — `docker compose logs`, file logs, or terminal output)
 - Suggest fixes or file bugs in `tasks/bugs.md` as issues are discovered
