@@ -68,6 +68,7 @@ Invoke with `/skill-name` in the chat.
 | `/learn` | Extract session patterns and persist to `.claude/memory.md` |
 | `/checkpoint` | Snapshot progress to `tasks/checkpoint.md` for handoff or pause |
 | `/security-scan` | OWASP-focused audit on recently changed files |
+| `/start-qa` | Restart app, health check, launch browser with log monitoring for manual QA |
 | `/wrap-up-session` | Sync learnings, update task/bug registers, run tests, push to main |
 
 ---
