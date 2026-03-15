@@ -51,20 +51,15 @@ Report each fix applied so the user has visibility into what was wrong.
 
 ## Step 3 — Launch Browser with Log Monitoring
 
-Start a Chrome browser session using Playwright's CDP (Chrome DevTools Protocol) to capture both **console logs** and **network requests** in real time.
+Use Claude Code's built-in `/chrome` command to start a browser session:
 
-Use the MCP browser tool or Playwright to:
-
-1. Launch a Chromium browser instance pointing to the app (e.g., `http://localhost:5173` for Vite frontend, or the appropriate URL from docker-compose)
-2. Enable **Console log capture** — listen for all console messages (log, warn, error, info)
-3. Enable **Network log capture** — listen for all HTTP requests and responses (URL, method, status code, timing)
-4. Store logs in memory so they can be referenced during QA
-
-If Playwright/browser MCP is not available, fall back to:
-```bash
-google-chrome --auto-open-devtools-for-tabs http://localhost:5173 &
 ```
-And instruct the user to keep the DevTools Console and Network tabs open.
+/chrome
+```
+
+Then navigate to the app URL (e.g., `http://localhost:5173` for Vite frontend, or the appropriate URL from docker-compose).
+
+The `/chrome` session provides built-in access to **console logs** and **network requests** — ensure both are being captured so issues can be debugged during QA.
 
 ---
 
