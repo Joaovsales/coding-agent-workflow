@@ -11,7 +11,7 @@ At the start of every session:
 
 ---
 
-## Workflow: Spec → Plan → TDD
+## Workflow: Spec → Plan → Build → Wrap Up
 
 ### 1. Spec First
 For every non-trivial feature, distill the request into a formal Spec before writing any code:
@@ -24,12 +24,14 @@ For every non-trivial feature, distill the request into a formal Spec before wri
 - Ask user: _"Does this plan meet your requirements? Confirm with 'y' to begin."_
 - **Do not proceed without user confirmation**
 
-### 3. TDD Loop
-For every task in `tasks/todo.md`:
-1. Write a failing test → confirm it fails
-2. Write minimal code to pass → confirm it passes
-3. Refactor against Clean Code principles
-4. Mark `[x]` in `tasks/todo.md`
+### 3. Build (Autonomous Execution)
+Run `/build` to execute the plan autonomously:
+- Delegates tasks to appropriate sub-agents (`backend-developer`, `frontend-developer`, etc.)
+- Each task follows TDD: failing test → minimal impl → refactor → mark `[x]`
+- Full test suite after every task (no regressions)
+- Runs `/simplify` on all changed files when tasks are done
+- Validates every acceptance criterion from the spec
+- Reports results — no user prompts between tasks
 
 ### 4. Wrap Up
 After any user correction: note the root cause in `tasks/lessons.md`.
@@ -64,7 +66,9 @@ Invoke with `/skill-name` in the chat.
 | Skill | Purpose |
 |-------|---------|
 | `/plan` | Interview user, write spec, create task breakdown in `tasks/todo.md` |
-| `/tdd` | Execute TDD loop for tasks in `tasks/todo.md` |
+| `/build` | Autonomous orchestrator: TDD + sub-agents + simplify + spec validation |
+| `/tdd` | Execute TDD loop for tasks in `tasks/todo.md` (manual, with user checkpoints) |
+| `/simplify` | Review changed code for reuse, quality, complexity; fix issues found |
 | `/learn` | Extract session patterns and persist to `.claude/memory.md` |
 | `/checkpoint` | Snapshot progress to `tasks/checkpoint.md` for handoff or pause |
 | `/security-scan` | OWASP-focused audit on recently changed files |
