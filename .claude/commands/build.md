@@ -3,6 +3,13 @@
 Execute the full plan from `tasks/todo.md` autonomously using TDD with sub-agent delegation.
 Bridges the gap between `/plan` (design) and `/wrap-up-session` (close).
 
+## Model Routing
+
+**This command MUST use `model: sonnet` for all sub-agent delegations.**
+- All coding agents (`backend-developer`, `frontend-developer`, `code-debugger`, `code-reviewer`) MUST be invoked with `model: "sonnet"`
+- For codebase searches and file exploration, use `model: "haiku"` via the Explore agent
+- Never use `opus` during build — it is reserved for planning and architecture
+
 ## Pre-Flight Checks
 
 1. Verify `tasks/todo.md` exists and has pending `[ ]` tasks
