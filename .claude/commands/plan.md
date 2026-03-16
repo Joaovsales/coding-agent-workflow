@@ -2,6 +2,13 @@
 
 Enter plan mode to define a spec and task breakdown **before any code is written**.
 
+## Model Routing
+
+**This command MUST use `model: opus` for all agent delegations.**
+- When spawning the `planner` agent, pass `model: "opus"` to the Agent tool
+- When performing codebase exploration or searches, use `model: "haiku"` for the Explore agent
+- The planning phase requires the strongest reasoning model for architecture decisions
+
 ## Steps
 
 ### 1. Interview the User

@@ -43,19 +43,46 @@ At session end: run `/wrap-up-session` to sync learnings, tests, and push.
 
 Use specialized agents to keep the main context window clean.
 
-| Agent | Best For |
-|-------|---------|
-| `planner` | Spec writing, task breakdown, architecture decisions |
-| `backend-developer` | APIs, databases, auth, performance, security |
-| `frontend-developer` | React/Vue/Angular components, responsive UI |
-| `frontend-design-validator` | Validate UI against design specs |
-| `code-reviewer` | Post-implementation quality review (invoke proactively) |
-| `code-debugger` | Debugging failing tests and runtime errors |
-| `security-reviewer` | OWASP checks, auth flows, injection vectors |
-| `content-generator-expert` | PDF pipeline, semantic search, recommendations |
-| `context-document-optimizer` | Compress large docs for token efficiency |
+| Agent | Model | Best For |
+|-------|-------|---------|
+| `planner` | `opus` | Spec writing, task breakdown, architecture decisions |
+| `backend-developer` | `sonnet` | APIs, databases, auth, performance, security |
+| `frontend-developer` | `sonnet` | React/Vue/Angular components, responsive UI |
+| `frontend-design-validator` | `sonnet` | Validate UI against design specs |
+| `code-reviewer` | `sonnet` | Post-implementation quality review (invoke proactively) |
+| `code-debugger` | `sonnet` | Debugging failing tests and runtime errors |
+| `security-reviewer` | `sonnet` | OWASP checks, auth flows, injection vectors |
+| `content-generator-expert` | `sonnet` | PDF pipeline, semantic search, recommendations |
+| `context-document-optimizer` | `sonnet` | Compress large docs for token efficiency |
 
 **Delegation rule**: Use subagents for research, exploration, and parallel analysis. One focused task per subagent.
+
+---
+
+## Model Routing Rules
+
+**These rules are mandatory for all agent delegations and tool invocations.**
+
+| Operation | Model | Rationale |
+|-----------|-------|-----------|
+| `/plan` — spec writing, architecture, task breakdown | `opus` | Strongest reasoning for design decisions |
+| `/build` — TDD, coding, debugging, code review | `sonnet` | Fast, capable coding model |
+| Codebase search, grep, file exploration | `haiku` | Fastest model for simple lookups |
+
+### Enforcement
+
+When invoking the **Agent tool**, always pass the `model` parameter:
+
+- **Planning agents** (`planner`): `model: "opus"`
+- **Coding agents** (`backend-developer`, `frontend-developer`, `code-reviewer`, `code-debugger`, `content-generator-expert`, `frontend-design-validator`, `context-document-optimizer`, `security-reviewer`): `model: "sonnet"`
+- **Explore agents** (codebase search, file discovery, grep): `model: "haiku"`
+
+### Rules
+
+1. **Never use `opus` for code writing** — it is reserved for planning and architecture
+2. **Never use `haiku` for code writing or planning** — it is for search/exploration only
+3. **Always pass `model` explicitly** — do not rely on defaults
+4. Agent YAML front-matter declares the intended model; the Agent tool `model` parameter enforces it
 
 ---
 
