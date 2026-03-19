@@ -1,3 +1,10 @@
+---
+name: plan
+description: Interview user, write a feature spec, and create a TDD task breakdown. Use for any non-trivial feature before coding.
+argument-hint: "[feature description]"
+disable-model-invocation: true
+---
+
 # /plan — Structured Spec + Plan Mode
 
 Enter plan mode to define a spec and task breakdown **before any code is written**.

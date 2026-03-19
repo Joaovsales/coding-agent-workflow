@@ -1,3 +1,8 @@
+---
+name: checkpoint
+description: Snapshot current session progress to tasks/checkpoint.md for handoff or pause.
+---
+
 # /checkpoint — Session Checkpoint
 
 Save a snapshot of current progress for handoff, pause, or context compaction.

@@ -1,3 +1,8 @@
+---
+name: tdd
+description: Execute TDD loop for tasks in tasks/todo.md with user checkpoints between steps.
+---
+
 # /tdd — TDD Workflow
 
 Execute the TDD loop for tasks in `tasks/todo.md`.
