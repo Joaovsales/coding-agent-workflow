@@ -78,3 +78,25 @@ For agents not in `.claude/agents/`, use `general-purpose` and describe the role
 - **Chain agents** — design → implement → review → security scan
 - **Reference files explicitly** — use @filename or provide full paths in the prompt
 - **Validate outputs** — always check agent work before moving to the next step
+
+## Cursor Cloud specific instructions
+
+### Repository overview
+
+This is a **meta-tooling/workflow configuration repository** — not an application codebase. It contains Claude Code and Cursor IDE configuration (agents, skills, hooks, project templates) that enforce spec-driven, TDD-first development. There is no application source code, no `package.json`, no `requirements.txt`, and no `docker-compose.yml`.
+
+### What can run
+
+| Artifact | Command | Notes |
+|----------|---------|-------|
+| Shell scripts (`install.sh`, `.claude/hooks/*.sh`) | `bash <script>` | Only executable code in the repo |
+| Lint shell scripts | `shellcheck install.sh .claude/hooks/*.sh` | Warnings only — no blockers |
+| Session-start hook | `bash .claude/hooks/session-start.sh` | Shows memory, tasks, lessons, git status |
+
+### Known issue
+
+`install.sh` references `.claude/commands/*.md` but the repo uses `.claude/skills/*/SKILL.md`. Running `install.sh` will fail at the "Installing global skills" step. The agents and hooks install correctly. See `tasks/todo.md` for the tracked migration tasks.
+
+### What does NOT exist here
+
+The `makefile` and `conductor/` docs reference a separate "PDF Idea Generator v2" application (FastAPI, React, Supabase, Redis, Docker Compose). That application's source code is **not** in this repository — the `makefile` targets will not work.
