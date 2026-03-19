@@ -1,3 +1,8 @@
+---
+name: security-scan
+description: OWASP-focused security audit on recently changed files. Use after code changes to check for vulnerabilities.
+---
+
 # /security-scan — Security Review
 
 Run a focused security audit on recently changed code before committing or deploying.
