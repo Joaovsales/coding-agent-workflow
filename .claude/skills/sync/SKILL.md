@@ -1,6 +1,11 @@
+---
+name: sync
+description: Pull latest skills, hooks, agents, and config from the coding-agent-workflow template repo.
+---
+
 # /sync — Sync Workflow Updates from Template Repo
 
-Pull the latest skills, commands, hooks, agents, and config from the `coding-agent-workflow` template repo into the current project.
+Pull the latest skills, hooks, agents, and config from the `coding-agent-workflow` template repo into the current project.
 
 ## Source Repo
 
@@ -12,7 +17,7 @@ Pull the latest skills, commands, hooks, agents, and config from the `coding-age
 These are the files/directories managed by the workflow template:
 
 ```
-.claude/commands/     → Skills (slash commands)
+.claude/skills/       → Skills (slash commands)
 .claude/agents/       → Subagent definitions
 .claude/hooks/        → Lifecycle hooks
 .claude/settings.json → Hook configuration
@@ -60,12 +65,12 @@ Compare the syncable paths between the current project and the template source.
 **If git remote mode:**
 ```bash
 # Show changed files in syncable paths only
-git diff HEAD...workflow/main --stat -- .claude/commands/ .claude/agents/ .claude/hooks/ .claude/settings.json CLAUDE.md conductor/
+git diff HEAD...workflow/main --stat -- .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json CLAUDE.md conductor/
 ```
 
 Then show the full diff:
 ```bash
-git diff HEAD...workflow/main -- .claude/commands/ .claude/agents/ .claude/hooks/ .claude/settings.json CLAUDE.md conductor/
+git diff HEAD...workflow/main -- .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json CLAUDE.md conductor/
 ```
 
 **If manual diff mode:**
@@ -78,7 +83,7 @@ Summarize the changes in a clear table:
 ```
 | File                          | Status   | Summary                    |
 |-------------------------------|----------|----------------------------|
-| .claude/commands/sync.md      | NEW      | New sync command            |
+| .claude/skills/sync/SKILL.md  | NEW      | New sync skill              |
 | .claude/agents/planner.md     | MODIFIED | Updated planning prompts    |
 | CLAUDE.md                     | MODIFIED | Added new workflow section  |
 ```

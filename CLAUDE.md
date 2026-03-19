@@ -86,9 +86,9 @@ When invoking the **Agent tool**, always pass the `model` parameter:
 
 ---
 
-## Skills — `.claude/commands/` & `.claude/skills/`
+## Skills — `.claude/skills/`
 
-Invoke with `/skill-name` in the chat.
+Invoke with `/skill-name` in the chat. Each skill is a directory under `.claude/skills/` containing a `SKILL.md` with YAML frontmatter.
 
 | Skill | Purpose |
 |-------|---------|
@@ -102,7 +102,7 @@ Invoke with `/skill-name` in the chat.
 | `/security-scan` | OWASP-focused audit on recently changed files |
 | `/start-qa` | Restart app, health check, launch browser with log monitoring for manual QA |
 | `/wrap-up-session` | Sync learnings, update task/bug registers, run tests, push to main |
-| `/sync` | Pull latest skills, commands, hooks, agents from the template repo into the current project |
+| `/sync` | Pull latest skills, hooks, agents from the template repo into the current project |
 
 ---
 
@@ -153,7 +153,7 @@ Before marking any task complete, confirm:
 
 ```
 .claude/agents/     → Specialized subagents (invoked via Agent tool)
-.claude/commands/   → Skills invokable with /command-name
+.claude/skills/     → Skills invokable with /skill-name
 .claude/hooks/      → Lifecycle automation scripts
 tasks/todo.md       → Active task plan (single source of truth)
 tasks/bugs.md       → Bug register (opened/fixed per session)

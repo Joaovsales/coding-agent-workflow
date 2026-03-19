@@ -1,3 +1,9 @@
+---
+name: start-qa
+description: Discover project config, restart app, and launch browser for manual QA testing.
+disable-model-invocation: true
+---
+
 # /start-qa — Start QA Session
 
 Restart the application, launch a browser for manual QA as fast as possible, and run health/smoke checks in the background.

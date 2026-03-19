@@ -1,3 +1,9 @@
+---
+name: wrap-up-session
+description: Close session: sync learnings, update registers, run tests, and push.
+disable-model-invocation: true
+---
+
 # /wrap-up-session — Session Wrap-Up
 
 Close out the session by syncing learnings, updating task and bug registers, running tests, and pushing changes.
