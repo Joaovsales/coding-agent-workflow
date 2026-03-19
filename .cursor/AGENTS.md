@@ -78,3 +78,26 @@ For agents not in `.claude/agents/`, use `general-purpose` and describe the role
 - **Chain agents** — design → implement → review → security scan
 - **Reference files explicitly** — use @filename or provide full paths in the prompt
 - **Validate outputs** — always check agent work before moving to the next step
+
+---
+
+## Cursor Cloud specific instructions
+
+### Repository nature
+
+This is a **coding agent workflow template** — a pure configuration/scaffolding repo for Claude Code and Cursor. It contains no application source code, no dependency manifests (`package.json`, `requirements.txt`), and no Docker files. The `makefile` and `conductor/` docs describe a separate "PDF Idea Generator v2" product whose source code is **not in this repo**.
+
+### What you can run
+
+| Action | Command | Notes |
+|--------|---------|-------|
+| Install globally | `bash install.sh` | Copies agents, hooks, and CLAUDE.md to `~/.claude/`. **Known issue:** fails on `.claude/commands/` (renamed to `.claude/skills/` but script not updated). |
+| Session-start hook | `bash .claude/hooks/session-start.sh` | Prints memory, active tasks, lessons, git status. Works from repo root. |
+| Auto-test-runner hook | `bash .claude/hooks/auto-test-runner.sh` | Runs post-Bash-tool-use; exits cleanly if no test infrastructure present. |
+| Lint shell scripts | `shellcheck install.sh .claude/hooks/session-start.sh .claude/hooks/auto-test-runner.sh` | Only warnings/info-level findings; no errors. |
+
+### Key caveats
+
+- **No build/test/dev-server**: There is no application to build, no test suite to run, and no dev server to start. The repo's value is its markdown config, shell hooks, and agent definitions.
+- **`install.sh` bug**: The script references `.claude/commands/*.md` which no longer exists (skills were migrated to `.claude/skills/`). It will fail at step 2 unless that directory is re-created or the script is updated.
+- **`makefile` targets are aspirational**: All `make` targets reference `docker compose` with files (`docker-compose.yml`, `docker-compose.test.yml`, `.env`) that do not exist in this repository. They are templates for a downstream project.
