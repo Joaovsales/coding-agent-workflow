@@ -1,3 +1,9 @@
+---
+name: simplify
+description: Review changed code for reuse, clean code, and SOLID violations, then fix issues found.
+argument-hint: "[optional file path]"
+---
+
 # /simplify — Code Simplification Review
 
 Review recently changed code for reuse opportunities, quality issues, and unnecessary complexity. Fix any issues found.

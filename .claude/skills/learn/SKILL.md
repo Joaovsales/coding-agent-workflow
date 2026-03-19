@@ -1,3 +1,8 @@
+---
+name: learn
+description: Extract durable patterns from the current session and persist to memory.md and lessons.md.
+---
+
 # /learn — Capture Session Learnings
 
 Extract durable patterns from this session and persist them into `.claude/memory.md` and `tasks/lessons.md`.
