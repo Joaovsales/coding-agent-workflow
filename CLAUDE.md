@@ -86,7 +86,7 @@ When invoking the **Agent tool**, always pass the `model` parameter:
 
 ---
 
-## Skills — `.claude/commands/`
+## Skills — `.claude/commands/` & `.claude/skills/`
 
 Invoke with `/skill-name` in the chat.
 
@@ -94,6 +94,7 @@ Invoke with `/skill-name` in the chat.
 |-------|---------|
 | `/plan` | Interview user, write spec, create task breakdown in `tasks/todo.md` |
 | `/build` | Autonomous orchestrator: TDD + sub-agents + simplify + spec validation |
+| `/debug` | Investigate & fix bugs: root cause analysis, bug register, lessons, `/loop` test verification |
 | `/tdd` | Execute TDD loop for tasks in `tasks/todo.md` (manual, with user checkpoints) |
 | `/simplify` | Review changed code for reuse, quality, complexity; fix issues found |
 | `/learn` | Extract session patterns and persist to `.claude/memory.md` |
