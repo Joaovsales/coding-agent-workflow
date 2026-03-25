@@ -30,11 +30,11 @@ mkdir -p "$CLAUDE_HOME"
 cp "$REPO_DIR/CLAUDE.md" "$CLAUDE_HOME/CLAUDE.md"
 ok "copied" "~/.claude/CLAUDE.md"
 
-# ── 2. Global skills (commands) ───────────────────────────────────────────────
-step "Installing global skills → ~/.claude/commands/"
-mkdir -p "$CLAUDE_HOME/commands"
-cp "$REPO_DIR/.claude/commands/"*.md "$CLAUDE_HOME/commands/"
-ok "copied" "$(ls "$CLAUDE_HOME/commands/"*.md | wc -l | tr -d ' ') skills"
+# ── 2. Global skills ─────────────────────────────────────────────────────────
+step "Installing global skills → ~/.claude/skills/"
+rm -rf "$CLAUDE_HOME/skills"
+cp -r "$REPO_DIR/.claude/skills" "$CLAUDE_HOME/skills"
+ok "copied" "$(find "$CLAUDE_HOME/skills" -name 'SKILL.md' | wc -l | tr -d ' ') skills"
 
 # ── 3. Global agents ─────────────────────────────────────────────────────────
 step "Installing global agents → ~/.claude/agents/"
