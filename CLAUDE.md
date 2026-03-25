@@ -52,7 +52,6 @@ Use specialized agents to keep the main context window clean.
 | `code-reviewer` | `sonnet` | Post-implementation quality review (invoke proactively) |
 | `code-debugger` | `sonnet` | Debugging failing tests and runtime errors |
 | `security-reviewer` | `sonnet` | OWASP checks, auth flows, injection vectors |
-| `content-generator-expert` | `sonnet` | PDF pipeline, semantic search, recommendations |
 | `context-document-optimizer` | `sonnet` | Compress large docs for token efficiency |
 
 **Delegation rule**: Use subagents for research, exploration, and parallel analysis. One focused task per subagent.
@@ -74,7 +73,7 @@ Use specialized agents to keep the main context window clean.
 When invoking the **Agent tool**, always pass the `model` parameter:
 
 - **Planning agents** (`planner`): `model: "opus"`
-- **Coding agents** (`backend-developer`, `frontend-developer`, `code-reviewer`, `code-debugger`, `content-generator-expert`, `frontend-design-validator`, `context-document-optimizer`, `security-reviewer`): `model: "sonnet"`
+- **Coding agents** (`backend-developer`, `frontend-developer`, `code-reviewer`, `code-debugger`, `frontend-design-validator`, `context-document-optimizer`, `security-reviewer`): `model: "sonnet"`
 - **Explore agents** (codebase search, file discovery, grep): `model: "haiku"`
 
 ### Rules
@@ -103,6 +102,7 @@ Invoke with `/skill-name` in the chat. Each skill is a directory under `.claude/
 | `/start-qa` | Restart app, health check, launch browser with log monitoring for manual QA |
 | `/wrap-up-session` | Sync learnings, update task/bug registers, run tests, push to main |
 | `/sync` | Pull latest skills, hooks, agents from the template repo into the current project |
+| `/folder-context-optimization` | Sweep a folder for legacy/unused files, propose archival |
 
 ---
 
@@ -159,6 +159,5 @@ tasks/todo.md       → Active task plan (single source of truth)
 tasks/bugs.md       → Bug register (opened/fixed per session)
 tasks/lessons.md    → Self-improvement patterns
 tasks/checkpoint.md → Session snapshots
-conductor/          → Workflow, tech stack, product docs
 specs/              → Feature specifications
 ```
