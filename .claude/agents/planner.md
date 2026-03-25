@@ -125,4 +125,4 @@ Raise concerns to the user (do not assume) when:
 - The feature touches authentication, authorization, or payments
 - Performance requirements are unclear but likely critical
 - The feature would break existing API contracts
-- The spec conflicts with the tech stack in `conductor/tech-stack.md`
+- The spec conflicts with the project's established tech stack

@@ -1,8 +1,0 @@
-{
-    "track_id": "resizable_layout_20260104",
-    "type": "feature",
-    "status": "new",
-    "created_at": "2026-01-04T00:00:00Z",
-    "updated_at": "2026-01-04T00:00:00Z",
-    "description": "Implement resizable layout sections in the content generator page. The three layout sections should be expandable and reducible in size by the user, and the components within need to be properly adjusted and fit into the user desired size of the section."
-}

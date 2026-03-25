@@ -1,6 +1,6 @@
 # Coding Agent Workflow
 
-A reusable Claude Code configuration system that enforces **spec-driven, TDD-first development** across all your projects — with persistent memory, specialized agents, and a structured session lifecycle.
+A reusable, project-agnostic configuration system that enforces **spec-driven, TDD-first development** across all your projects — with persistent memory, specialized agents, and a structured session lifecycle. Works with Claude Code, Cursor, and other AI coding tools.
 
 ---
 
@@ -9,8 +9,8 @@ A reusable Claude Code configuration system that enforces **spec-driven, TDD-fir
 | Layer | What it does |
 |-------|-------------|
 | **CLAUDE.md** | Core rules: Spec → Plan → TDD workflow, Clean Code, SOLID, quality gate |
-| **Skills** (`.claude/commands/`) | `/plan`, `/tdd`, `/learn`, `/checkpoint`, `/security-scan`, `/wrap-up-session` |
-| **Agents** (`.claude/agents/`) | 9 specialized subagents for planning, coding, review, debugging, security |
+| **Skills** (`.claude/skills/`) | `/plan`, `/build`, `/tdd`, `/debug`, `/simplify`, `/learn`, `/checkpoint`, `/security-scan`, `/start-qa`, `/wrap-up-session`, `/sync`, `/folder-context-optimization` |
+| **Agents** (`.claude/agents/`) | 8 specialized subagents for planning, coding, review, debugging, security |
 | **Hooks** (`.claude/hooks/`) | Session start orientation + auto test runner on file save |
 | **Memory** (`.claude/memory.md`) | Persistent patterns and session history, updated via `/learn` |
 
@@ -55,7 +55,7 @@ Copies your skills, agents, and CLAUDE.md into `~/.claude/`. Claude Code reads t
 ```
 ~/.claude/
 ├── CLAUDE.md          ← global rules (applies everywhere)
-├── commands/          ← all skills available in every project
+├── skills/            ← all skills available in every project
 ├── agents/            ← all agents available in every project
 ├── hooks/
 │   └── session-start.sh
@@ -133,13 +133,13 @@ Feature Request
 /plan ──► interviews you → writes spec → task list in tasks/todo.md
     │
     ▼  (confirm with 'y')
-/tdd ──► failing test → minimal code → pass → refactor → mark [x]
+/build ──► autonomous TDD + sub-agents → simplify → spec validation
     │
     ▼  (all tasks done)
 /security-scan ──► audit changed files for OWASP issues
     │
     ▼
-/wrap-up-session ──► sync learnings → update tasks + bugs → run tests → push
+/wrap-up-session ──► code review → sync learnings → run tests → push
 ```
 
 ---
@@ -151,11 +151,17 @@ Invoke with `/skill-name` in any Claude Code session:
 | Skill | What It Does |
 |-------|-------------|
 | `/plan` | Interviews you, writes a spec to `specs/`, creates TDD task plan in `tasks/todo.md` |
-| `/tdd` | Walks through the TDD loop: failing test → code → pass → refactor → `[x]` |
+| `/build` | Autonomous orchestrator: TDD + sub-agents + simplify + spec validation |
+| `/tdd` | Manual TDD loop with user checkpoints: failing test → code → pass → refactor → `[x]` |
+| `/debug` | Investigate bugs: root cause analysis, bug register, lessons, `/loop` test verification |
+| `/simplify` | Review changed code for reuse, quality, complexity; fix issues found |
 | `/learn` | Extracts session patterns and appends them to `.claude/memory.md` |
 | `/checkpoint` | Saves a progress snapshot to `tasks/checkpoint.md` for handoff or pause |
 | `/security-scan` | Audits changed files against OWASP top 10; blocks commit on HIGH/MEDIUM |
-| `/wrap-up-session` | Syncs learnings, updates task + bug registers, runs tests, pushes to main |
+| `/start-qa` | Discover project config, restart app, launch browser, background smoke tests |
+| `/wrap-up-session` | Parallel code review → sync learnings → run tests → push |
+| `/sync` | Pull latest skills, hooks, agents from the template repo into the current project |
+| `/folder-context-optimization` | Sweep a folder for legacy/unused files, propose archival |
 
 ---
 
@@ -172,7 +178,6 @@ Claude delegates to these automatically (or you can invoke them via the Agent to
 | `code-reviewer` | Post-implementation quality review (invoked proactively) |
 | `code-debugger` | Debugging failing tests and runtime errors |
 | `security-reviewer` | OWASP checks, auth flows, injection vectors |
-| `content-generator-expert` | PDF pipeline, semantic search, AI content generation |
 | `context-document-optimizer` | Compress large docs for token efficiency |
 
 ---
@@ -199,18 +204,19 @@ Claude delegates to these automatically (or you can invoke them via the Agent to
 │       ├── bugs.md
 │       └── lessons.md
 ├── .claude/
+│   ├── AGENTS.md                    ← Agent reference documentation
 │   ├── memory.md                    ← Persistent project memory (updated via /learn)
 │   ├── settings.json                ← Hook configuration
-│   ├── agents/                      ← 9 specialized subagents
-│   ├── commands/                    ← 6 skills (/plan, /tdd, /learn, /checkpoint, /security-scan, /wrap-up-session)
+│   ├── agents/                      ← 8 specialized subagents
+│   ├── skills/                      ← 12 skills (/plan, /build, /tdd, /debug, etc.)
 │   └── hooks/
 │       ├── session-start.sh
 │       └── auto-test-runner.sh
 ├── tasks/
-│   └── todo.md                      ← Active task plan for this repo
+│   ├── todo.md                      ← Active task plan
+│   └── bugs.md                      ← Bug register
 ├── specs/                           ← Feature specifications
-├── awesome-claude-code-subagents/   ← Extended subagent library
-└── makefile                         ← Build + test automation
+└── tests.md                         ← Project-specific test configuration
 ```
 
 ---

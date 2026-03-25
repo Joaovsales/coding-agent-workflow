@@ -1,12 +1,12 @@
 ---
 name: wrap-up-session
-description: Close session: sync learnings, update registers, run tests, and push.
+description: Close session with parallel code review, testing, fixes, and a clean commit. Use at the end of any coding session.
 disable-model-invocation: true
 ---
 
 # /wrap-up-session — Session Wrap-Up
 
-Close out the session by syncing learnings, updating task and bug registers, running tests, and pushing changes.
+Close out the session by syncing learnings, updating registers, running a parallel code review, testing, and pushing changes.
 
 ---
 
@@ -55,7 +55,49 @@ Then:
 
 ---
 
-## Step 4 — Run Tests via Testing Subagent
+## Step 4 — Parallel Code Review (4 agents)
+
+Launch these four agents simultaneously using the Agent tool. Each agent should:
+- Run `git diff --name-only main...HEAD` (or the base branch) to scope review to changed files only
+- Check `git log --oneline -10` for recent commit context before recommending reversals
+- Focus on issues **introduced** by this session, not pre-existing patterns
+
+### Agent 1: Codebase Consistency
+- Flag duplicated logic that already exists elsewhere in the codebase
+- Identify inconsistencies where the same fix/pattern should be applied in similar locations
+- Check for missed opportunities to reuse existing utilities or services
+
+### Agent 2: Clean Code & SOLID
+- Single Responsibility violations, long methods, deep nesting
+- Open/Closed: conditionals that should be polymorphism/strategy
+- Proper abstraction levels, meaningful names, small functions
+
+### Agent 3: Defensive Code Audit
+- Silent exception swallowing or overly broad catch blocks
+- Fallback values that mask real errors
+- Null-safe chains hiding broken assumptions
+- Any pattern that makes production debugging harder
+
+### Agent 4: Test Coverage Reviewer
+- Identify changed code paths that lack test coverage
+- Flag missing edge case tests, error path tests, boundary conditions
+- Check that existing tests still align with the changed behavior
+- Recommend specific tests to add (unit, integration, or e2e)
+
+---
+
+## Step 5 — Reconcile & Apply Fixes
+
+When agents return their findings:
+
+1. **Apply most recommendations** — if on the fence, do it
+2. **Resolve conflicts** — prefer reusing existing code (Agent 1) over extracting new abstractions (Agent 2)
+3. **Track skipped items** — only skip with strong justification; note the reason
+4. **Aim for convergence** — on follow-up passes, if agents find only minor/stylistic issues, note this and recommend proceeding
+
+---
+
+## Step 6 — Run Tests
 
 Determine the appropriate test scope based on what was changed this session:
 
@@ -66,29 +108,22 @@ Determine the appropriate test scope based on what was changed this session:
 | **E2E** | UI flows, auth paths, or multi-service workflows changed |
 | **All** | Core architecture changed or scope is unclear |
 
-Delegate to a subagent using the Agent tool:
+Discover test commands from `package.json`, `Makefile`, `pyproject.toml`, `TESTING.md`, or equivalent. Run in order: lint/typecheck, unit tests, integration tests, e2e tests.
 
-```
-subagent_type: code-debugger
-task: Run [unit/integration/E2E/all] tests for the changes made this session.
-      Files changed: [list from git diff --name-only HEAD].
-      Confirm all tests pass and report any failures with the error message and file location.
-```
-
-**If tests fail**: Fix the failures before proceeding. Do not push broken code.
+**If tests fail**: Fix the root cause (not a workaround), re-run tests. Max 2 fix attempts; if still failing, report to user with details.
 
 ---
 
-## Step 5 — Push to Main
+## Step 7 — Commit & Push
 
 Once all tests pass:
 
-```bash
-git add -p   # stage only relevant changes — never blindly stage everything
-git status   # confirm what's staged
-git commit -m "[type]: [concise description of what this session accomplished]"
-git push -u origin main
-```
+1. **Branch check**: if on `main`/`master`, create a feature branch first
+2. **Stage changes**: `git add -p` — stage only relevant changes, never blindly stage everything
+3. **Review staged**: `git status` to confirm
+4. **Commit**: `git commit -m "[type]: [concise description of session work]"`
+5. **Push**: `git push -u origin <branch>`
+6. **PR**: if no PR exists for this branch, create one with a summary; if one exists, push to it
 
 Commit message types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`
 
@@ -107,6 +142,7 @@ Session wrapped up.
 - Learnings: [N patterns captured / none]
 - Tasks: [X completed, Y pending]
 - Bugs: [N opened, N closed / no changes]
+- Code Review: [N issues found, N fixed, N skipped]
 - Tests: [PASS — suite name] or [FAIL — see above]
 - Pushed: [yes / no — reason]
 ```
