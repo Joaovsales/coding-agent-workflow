@@ -7,6 +7,22 @@ description: Execute TDD loop for tasks in tasks/todo.md with user checkpoints b
 
 Execute the TDD loop for tasks in `tasks/todo.md`.
 
+## The Iron Law
+
+```
+NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
+```
+
+Write code before the test? Delete it. Start over.
+
+**No exceptions:**
+- Don't keep it as "reference"
+- Don't "adapt" it while writing tests
+- Don't look at it
+- Delete means delete
+
+Implement fresh from tests. Period.
+
 ## Pre-Flight Checks
 
 1. Verify `tasks/todo.md` exists and has a populated plan
@@ -53,6 +69,49 @@ Apply Clean Code principles **without changing behavior**:
 ### Step 7 — Check In
 - Ask: "Ready for the next task? (y/n)"
 - Wait for user confirmation before proceeding
+
+## Red Flags — STOP and Start Over
+
+These signals mean TDD is being violated. Stop immediately and start over with a failing test.
+
+- Code written before test
+- Test written after implementation
+- Test passes immediately without implementation
+- Can't explain why test failed
+- Tests added "later"
+- Rationalizing "just this once"
+- "I already manually tested it"
+- "Keep as reference" or "adapt existing code"
+
+**All of these mean: Delete code. Start over with TDD.**
+
+## Common Rationalizations
+
+| Excuse | Reality |
+|--------|---------|
+| "Too simple to test" | Simple code breaks. Test takes 30 seconds. |
+| "I'll test after" | Tests passing immediately prove nothing. |
+| "Need to explore first" | Fine. Throw away exploration, start with TDD. |
+| "Test hard = design unclear" | Listen to the test. Hard to test = hard to use. |
+| "TDD will slow me down" | TDD is faster than debugging. |
+| "Manual test faster" | Manual doesn't prove edge cases. |
+| "Existing code has no tests" | You're improving it. Add tests. |
+| "Just this once" | That's rationalization. |
+| "It's about spirit not ritual" | Tests-after ≠ TDD. You get coverage, lose proof. |
+| "Deleting X hours is wasteful" | Sunk cost fallacy. Keeping unverified code is debt. |
+
+## When Stuck
+
+| Problem | Solution |
+|---------|---------|
+| Don't know how to test | Write the wished-for API. Write the assertion first. Ask the user. |
+| Test too complicated | Design too complicated. Simplify the interface. |
+| Must mock everything | Code too coupled. Use dependency injection. |
+| Test setup is huge | Extract helpers. Still complex? Simplify the design. |
+
+## Testing Anti-Patterns
+
+See `testing-anti-patterns.md` in this directory for common pitfalls with mocks and test utilities.
 
 ## Done Criteria
 
