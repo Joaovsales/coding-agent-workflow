@@ -2,7 +2,6 @@
 name: folder-context-optimization
 description: Sweep a folder to identify legacy/unused files, propose archival, and update docs. Use when a directory feels bloated or disorganized.
 argument-hint: "<folder-path>"
-disable-model-invocation: true
 ---
 
 # /folder-context-optimization — Context Sweep

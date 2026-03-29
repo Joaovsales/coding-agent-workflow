@@ -1,7 +1,6 @@
 ---
 name: wrap-up-session
 description: Close session with parallel code review, testing, fixes, and a clean commit. Use at the end of any coding session.
-disable-model-invocation: true
 ---
 
 # /wrap-up-session — Session Wrap-Up
