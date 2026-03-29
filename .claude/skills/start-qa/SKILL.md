@@ -1,7 +1,6 @@
 ---
 name: start-qa
 description: Discover project config, restart app, and launch browser for manual QA testing.
-disable-model-invocation: true
 ---
 
 # /start-qa — Start QA Session

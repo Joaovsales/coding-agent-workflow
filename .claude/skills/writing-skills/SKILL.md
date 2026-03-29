@@ -30,11 +30,10 @@ Every skill lives in `.claude/skills/<skill-name>/SKILL.md`:
 name: skill-name                    # Kebab-case, matches directory name
 description: One-line purpose.      # When to invoke this skill
 argument-hint: "[what to pass]"     # Optional — shown in help
-disable-model-invocation: true      # Optional — prevents Skill tool invocation
 ---
 ```
 
-**`disable-model-invocation`**: Set to `true` for skills that need the main context (e.g., /plan, /build). Omit for skills that can run independently.
+> **Note**: Do NOT use `disable-model-invocation: true` — it blocks the Skill tool from invoking the skill entirely. All skills run in the main context by default.
 
 ### Markdown Body
 
