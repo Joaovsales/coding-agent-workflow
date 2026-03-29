@@ -58,8 +58,27 @@ if git rev-parse --is-inside-work-tree &>/dev/null; then
   echo "🌿  GIT  branch: $BRANCH | uncommitted changes: $UNCOMMITTED"
 fi
 
+# ── Available Skills ────────────────────────────────────────────────────────
+echo ""
+echo "SKILLS AVAILABLE"
+echo "────────────────────────────────"
+echo "  /brainstorm  — Divergent design exploration before /plan"
+echo "  /plan        — Write spec + task breakdown (use opus)"
+echo "  /build       — Autonomous TDD execution with sub-agents"
+echo "  /tdd         — Manual TDD loop with user checkpoints"
+echo "  /debug       — Root cause analysis + bug register"
+echo "  /verify      — Evidence-based verification before claims"
+echo "  /simplify    — Code quality review on changed files"
+echo "  /receive-review — Process code review feedback"
+echo "  /security-scan  — OWASP audit on changed files"
+echo "  /learn       — Extract patterns to memory.md"
+echo "  /checkpoint  — Snapshot progress for handoff"
+echo "  /wrap-up-session — Close session: review, test, push"
+echo "  /writing-skills  — Author new skills"
+echo "  /sync        — Pull latest from template repo"
+
 echo ""
 echo "$DIVIDER"
-echo "  Ready. Use /plan to start a new task, or continue from tasks/todo.md."
+echo "  Ready. Use /brainstorm or /plan to start, or continue from tasks/todo.md."
 echo "$DIVIDER"
 echo ""

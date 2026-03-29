@@ -9,6 +9,14 @@ disable-model-invocation: true
 
 Systematically investigate and fix bugs using root cause analysis, the `code-debugger` agent, project memory, and the bug register. Iterates with `/loop` to run tests until all regressions are resolved.
 
+## The Iron Law
+
+```
+NO FIXES WITHOUT ROOT CAUSE INVESTIGATION FIRST
+```
+
+If you haven't completed Phase 1 (Reproduce & Isolate), you cannot propose fixes. Symptom fixes are failure.
+
 ## Pre-Flight — Load Context
 
 1. **Read memory and lessons**:
@@ -73,6 +81,24 @@ Delegate the fix to the appropriate coding agent (`model: "sonnet"`):
 - Instruction: "Fix the root cause, not the symptom. Keep the change minimal."
 - Instruction: "Ensure the reproduction test now passes."
 
+### Architecture Questioning — After 3 Failed Fixes
+
+**If 3+ fix attempts have failed, STOP and question the architecture:**
+
+Pattern indicating architectural problem:
+- Each fix reveals new shared state/coupling/problem in a different place
+- Fixes require "massive refactoring" to implement
+- Each fix creates new symptoms elsewhere
+
+**STOP and question fundamentals:**
+- Is this pattern fundamentally sound?
+- Are we "sticking with it through sheer inertia"?
+- Should we refactor architecture vs. continue fixing symptoms?
+
+**Discuss with the user before attempting more fixes.**
+
+This is NOT a failed hypothesis — this is a wrong architecture. Do NOT attempt fix #4 without the user's explicit direction.
+
 ## Phase 3 — Verify with Loop
 
 After the fix is applied, use `/loop` to run all relevant tests iteratively until clean:
@@ -125,6 +151,33 @@ If this bug reveals a new pattern, append to `tasks/lessons.md`:
 ```
 
 Skip if the bug was trivial (typo, missing import, etc.).
+
+## User Signals You're Doing It Wrong
+
+Watch for these redirections from the user — they indicate your debugging approach has gone off track:
+
+| User Signal | What It Means |
+|-------------|---------------|
+| "Is that not happening?" | You assumed without verifying |
+| "Will it show us...?" | You should have added evidence gathering |
+| "Stop guessing" | You're proposing fixes without understanding root cause |
+| "We're stuck?" (frustrated) | Your approach isn't working — change strategy |
+| "Try something different" | You're repeating failed approaches |
+| "Did you actually check?" | You claimed something without evidence |
+
+**When you see these signals:** STOP. Return to Phase 1 (Reproduce & Isolate). Re-read error messages. Gather fresh evidence.
+
+## Common Rationalizations
+
+| Excuse | Reality |
+|--------|---------|
+| "Issue is simple, don't need process" | Simple issues have root causes too. Process is fast for simple bugs. |
+| "Emergency, no time for process" | Systematic debugging is FASTER than guess-and-check thrashing. |
+| "Just try this first, then investigate" | First fix sets the pattern. Do it right from the start. |
+| "I see the problem, let me fix it" | Seeing symptoms ≠ understanding root cause. |
+| "One more fix attempt" (after 2+ failures) | 3+ failures = architectural problem. Question pattern, don't fix again. |
+| "I'll write test after confirming fix works" | Untested fixes don't stick. Test first proves it. |
+| "Multiple fixes at once saves time" | Can't isolate what worked. Causes new bugs. |
 
 ## Phase 5 — Report
 
