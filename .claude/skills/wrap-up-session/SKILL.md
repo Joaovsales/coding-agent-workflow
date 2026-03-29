@@ -97,6 +97,21 @@ When agents return their findings:
 
 ---
 
+## Step 5.5 — Verification Gate
+
+Before running tests, apply the `/verify` pattern to all claims:
+
+1. **No premature satisfaction** — Do not say "Great!", "Perfect!", or "Done!" until verification evidence exists
+2. **Evidence before claims** — Every statement about code state must reference actual command output
+3. **Check agent results independently** — If sub-agents from Step 4 reported "no issues", verify by spot-checking their scope with `git diff`
+
+**Gate check:**
+- Can you point to specific command output proving each claim? If not, run the command first.
+- Did you actually read the full test output, or just check the exit code?
+- Are there any "should work" or "probably fine" assumptions? Replace with evidence.
+
+---
+
 ## Step 6 — Run Tests
 
 Determine the appropriate test scope based on what was changed this session:
@@ -111,6 +126,32 @@ Determine the appropriate test scope based on what was changed this session:
 Discover test commands from `package.json`, `Makefile`, `pyproject.toml`, `TESTING.md`, or equivalent. Run in order: lint/typecheck, unit tests, integration tests, e2e tests.
 
 **If tests fail**: Fix the root cause (not a workaround), re-run tests. Max 2 fix attempts; if still failing, report to user with details.
+
+---
+
+## Step 6.5 — Worktree Integration (if applicable)
+
+If working in a git worktree (check with `git worktree list`):
+
+### Merge to Main
+The goal of worktree development is always to merge back to main:
+
+1. **Verify clean state**: All tests pass, no uncommitted changes
+2. **Switch to main worktree**: `cd` to the main worktree path
+3. **Pull latest**: `git pull origin main`
+4. **Merge feature branch**: `git merge <feature-branch>`
+5. **Run tests on merged result**: Full test suite must pass after merge
+6. **If merge conflicts**: Resolve conflicts, run tests again
+7. **If tests fail after merge**: Fix issues, run tests again. Max 2 attempts before escalating to user.
+
+### Cleanup
+After successful merge:
+1. Remove the worktree: `git worktree remove <worktree-path>`
+2. Delete the feature branch: `git branch -d <feature-branch>`
+3. Report: "Worktree merged to main and cleaned up."
+
+### If NOT in a worktree
+Skip this step entirely — proceed to Step 7.
 
 ---
 

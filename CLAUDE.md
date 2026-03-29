@@ -91,16 +91,20 @@ Invoke with `/skill-name` in the chat. Each skill is a directory under `.claude/
 
 | Skill | Purpose |
 |-------|---------|
+| `/brainstorm` | Divergent design exploration: multi-option proposals, trade-offs, design approval before `/plan` |
 | `/plan` | Interview user, write spec, create task breakdown in `tasks/todo.md` |
-| `/build` | Autonomous orchestrator: TDD + sub-agents + simplify + spec validation |
-| `/debug` | Investigate & fix bugs: root cause analysis, bug register, lessons, `/loop` test verification |
+| `/build` | Autonomous orchestrator: TDD + sub-agents + 2-stage review + parallel dispatch + simplify + spec validation |
+| `/debug` | Investigate & fix bugs: root cause analysis, architecture questioning, bug register, lessons, `/loop` test verification |
 | `/tdd` | Execute TDD loop for tasks in `tasks/todo.md` (manual, with user checkpoints) |
+| `/verify` | Enforce evidence-based verification before any completion claims — no shortcuts |
+| `/receive-review` | Process code review feedback: technical evaluation, pushback protocol, anti-performative agreement |
 | `/simplify` | Review changed code for reuse, quality, complexity; fix issues found |
 | `/learn` | Extract session patterns and persist to `.claude/memory.md` |
 | `/checkpoint` | Snapshot progress to `tasks/checkpoint.md` for handoff or pause |
 | `/security-scan` | OWASP-focused audit on recently changed files |
 | `/start-qa` | Restart app, health check, launch browser with log monitoring for manual QA |
-| `/wrap-up-session` | Sync learnings, update task/bug registers, run tests, push to main |
+| `/wrap-up-session` | Sync learnings, update task/bug registers, run tests, verify, merge worktree, push |
+| `/writing-skills` | Author new skills with proper structure, iron laws, and reference docs |
 | `/sync` | Pull latest skills, hooks, agents from the template repo into the current project |
 | `/folder-context-optimization` | Sweep a folder for legacy/unused files, propose archival |
 

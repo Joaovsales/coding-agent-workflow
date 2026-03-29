@@ -33,6 +33,39 @@ Process every `[ ]` task in `tasks/todo.md` **without pausing for user confirmat
 
 For each `[ ] TDD: [Test Name] -> [Impl Detail]`:
 
+### Parallel Dispatch Assessment
+
+Before processing tasks sequentially, assess if any can run in parallel:
+
+**Identify independent tasks:** Tasks are independent when:
+- They modify different files/modules
+- They have no data dependencies on each other
+- Fixing one doesn't affect the other
+- They don't share state or resources
+
+**If 2+ independent tasks found:**
+1. Group tasks by independence (tasks that touch different subsystems)
+2. Dispatch one sub-agent per independent group using the Agent tool
+3. Each agent gets a focused, self-contained prompt with:
+   - Specific scope: exact task(s) and files
+   - Clear goal: what tests to write and pass
+   - Constraints: "Do NOT modify files outside your scope"
+   - Expected output: summary of changes and test results
+4. Wait for all agents to return
+5. Review results for conflicts (agents editing same files)
+6. Run full test suite to verify all changes integrate cleanly
+7. If conflicts: resolve manually, then re-run tests
+
+**If tasks are sequential/dependent:** Process one at a time (Steps 1-4 below).
+
+**Decision guide:**
+| Situation | Approach |
+|-----------|----------|
+| Tasks touch different files/modules | Parallel dispatch |
+| Tasks depend on each other's output | Sequential (Steps 1-4) |
+| Shared state between tasks | Sequential (Steps 1-4) |
+| Unclear dependencies | Sequential (safer) |
+
 ### Step 1 — Delegate to Sub-Agent
 
 Choose the appropriate sub-agent based on the task:
@@ -49,9 +82,47 @@ Choose the appropriate sub-agent based on the task:
 - Paths to related source files
 - Instruction: "Follow TDD — write failing test first, then minimal implementation, then refactor"
 
-### Step 2 — Verify Sub-Agent Output
+### Step 2 — Two-Stage Review
 
-After the sub-agent returns:
+After the sub-agent returns, run two sequential reviews before proceeding:
+
+#### Stage 1: Spec Compliance Review
+
+Dispatch a `code-reviewer` agent (`model: "sonnet"`) with:
+- The original task description from `tasks/todo.md`
+- The relevant acceptance criteria from `specs/`
+- The git diff of changes made by the sub-agent
+
+**Review prompt:**
+> "Review this implementation against the spec. Check:
+> 1. Does it implement exactly what was specified? Nothing added, nothing missing.
+> 2. Are all acceptance criteria addressed?
+> 3. Are there deviations from the spec? If so, are they justified improvements or problematic departures?
+> Report: APPROVED or CHANGES NEEDED with specific items."
+
+**If CHANGES NEEDED:** Send feedback back to the original sub-agent for fixes, then re-review.
+
+#### Stage 2: Code Quality Review
+
+Dispatch a second `code-reviewer` agent (`model: "sonnet"`) with:
+- The git diff of changes
+- The project's coding standards from CLAUDE.md
+
+**Review prompt:**
+> "Review this implementation for code quality:
+> 1. Clean Code: functions ≤20 LOC, ≤3 params, meaningful names, single abstraction level
+> 2. SOLID principles adherence
+> 3. Test quality: real assertions, no mock-testing, edge cases covered
+> 4. Security: no injection vectors, proper input validation at boundaries
+> 5. Performance: no N+1 patterns, unnecessary allocations, or redundant computations
+> Report: APPROVED or CHANGES NEEDED with categorized issues (Critical / Important / Suggestion)."
+
+**If Critical or Important issues found:** Fix before proceeding.
+**If only Suggestions:** Note them and proceed.
+
+#### Verification Gate
+
+After both reviews pass:
 1. Run the new test — confirm it **passes**
 2. Run the **full test suite** — confirm no regressions
 3. If failures: delegate to `code-debugger` agent with failure output and context
