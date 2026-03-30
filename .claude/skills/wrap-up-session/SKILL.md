@@ -65,12 +65,15 @@ Read `tasks/todo.md` and reconcile it against the actual state of the code:
 
 ### Idempotency Check
 
-Before appending a session summary, check if one already exists for today's date (`[YYYY-MM-DD]`):
-- **If a summary for today exists**: update it in place (overwrite the counts) rather than appending a duplicate
-- **If no summary for today**: append a new one
+Generate a **session fingerprint** from the commit range: the short SHA of the first and last commit on this branch beyond `<base-branch>` (e.g., `a1b2c3f..d4e5f6a`). Include this fingerprint in the session summary header.
+
+Before appending a session summary:
+1. Scan existing summaries in `tasks/todo.md` for one matching the same commit-range fingerprint
+2. **If a matching fingerprint exists**: update it in place rather than appending a duplicate
+3. **If no match**: append a new summary (even if another summary exists for today's date — multiple sessions per day are valid)
 
 ```markdown
-## Session Summary — [YYYY-MM-DD]
+## Session Summary — [YYYY-MM-DD] [a1b2c3f..d4e5f6a]
 - Completed: [X tasks]
 - Pending: [Y tasks]
 - Carry-forward: [brief description of what remains]
@@ -132,9 +135,7 @@ If any agent errors out (timeout, crash, empty response):
 1. **Log the failure**: note which agent failed and the error
 2. **Do NOT retry automatically** — the remaining agents' results are still valid
 3. **Cover the gap manually**: spot-check the failed agent's scope using `git diff` in the main context
-4. **Note in the final report**: which review dimension was degraded
-
-Do not block the entire wrap-up because one review agent failed.
+4. **Set the review status to `degraded`** — this affects Step 7 (see Code Review Gate below)
 
 ---
 
@@ -230,7 +231,19 @@ Skip this step entirely — proceed to Step 7.
 
 ## Step 7 — Commit & Push
 
-Once all tests pass:
+### Code Review Gate
+
+Before committing, verify the code review from Step 4 completed with full coverage:
+
+| Review Status | Action |
+|---------------|--------|
+| **All 4 agents returned results** | Proceed to commit & push |
+| **Any agent failed** (status: `degraded`) | **STOP** — report which review dimensions were missed, show the manual spot-check findings, and ask the user: _"Code review was incomplete ([agent name] failed). Proceed with push anyway? (y/n)"_. Do not push without explicit user approval. |
+| **Review-fix loop did not converge** (Step 5 hit max iterations with remaining issues) | **STOP** — list the unresolved issues and ask the user: _"[N] review issues remain unresolved after 2 fix iterations. Proceed with push anyway? (y/n)"_. Do not push without explicit user approval. |
+
+### Commit & Push
+
+Once the code review gate passes and all tests pass:
 
 1. **Branch check**: if on `main`/`master`, create a feature branch first
 2. **Stage changes**: `git add -p` — stage only relevant changes, never blindly stage everything
@@ -245,6 +258,7 @@ Commit message types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`
 - Any test is failing
 - There are uncommitted changes you haven't reviewed
 - The security scan (if run) has unresolved HIGH/MEDIUM issues
+- The code review gate has not been satisfied (all agents passed OR user explicitly approved)
 
 ### Push Failure Handling
 
@@ -268,7 +282,8 @@ Session wrapped up.
 - Learnings: [N patterns captured / none]
 - Tasks: [X completed, Y pending]
 - Bugs: [N opened, N closed / no changes]
-- Code Review: [N issues found, N fixed, N skipped] [+ degraded: <agent name> if any agent failed]
+- Code Review: [PASS / DEGRADED — <agent name> failed / INCOMPLETE — N unresolved issues]
+  - Issues: [N found, N fixed, N skipped]
 - Tests: [PASS — suite name] or [FAIL — see above] or [SKIPPED — no test suite]
-- Pushed: [yes / no — reason]
+- Pushed: [yes / no — reason] [user-approved if review gate was overridden]
 ```
