@@ -49,11 +49,25 @@ git remote get-url workflow 2>/dev/null
 
 If user chooses manual diff, clone to `/tmp/coding-agent-workflow` (or reuse if already there with `git -C /tmp/coding-agent-workflow pull`).
 
-### Step 2 — Fetch Latest
+### Step 2 — Detect Remote Default Branch & Fetch Latest
+
+First, detect the remote's default branch (handles repos using `master` or `main`):
 
 ```bash
-git fetch workflow main
+# Detect the remote HEAD branch
+WORKFLOW_BRANCH=$(git ls-remote --symref workflow HEAD 2>/dev/null \
+  | grep '^ref:' \
+  | sed 's|^ref: refs/heads/||' \
+  | awk '{print $1}')
+
+# Fall back to 'main' if detection fails
+WORKFLOW_BRANCH=${WORKFLOW_BRANCH:-main}
+
+echo "Remote default branch: $WORKFLOW_BRANCH"
+git fetch workflow "$WORKFLOW_BRANCH"
 ```
+
+Store the detected branch name — use `workflow/$WORKFLOW_BRANCH` in all subsequent steps (Steps 3, 4, 5) instead of the hardcoded `workflow/main`.
 
 If using manual diff mode, use the `/tmp/coding-agent-workflow` clone as the source.
 
@@ -64,12 +78,12 @@ Compare the syncable paths between the current project and the template source.
 **If git remote mode:**
 ```bash
 # Show changed files in syncable paths only
-git diff HEAD...workflow/main --stat -- .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json CLAUDE.md
+git diff HEAD...workflow/$WORKFLOW_BRANCH --stat -- .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json CLAUDE.md
 ```
 
 Then show the full diff:
 ```bash
-git diff HEAD...workflow/main -- .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json CLAUDE.md
+git diff HEAD...workflow/$WORKFLOW_BRANCH -- .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json CLAUDE.md
 ```
 
 **If manual diff mode:**
@@ -99,7 +113,7 @@ Then ask the user:
 
 **If git remote mode (recommended for "all changes"):**
 ```bash
-git checkout workflow/main -- <selected-files>
+git checkout workflow/$WORKFLOW_BRANCH -- <selected-files>
 ```
 
 **If manual diff mode or selective sync:**
