@@ -9,6 +9,39 @@ Close out the session by syncing learnings, updating registers, running a parall
 
 ---
 
+## Step 0 — Pre-Flight Check
+
+Before running the full wrap-up, determine if there is anything to wrap up.
+
+1. Run `git diff --name-only` and `git diff --name-only --cached` to check for uncommitted changes
+2. Run `git log --oneline <base-branch>...HEAD` to check for commits on this branch
+
+**If no changes exist** (no uncommitted changes AND no commits beyond base branch):
+
+Reply:
+```
+Session wrapped up (no changes).
+- No code changes detected this session.
+- Skipped: code review, tests, commit, push.
+```
+Then **STOP** — do not proceed to Step 1.
+
+**If changes exist**: proceed normally.
+
+### Base Branch Detection
+
+Determine the base branch once and use it throughout all subsequent steps:
+
+1. Check for `main`: `git show-ref --verify --quiet refs/heads/main`
+2. If not found, check for `master`: `git show-ref --verify --quiet refs/heads/master`
+3. If not found, check for `develop`: `git show-ref --verify --quiet refs/heads/develop`
+4. If none found: use the merge-base of the current branch with `origin/HEAD` — `git merge-base HEAD origin/HEAD`
+5. If that also fails: warn the user and ask them to specify the base branch
+
+Store the detected base branch and reference it as `<base-branch>` in all later steps. Do not hardcode `main`.
+
+---
+
 ## Step 1 — Capture Learnings
 
 Run the `/learn` skill to:
@@ -16,6 +49,10 @@ Run the `/learn` skill to:
 - Append them to `.claude/memory.md` under "Patterns & Lessons"
 - Append a session summary to `.claude/memory.md` under "Session History"
 - Mirror patterns into `tasks/lessons.md`
+
+**If `/learn` produces no patterns** (nothing notable happened): log "No patterns captured" and continue. Do not treat this as a failure.
+
+**If `/learn` errors** (file not found, write failure): log the error, continue to Step 2. Learnings are valuable but not blocking.
 
 ---
 
@@ -25,10 +62,18 @@ Read `tasks/todo.md` and reconcile it against the actual state of the code:
 
 - Mark any completed items `[x]` that aren't already marked
 - Leave remaining items `[ ]`
-- Append a summary block at the bottom:
+
+### Idempotency Check
+
+Generate a **session fingerprint** from the commit range: the short SHA of the first and last commit on this branch beyond `<base-branch>` (e.g., `a1b2c3f..d4e5f6a`). Include this fingerprint in the session summary header.
+
+Before appending a session summary:
+1. Scan existing summaries in `tasks/todo.md` for one matching the same commit-range fingerprint
+2. **If a matching fingerprint exists**: update it in place rather than appending a duplicate
+3. **If no match**: append a new summary (even if another summary exists for today's date — multiple sessions per day are valid)
 
 ```markdown
-## Session Summary — [YYYY-MM-DD]
+## Session Summary — [YYYY-MM-DD] [a1b2c3f..d4e5f6a]
 - Completed: [X tasks]
 - Pending: [Y tasks]
 - Carry-forward: [brief description of what remains]
@@ -57,7 +102,7 @@ Then:
 ## Step 4 — Parallel Code Review (4 agents)
 
 Launch these four agents simultaneously using the Agent tool. Each agent should:
-- Run `git diff --name-only main...HEAD` (or the base branch) to scope review to changed files only
+- Use `git diff --name-only <base-branch>...HEAD` (the detected base branch from Step 0) to scope review to changed files only
 - Check `git log --oneline -10` for recent commit context before recommending reversals
 - Focus on issues **introduced** by this session, not pre-existing patterns
 
@@ -83,6 +128,15 @@ Launch these four agents simultaneously using the Agent tool. Each agent should:
 - Check that existing tests still align with the changed behavior
 - Recommend specific tests to add (unit, integration, or e2e)
 
+### Agent Failure Handling
+
+If any agent errors out (timeout, crash, empty response):
+
+1. **Log the failure**: note which agent failed and the error
+2. **Do NOT retry automatically** — the remaining agents' results are still valid
+3. **Cover the gap manually**: spot-check the failed agent's scope using `git diff` in the main context
+4. **Set the review status to `degraded`** — this affects Step 7 (see Code Review Gate below)
+
 ---
 
 ## Step 5 — Reconcile & Apply Fixes
@@ -92,7 +146,17 @@ When agents return their findings:
 1. **Apply most recommendations** — if on the fence, do it
 2. **Resolve conflicts** — prefer reusing existing code (Agent 1) over extracting new abstractions (Agent 2)
 3. **Track skipped items** — only skip with strong justification; note the reason
-4. **Aim for convergence** — on follow-up passes, if agents find only minor/stylistic issues, note this and recommend proceeding
+
+### Review-Fix-Recheck Loop (max 2 iterations)
+
+After applying fixes from the initial review:
+
+1. Run a **lightweight verification pass**: re-check only the files that were modified during fix application using `git diff --name-only` (unstaged changes since the review)
+2. If the verification pass finds **new issues introduced by the fixes**: apply those fixes too (iteration 2)
+3. If iteration 2 still finds issues: **stop the loop**, note remaining issues, and proceed. Do not iterate indefinitely.
+4. If a pass finds **zero issues or only minor/stylistic issues**: the loop converges — proceed to Step 5.5
+
+**Convergence rule**: if a pass finds ≤2 minor issues, note them and proceed rather than re-reviewing.
 
 ---
 
@@ -113,6 +177,17 @@ Before running tests, apply the `/verify` pattern to all claims:
 
 ## Step 6 — Run Tests
 
+### Test Discovery
+
+Discover test commands from `package.json`, `Makefile`, `pyproject.toml`, `TESTING.md`, or equivalent.
+
+**If no test suite is found**:
+1. Check for common test files: `**/*.test.*`, `**/*.spec.*`, `**/test_*.py`, `tests/`, `__tests__/`
+2. If test files exist but no runner is configured: warn the user ("Tests exist but no runner found — skipping test step")
+3. If no test files exist at all: note "No test suite configured" and **skip to Step 6.5**. Do not fabricate test commands.
+
+### Test Scope
+
 Determine the appropriate test scope based on what was changed this session:
 
 | Scope | When to use |
@@ -122,9 +197,9 @@ Determine the appropriate test scope based on what was changed this session:
 | **E2E** | UI flows, auth paths, or multi-service workflows changed |
 | **All** | Core architecture changed or scope is unclear |
 
-Discover test commands from `package.json`, `Makefile`, `pyproject.toml`, `TESTING.md`, or equivalent. Run in order: lint/typecheck, unit tests, integration tests, e2e tests.
+Run in order: lint/typecheck, unit tests, integration tests, e2e tests.
 
-**If tests fail**: Fix the root cause (not a workaround), re-run tests. Max 2 fix attempts; if still failing, report to user with details.
+**If tests fail**: Fix the root cause (not a workaround), re-run tests. Max 2 fix attempts; if still failing, report to user with details and **do not push**.
 
 ---
 
@@ -156,7 +231,19 @@ Skip this step entirely — proceed to Step 7.
 
 ## Step 7 — Commit & Push
 
-Once all tests pass:
+### Code Review Gate
+
+Before committing, verify the code review from Step 4 completed with full coverage:
+
+| Review Status | Action |
+|---------------|--------|
+| **All 4 agents returned results** | Proceed to commit & push |
+| **Any agent failed** (status: `degraded`) | **STOP** — report which review dimensions were missed, show the manual spot-check findings, and ask the user: _"Code review was incomplete ([agent name] failed). Proceed with push anyway? (y/n)"_. Do not push without explicit user approval. |
+| **Review-fix loop did not converge** (Step 5 hit max iterations with remaining issues) | **STOP** — list the unresolved issues and ask the user: _"[N] review issues remain unresolved after 2 fix iterations. Proceed with push anyway? (y/n)"_. Do not push without explicit user approval. |
+
+### Commit & Push
+
+Once the code review gate passes and all tests pass:
 
 1. **Branch check**: if on `main`/`master`, create a feature branch first
 2. **Stage changes**: `git add -p` — stage only relevant changes, never blindly stage everything
@@ -171,6 +258,19 @@ Commit message types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`
 - Any test is failing
 - There are uncommitted changes you haven't reviewed
 - The security scan (if run) has unresolved HIGH/MEDIUM issues
+- The code review gate has not been satisfied (all agents passed OR user explicitly approved)
+
+### Push Failure Handling
+
+If `git push` fails:
+
+| Failure | Action |
+|---------|--------|
+| **Network error** | Retry up to 4 times with exponential backoff (2s, 4s, 8s, 16s) |
+| **Rejected (non-fast-forward)** | Run `git pull --rebase origin <branch>`, resolve any conflicts, re-run tests, then push again |
+| **Permission denied** | Do not retry. Report to user: "Push failed — permission denied on `<branch>`" |
+| **Branch protection** | Do not retry. Report to user: "Push blocked by branch protection rules" |
+| **Still failing after retries** | Report the error to user. Do not force-push. |
 
 ---
 
@@ -182,7 +282,8 @@ Session wrapped up.
 - Learnings: [N patterns captured / none]
 - Tasks: [X completed, Y pending]
 - Bugs: [N opened, N closed / no changes]
-- Code Review: [N issues found, N fixed, N skipped]
-- Tests: [PASS — suite name] or [FAIL — see above]
-- Pushed: [yes / no — reason]
+- Code Review: [PASS / DEGRADED — <agent name> failed / INCOMPLETE — N unresolved issues]
+  - Issues: [N found, N fixed, N skipped]
+- Tests: [PASS — suite name] or [FAIL — see above] or [SKIPPED — no test suite]
+- Pushed: [yes / no — reason] [user-approved if review gate was overridden]
 ```

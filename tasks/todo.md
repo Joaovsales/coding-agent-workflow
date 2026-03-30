@@ -62,10 +62,18 @@
 
 ## Tier 3 — Medium Impact, Medium Effort
 
-[ ] Enhance `/wrap-up-session` — .claude/skills/wrap-up-session/SKILL.md
+[x] Enhance `/wrap-up-session` — .claude/skills/wrap-up-session/SKILL.md
     Add verification gate before commit (invoke /verify pattern)
     Add worktree merge-to-main flow when working in worktree
     Add worktree cleanup after merge
+    Add Step 0 early exit guard (empty session detection)
+    Add base branch auto-detection (main/master/develop/origin/HEAD)
+    Add review-fix-recheck convergence loop (max 2 iterations)
+    Add agent failure handling (log, cover gap manually, don't block)
+    Add no-test-suite handling (discover, warn, skip gracefully)
+    Add push failure handling (retry with backoff, handle rejection types)
+    Add idempotency guard (prevent duplicate session summaries)
+    Add /learn failure handling (non-blocking)
 
 [ ] Create `/writing-skills` meta-skill — .claude/skills/writing-skills/SKILL.md
     Skill file structure (YAML frontmatter + markdown body)
