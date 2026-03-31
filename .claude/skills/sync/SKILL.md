@@ -78,12 +78,14 @@ Compare the syncable paths between the current project and the template source.
 **If git remote mode:**
 ```bash
 # Show changed files in syncable paths only
-git diff HEAD...workflow/$WORKFLOW_BRANCH --stat -- .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json CLAUDE.md
+# Note: use two-dot diff (not three-dot) — template and project have unrelated histories,
+# so HEAD...workflow/$WORKFLOW_BRANCH fails with "no merge base"
+git diff workflow/$WORKFLOW_BRANCH --stat -- .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json CLAUDE.md
 ```
 
 Then show the full diff:
 ```bash
-git diff HEAD...workflow/$WORKFLOW_BRANCH -- .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json CLAUDE.md
+git diff workflow/$WORKFLOW_BRANCH -- .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json CLAUDE.md
 ```
 
 **If manual diff mode:**
