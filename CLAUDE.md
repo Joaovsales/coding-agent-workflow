@@ -11,12 +11,19 @@ At the start of every session:
 
 ---
 
-## Workflow: Spec → Plan → Build → Wrap Up
+## Workflow: PRD → Plan → Build → Wrap Up
+
+### 0. PRD (Greenfield Projects Only)
+For new projects, start with `/prd` to interview and produce:
+- `specs/prd-<name>.md` — full Product Requirements Document
+- `tasks/backlog.md` — ordered work items grouped by phase
+- `tasks/project-context.md` — compressed agent briefing (auto-updated, never edit manually)
 
 ### 1. Spec First
-For every non-trivial feature, distill the request into a formal Spec before writing any code:
+For every non-trivial feature (or backlog item), distill the request into a formal Spec before writing any code:
 - Create `specs/[feature-name].md` with: Behavior / Inputs / Outputs / Edge Cases / Acceptance Criteria
 - Use the `/plan` skill to run this interactively with the user
+- `/plan` accepts an optional backlog item argument: `/plan <item-name>`
 
 ### 2. Plan Before Code (Hard Gate)
 - Write a step-by-step plan to `tasks/todo.md` before touching any source code
@@ -91,8 +98,9 @@ Invoke with `/skill-name` in the chat. Each skill is a directory under `.claude/
 
 | Skill | Purpose |
 |-------|---------|
+| `/prd` | Interview user about greenfield project, produce PRD + backlog + agent context file |
 | `/brainstorm` | Divergent design exploration: multi-option proposals, trade-offs, design approval before `/plan` |
-| `/plan` | Interview user, write spec, create task breakdown in `tasks/todo.md` |
+| `/plan` | Interview user, write spec, create task breakdown in `tasks/todo.md`. Accepts optional backlog item argument |
 | `/build` | Autonomous orchestrator: TDD + sub-agents + 2-stage review + parallel dispatch + simplify + spec validation |
 | `/debug` | Investigate & fix bugs: root cause analysis, architecture questioning, bug register, lessons, `/loop` test verification |
 | `/tdd` | Execute TDD loop for tasks in `tasks/todo.md` (manual, with user checkpoints) |
@@ -156,12 +164,15 @@ Before marking any task complete, confirm:
 ## Key Directories
 
 ```
-.claude/agents/     → Specialized subagents (invoked via Agent tool)
-.claude/skills/     → Skills invokable with /skill-name
-.claude/hooks/      → Lifecycle automation scripts
-tasks/todo.md       → Active task plan (single source of truth)
-tasks/bugs.md       → Bug register (opened/fixed per session)
-tasks/lessons.md    → Self-improvement patterns
-tasks/checkpoint.md → Session snapshots
-specs/              → Feature specifications
+.claude/agents/            → Specialized subagents (invoked via Agent tool)
+.claude/skills/            → Skills invokable with /skill-name
+.claude/hooks/             → Lifecycle automation scripts
+specs/                     → Feature specifications
+specs/prd-<name>.md        → Product Requirements Document (from /prd)
+tasks/backlog.md           → Ordered work items by phase (from /prd)
+tasks/project-context.md   → Compressed agent briefing (auto-generated, do not edit manually)
+tasks/todo.md              → Active task plan for current feature (from /plan)
+tasks/bugs.md              → Bug register (opened/fixed per session)
+tasks/lessons.md           → Self-improvement patterns
+tasks/checkpoint.md        → Session snapshots
 ```
