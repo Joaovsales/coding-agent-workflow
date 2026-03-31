@@ -17,6 +17,18 @@ Enter plan mode to define a spec and task breakdown **before any code is written
 
 ## Steps
 
+### 0. Pre-Flight — Context Loading
+
+Before interviewing, load available project context:
+
+1. **Check for `tasks/project-context.md`** — if exists, read it for broader project context (architecture, conventions, protection list)
+2. **Check for `tasks/backlog.md`** — if exists and an argument was provided:
+   - Match the argument against backlog item names
+   - If match found: use the backlog item description as the starting point for the spec
+   - Mark the item as `[~]` (in progress) in `tasks/backlog.md`
+   - If no match: list available `[ ]` items and ask user to pick one
+3. **If no backlog exists**: proceed normally (interview from scratch)
+
 ### 1. Interview the User
 Ask clarifying questions to fully understand the feature:
 - What is the desired behavior? What problem does it solve?
@@ -25,6 +37,8 @@ Ask clarifying questions to fully understand the feature:
 - What constraints exist (performance, security, backwards-compatibility)?
 - Which existing files/components are likely involved?
 - What does "done" look like? How will we verify it works?
+
+If working from a backlog item, use its description and the PRD context to pre-fill known answers. Only ask about gaps.
 
 Wait for complete answers before proceeding.
 
@@ -79,5 +93,24 @@ Show the user both the spec and the plan. Ask:
 
 **Do not write any code until the user confirms.**
 
-### 5. Hand Off to TDD
+### 5. Divergence Check
+
+If `tasks/project-context.md` exists, compare the new spec's decisions against it:
+
+- New dependencies or libraries not in the `[ARCHITECTURE]` section
+- Data model changes (new entities, changed relationships)
+- Contradictions with stated technical architecture
+- New non-functional requirements not in `[NON-FUNCTIONAL]`
+
+**If divergence detected**, prompt the user:
+> "This spec introduces [specific change, e.g., 'Redis for caching — not in current architecture']. Update the PRD and project context? (y/n)"
+
+If yes:
+1. Update only the affected sections in the source PRD (`specs/prd-*.md`)
+2. Regenerate `tasks/project-context.md` from the updated PRD
+3. Append the change to the PRD's Revision History table
+
+If no: note the divergence in the spec as a conscious decision and proceed.
+
+### 6. Hand Off to TDD
 After confirmation, proceed with `/tdd` or begin the TDD loop directly.

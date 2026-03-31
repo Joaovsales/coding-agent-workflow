@@ -22,8 +22,9 @@ Bridges the gap between `/plan` (design) and `/wrap-up-session` (close).
 2. Read the spec from `specs/` that matches the current plan
    - If no spec found: **STOP** — run `/plan` first
 3. Load `tasks/lessons.md` and `.claude/memory.md` for context
-4. Identify the project's test runner and build tooling (check `package.json`, `Makefile`, `pyproject.toml`, etc.)
-5. Run the full test suite once to establish a **green baseline**
+4. **Load `tasks/project-context.md`** if it exists — this provides architecture, protection list, non-functional requirements, and conventions for sub-agent delegation
+5. Identify the project's test runner and build tooling (check `package.json`, `Makefile`, `pyproject.toml`, etc.)
+6. Run the full test suite once to establish a **green baseline**
    - If tests fail before you start: fix or flag to user before proceeding
 
 ## Phase 1 — Task Execution (TDD Loop)
@@ -80,6 +81,18 @@ Choose the appropriate sub-agent based on the task:
 - The relevant section of the spec from `specs/`
 - Paths to related source files
 - Instruction: "Follow TDD — write failing test first, then minimal implementation, then refactor"
+
+**Role-based context injection from `tasks/project-context.md`** (if it exists):
+
+| Agent Type | Sections to Include |
+|---|---|
+| `backend-developer` | `[ARCHITECTURE]` + `[PROTECTION]` + relevant functional requirements from spec |
+| `frontend-developer` | `[ARCHITECTURE]` + `[PROTECTION]` + `[CONVENTIONS]` + relevant functional requirements from spec |
+| `code-reviewer` | Feature spec + coding standards only — no project-context needed |
+| `code-debugger` | Failing test + relevant code only — no project-context needed |
+| `security-reviewer` | `[ARCHITECTURE]` + `[NON-FUNCTIONAL]` |
+
+Do NOT pass the full project-context to every agent. Extract only the relevant sections to keep agent context focused.
 
 ### Step 2 — Two-Stage Review
 
@@ -169,7 +182,14 @@ Compare what was built against the original spec:
    - Loop back to **Phase 1** for those tasks only
 4. When all criteria are `✅`: proceed to report
 
-## Phase 5 — Build Report
+## Phase 5 — Backlog Update
+
+If `tasks/backlog.md` exists:
+1. Identify which backlog item this build corresponds to (from the spec reference)
+2. Mark the item as `[x]` in `tasks/backlog.md`
+3. Update `tasks/project-context.md` `[CURRENT-PHASE]` section if the phase is now complete (all items `[x]`)
+
+## Phase 6 — Build Report
 
 Output the final report to the user:
 

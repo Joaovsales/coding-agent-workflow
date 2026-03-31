@@ -42,6 +42,24 @@ Store the detected base branch and reference it as `<base-branch>` in all later 
 
 ---
 
+## Step 0.5 — Project Context Staleness Check
+
+If `tasks/project-context.md` exists, check for divergence between what was documented and what was actually built this session:
+
+1. **Dependencies**: Compare `package.json` / `pyproject.toml` / `go.mod` against the `[ARCHITECTURE]` section — new libraries added?
+2. **Structure**: Check for new directories or modules not reflected in `[ARCHITECTURE]` or `[CONVENTIONS]`
+3. **Patterns**: Look for changed auth approaches, new middleware, database changes via `git diff --name-only <base-branch>...HEAD`
+
+**If divergence found:**
+- **Auto-update `tasks/project-context.md`** — it's an agent-facing file, no user approval needed
+- **Flag PRD sections that may need updating** — show the user which sections are potentially stale and ask: _"These PRD sections may be outdated: [list]. Update them now? (y/n)"_
+- If yes: update only the affected sections in `specs/prd-*.md` and append to the Revision History
+- If no: proceed — the user can update later
+
+**If no divergence or no project-context file:** skip to Step 1.
+
+---
+
 ## Step 1 — Capture Learnings
 
 Run the `/learn` skill to:
