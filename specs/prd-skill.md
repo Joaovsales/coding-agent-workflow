@@ -222,6 +222,51 @@ Show the user:
 2. When delegating to sub-agents: inject context sections based on agent role (see table above)
 3. After completing all tasks for a feature: if `tasks/backlog.md` exists, mark the corresponding item as `[x]`
 
+## Living Document — Divergence Detection & Updates
+
+The PRD and project-context are living documents that evolve as the project is built. Two mechanisms keep them in sync with reality.
+
+### Rule: `project-context.md` can be auto-updated. `specs/prd-*.md` requires user confirmation.
+
+### Divergence Check in `/plan`
+
+After writing a spec for a backlog item, `/plan` compares key decisions against `tasks/project-context.md`:
+- New dependencies or libraries not in the architecture section
+- Data model changes (new entities, changed relationships)
+- Contradictions with stated technical architecture
+- New non-functional requirements (e.g., "this feature needs WebSocket support")
+
+If divergence is detected, prompt the user:
+> "This spec introduces [specific change]. Update the PRD and project context? (y/n)"
+
+If yes:
+1. Update only the affected sections in `specs/prd-<name>.md`
+2. Regenerate `tasks/project-context.md` from the updated PRD
+3. Log the change in the PRD's revision history
+
+### Staleness Check in `/wrap-up-session`
+
+Before committing, `/wrap-up-session` performs a quick diff:
+- Compare `package.json` / `pyproject.toml` dependencies against `[ARCHITECTURE]`
+- Check for new directories or modules not reflected in context
+- Look for pattern changes (new middleware, changed auth approach)
+
+If divergence found:
+- Auto-update `tasks/project-context.md` (agent-facing, no approval needed)
+- Flag PRD sections that may need updating and ask user for confirmation
+
+### PRD Revision History
+
+Append to the bottom of the PRD when updated:
+
+```markdown
+## Revision History
+| Date | Section | Change | Trigger |
+|------|---------|--------|---------|
+| YYYY-MM-DD | Technical Architecture | Added Redis for caching | /plan: caching-layer spec |
+| YYYY-MM-DD | Non-Functional | Added WebSocket requirement | /plan: real-time-updates spec |
+```
+
 ## Edge Cases
 - **Multiple PRDs**: A project should have one PRD. If `/prd` finds an existing PRD, ask: "Update existing PRD or create a new one?"
 - **PRD changes after backlog exists**: Warn user that backlog may be stale. Offer to regenerate backlog (preserving `[x]` items).
@@ -240,4 +285,8 @@ Show the user:
 - [ ] `/build` injects role-appropriate context sections into sub-agent prompts
 - [ ] `/build` marks backlog items `[x]` on completion
 - [ ] Existing `/plan` behavior (no backlog) is unchanged
+- [ ] `/plan` performs divergence check against project-context after writing spec
+- [ ] `/wrap-up-session` performs staleness check against project-context before commit
+- [ ] PRD includes revision history section, updated on changes
+- [ ] `project-context.md` can be auto-updated; PRD changes require user confirmation
 - [ ] CLAUDE.md updated with `/prd` skill and new file locations
