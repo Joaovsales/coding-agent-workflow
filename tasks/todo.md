@@ -1,90 +1,92 @@
 # Task Plan
 
-> Spec: specs/superpowers-practices-adoption.md
-> Note: These are documentation/config tasks (skills, agents, hooks). No TDD format — each task is a file creation or edit.
+> Spec: specs/omc-practices-adoption.md
+> Status: Pending user approval
+> Note: These are config/doc tasks (skills, agents, hooks). No TDD format — each task creates or edits a markdown/shell file.
 
-## Tier 1 — High Impact, Low Effort
+## Impact Legend
+> **MAJOR** = changes workflow behavior or adds new review gates
+> **MODERATE** = new skill or significant edit to existing behavior
+> **INCREMENTAL** = small additive edit, no behavior change to existing flows
 
-[ ] Create `/verify` skill — .claude/skills/verify/SKILL.md
-    Iron law: "NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE"
-    Gate function: IDENTIFY → RUN → READ → VERIFY → CLAIM
-    Rationalization table (excuse/reality pairs)
-    Common failures table (claim/requires/not sufficient)
-    Red flags list (premature satisfaction, "should work", etc.)
-    Integration points: required by /build, /debug, /wrap-up-session
+---
 
-[ ] Enhance `/tdd` skill — .claude/skills/tdd/SKILL.md
-    Add iron law: "NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST"
-    Add rationalization table with 12+ excuse/reality pairs
-    Add "Red Flags — STOP and Start Over" section
-    Add "When Stuck" troubleshooting table
-    Create .claude/skills/tdd/testing-anti-patterns.md reference doc
+## Tier 1 — New Files (CREATE)
 
-[ ] Enhance `/debug` skill — .claude/skills/debug/SKILL.md
-    Add architecture questioning: after 3 failed fixes, STOP and question architecture
-    Add "User Signals You're Doing It Wrong" section
-    Add rationalization table
-    Add iron law: "NO FIXES WITHOUT ROOT CAUSE INVESTIGATION FIRST"
+[ ] **MAJOR** — Create Critic agent `.claude/agents/critic.md`
+    - 5-phase adversarial protocol: pre-commitment → verification → multi-perspective → gap analysis → synthesis
+    - Verdicts: REJECT | REVISE | ACCEPT-WITH-RESERVATIONS | ACCEPT
+    - Severity: CRITICAL | MAJOR | MINOR
+    - Adversarial mode escalation (any CRITICAL or 3+ MAJOR)
+    - READ-ONLY constraint (instruction-level)
+    - Model: opus
+    - ~120 lines
 
-[ ] Enhance `/build` skill — .claude/skills/build/SKILL.md
-    Add 2-stage review after each task:
-      Stage 1: Spec compliance review (does impl match requirements?)
-      Stage 2: Code quality review (is the code clean/maintainable?)
-    Tasks proceed only when both reviews pass
+[ ] **MODERATE** — Create `/deslop` skill `.claude/skills/deslop/SKILL.md`
+    - Iron law: "DELETION OVER REWRITING — REMOVE SLOP, DON'T REWORD IT"
+    - Detection targets: hedge comments, obvious type annotations, over-documented functions, impossible-case error handling, filler abstractions, verbose logging, empty catch blocks, restating-the-code comments
+    - Process: identify files → scan → delete → test → report
+    - ~90 lines
 
-## Tier 2 — High Impact, Medium Effort
+[ ] **INCREMENTAL** — Create evidence hierarchy reference doc `.claude/skills/debug/evidence-hierarchy.md`
+    - 6-level ranking: controlled reproduction → primary artifacts → converging sources → single inference → circumstantial → intuition
+    - When to use each level, examples
+    - ~40 lines
 
-[ ] Create `/brainstorm` skill — .claude/skills/brainstorm/SKILL.md
-    Hard gate: NO implementation until design approved
-    9-step process: context → visual aids → questions (one at a time) → 2-3 approaches → present design → write spec → self-review → user approval → hand off to /plan
-    Multi-option proposals with trade-off tables
-    Spec output: docs/specs/YYYY-MM-DD-<topic>-design.md or specs/<topic>.md
+## Tier 2 — Edits to `/build` (the MAJOR workflow changes)
 
-[ ] Create `/receive-review` skill — .claude/skills/receive-review/SKILL.md
-    Response pattern: READ → UNDERSTAND → VERIFY → EVALUATE → RESPOND → IMPLEMENT
-    Forbidden responses: "You're absolutely right!", "Great point!", performative agreement
-    Pushback protocol: when and how to push back with technical reasoning
-    YAGNI check for "professional" feature suggestions
-    Source-specific handling (user vs external reviewer)
-    Implementation order: blocking → simple → complex
+[ ] **MODERATE** — Add persistence loop to `/build` Phase 4
+    - Replace single-pass spec validation with bounded loop (max 3 rounds)
+    - Add repeated-failure detection: same criteria failing 2 rounds → HALT
+    - Add round tracking and full status report on final halt
+    - Affects lines ~172-183 of current SKILL.md
 
-[ ] Enhance `/build` with parallel dispatch — .claude/skills/build/SKILL.md
-    Add decision logic: identify independent tasks that can run in parallel
-    Dispatch pattern: one agent per independent problem domain
-    Agent prompt structure: focused, self-contained, specific output
-    Integration and conflict resolution after parallel agents return
+[ ] **MAJOR** — Add architectural circuit breaker to `/build` error handling
+    - After 3 failed code-debugger attempts on same regression: spawn planner (opus) to analyze
+    - Planner returns revised approach OR "architecture problem" → halt to user
+    - Extends existing "Max 3 fix attempts per regression" block (~lines 218-223)
 
-[ ] Add debug reference docs:
-    .claude/skills/debug/root-cause-tracing.md — backward tracing technique
-    .claude/skills/debug/defense-in-depth.md — multi-layer validation
-    .claude/skills/debug/condition-based-waiting.md — replace timeouts with condition polling
-    .claude/skills/debug/find-polluter.sh — test pollution bisection script
+[ ] **MODERATE** — Integrate `/deslop` into `/build` Phase 3
+    - After `/simplify` runs, invoke `/deslop` on same changed files
+    - Re-run full test suite after deslop pass
+    - Add to Phase 3 description (~lines 160-170)
 
-## Tier 3 — Medium Impact, Medium Effort
+## Tier 3 — Edits to Other Skills
 
-[x] Enhance `/wrap-up-session` — .claude/skills/wrap-up-session/SKILL.md
-    Add verification gate before commit (invoke /verify pattern)
-    Add worktree merge-to-main flow when working in worktree
-    Add worktree cleanup after merge
-    Add Step 0 early exit guard (empty session detection)
-    Add base branch auto-detection (main/master/develop/origin/HEAD)
-    Add review-fix-recheck convergence loop (max 2 iterations)
-    Add agent failure handling (log, cover gap manually, don't block)
-    Add no-test-suite handling (discover, warn, skip gracefully)
-    Add push failure handling (retry with backoff, handle rejection types)
-    Add idempotency guard (prevent duplicate session summaries)
-    Add /learn failure handling (non-blocking)
+[ ] **INCREMENTAL** — Add commit trailers to `/wrap-up-session` Step 7
+    - Add trailer protocol section: Constraint, Rejected, Not-tested, Confidence
+    - Add example commit message with trailers
+    - All trailers optional — include only when relevant
+    - Edit Step 7 commit section (~lines 262-272)
 
-[ ] Create `/writing-skills` meta-skill — .claude/skills/writing-skills/SKILL.md
-    Skill file structure (YAML frontmatter + markdown body)
-    Naming conventions, directory layout
-    When to use iron laws, rationalization tables, reference docs
-    Checklist for completeness
+[ ] **INCREMENTAL** — Add evidence hierarchy to `/debug` Phase 1 prompt
+    - Add 6-level evidence ranking to the code-debugger delegation prompt
+    - Reference new evidence-hierarchy.md doc
+    - Edit Phase 1 delegation prompt (~lines 35-64)
 
-[ ] Enhance session-start hook — .claude/hooks/session-start.sh
-    Inject available skills list into session context
-    Show brief skill descriptions so agent knows when to invoke each
+[ ] **INCREMENTAL** — Add pre-mortem step to `/brainstorm`
+    - Insert Step 4.5 between "Propose approaches" (Step 4) and "Present design" (Step 5)
+    - For each approach: "It's 3 months later and this failed because..." — 3-5 scenarios
+    - Add failure scenarios to trade-off table
+    - Edit ~lines 62-68
 
-[ ] Update CLAUDE.md — add new skills to table:
-    /verify, /brainstorm, /receive-review, /writing-skills
-    Update descriptions for enhanced skills
+## Tier 4 — Agent Constraints & Hooks
+
+[ ] **MODERATE** — Add READ-ONLY constraint to `code-reviewer.md` and `security-reviewer.md`
+    - Add constraint block: "You MUST NOT use Write or Edit tools. Report findings only."
+    - Prevents review agents from modifying code they should only evaluate
+    - ~8 lines added to each file
+
+[ ] **INCREMENTAL** — Add kill switch to both hooks
+    - Add `DISABLE_WORKFLOW_HOOKS=1` early-exit check to top of:
+      - `.claude/hooks/session-start.sh`
+      - `.claude/hooks/auto-test-runner.sh`
+    - 3 lines each
+
+## Tier 5 — Documentation Updates
+
+[ ] **INCREMENTAL** — Update `CLAUDE.md` tables
+    - Add `critic` to agents table (model: opus, "Adversarial quality gate — plans, code, specs")
+    - Add `/deslop` to skills table ("Detect and remove AI-generated anti-patterns")
+    - Add `critic` to model routing rules under planning agents (opus)
+    - Add `/deslop` integration note to `/build` description
