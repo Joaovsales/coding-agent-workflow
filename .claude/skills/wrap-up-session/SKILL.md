@@ -266,11 +266,40 @@ Once the code review gate passes and all tests pass:
 1. **Branch check**: if on `main`/`master`, create a feature branch first
 2. **Stage changes**: `git add -p` — stage only relevant changes, never blindly stage everything
 3. **Review staged**: `git status` to confirm
-4. **Commit**: `git commit -m "[type]: [concise description of session work]"`
+4. **Commit**: `git commit` with message following the format below
 5. **Push**: `git push -u origin <branch>`
 6. **PR**: if no PR exists for this branch, create one with a summary; if one exists, push to it
 
 Commit message types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`
+
+### Commit Trailer Protocol
+
+Append structured trailers to commit messages to preserve decision context. All trailers are **optional** — include only when relevant to the changes being committed.
+
+| Trailer | When to include |
+|---------|-----------------|
+| `Constraint:` | External limitations that shaped the implementation (backwards compat, API contracts, perf budgets) |
+| `Rejected:` | Alternative approaches considered and why they were dismissed |
+| `Not-tested:` | Known gaps in test coverage with reasoning (time, environment, flaky) |
+| `Confidence:` | `HIGH` / `MEDIUM` / `LOW` — self-assessed certainty in the change |
+
+**Example:**
+```
+feat: add token refresh rotation
+
+Implement automatic refresh token rotation on use with 1-hour expiry.
+
+Constraint: Must maintain backwards compat with v2 API clients
+Rejected: Considered sliding window expiry, too complex for current auth model
+Not-tested: Concurrent refresh race condition under load
+Confidence: HIGH
+```
+
+**Rules:**
+- One trailer per line, no blank lines between trailers
+- Place trailers after the commit body, separated by a blank line
+- Do not add trailers for trivial commits (typo fixes, formatting)
+- `Rejected:` is most valuable — it prevents future engineers from re-exploring dead ends
 
 **Do not push if**:
 - Any test is failing
