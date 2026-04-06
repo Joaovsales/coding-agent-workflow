@@ -1,6 +1,7 @@
 ---
 name: sync
 description: Pull latest skills, hooks, agents, and config from the coding-agent-workflow template repo.
+disable-model-invocation: false
 ---
 
 # /sync — Sync Workflow Updates from Template Repo
