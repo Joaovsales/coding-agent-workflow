@@ -2,6 +2,7 @@
 name: writing-skills
 description: Author new skills with proper structure, iron laws, and reference docs. Use when creating or improving skills for the workflow.
 argument-hint: "[skill name or purpose]"
+disable-model-invocation: false
 ---
 
 # /writing-skills — Skill Authoring Guide
@@ -30,10 +31,11 @@ Every skill lives in `.claude/skills/<skill-name>/SKILL.md`:
 name: skill-name                    # Kebab-case, matches directory name
 description: One-line purpose.      # When to invoke this skill
 argument-hint: "[what to pass]"     # Optional — shown in help
+disable-model-invocation: false     # REQUIRED — must be false or skill won't work via Skill tool
 ---
 ```
 
-> **Note**: Do NOT use `disable-model-invocation: true` — it blocks the Skill tool from invoking the skill entirely. All skills run in the main context by default.
+> **CRITICAL**: Always include `disable-model-invocation: false` in frontmatter. If set to `true` (or omitted in some environments), the Skill tool cannot invoke the skill, causing "Error: Skill X cannot be used with Skill tool due to disable-model-invocation".
 
 ### Markdown Body
 

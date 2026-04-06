@@ -2,6 +2,7 @@
 name: prd
 description: Interview the user about a greenfield project, produce a structured PRD, ordered backlog, and agent context file. Use as the entry point for new projects.
 argument-hint: "[project idea or description]"
+disable-model-invocation: false
 ---
 
 # /prd — Product Requirements Document Generator

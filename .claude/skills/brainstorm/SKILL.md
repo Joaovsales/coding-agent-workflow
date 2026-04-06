@@ -2,6 +2,7 @@
 name: brainstorm
 description: Explore a feature idea through divergent design thinking before committing to a spec. Use before /plan for non-trivial features requiring design decisions.
 argument-hint: "[feature idea or problem statement]"
+disable-model-invocation: false
 ---
 
 # /brainstorm — Divergent Design Exploration

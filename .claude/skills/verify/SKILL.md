@@ -1,6 +1,7 @@
 ---
 name: verify
 description: Enforce evidence-based verification before any completion claims. Use before committing, creating PRs, marking tasks done, or claiming success.
+disable-model-invocation: false
 ---
 
 # /verify — Verification Before Completion
