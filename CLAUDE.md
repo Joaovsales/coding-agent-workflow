@@ -59,6 +59,7 @@ Use specialized agents to keep the main context window clean.
 | `code-reviewer` | `sonnet` | Post-implementation quality review (invoke proactively) |
 | `code-debugger` | `sonnet` | Debugging failing tests and runtime errors |
 | `security-reviewer` | `sonnet` | OWASP checks, auth flows, injection vectors |
+| `critic` | `sonnet` | Adversarial quality gate for plans, code, and specs |
 | `context-document-optimizer` | `sonnet` | Compress large docs for token efficiency |
 
 **Delegation rule**: Use subagents for research, exploration, and parallel analysis. One focused task per subagent.
@@ -80,7 +81,7 @@ Use specialized agents to keep the main context window clean.
 When invoking the **Agent tool**, always pass the `model` parameter:
 
 - **Planning agents** (`planner`): `model: "opus"`
-- **Coding agents** (`backend-developer`, `frontend-developer`, `code-reviewer`, `code-debugger`, `frontend-design-validator`, `context-document-optimizer`, `security-reviewer`): `model: "sonnet"`
+- **Coding agents** (`backend-developer`, `frontend-developer`, `code-reviewer`, `code-debugger`, `frontend-design-validator`, `context-document-optimizer`, `security-reviewer`, `critic`): `model: "sonnet"`
 - **Explore agents** (codebase search, file discovery, grep): `model: "haiku"`
 
 ### Rules
@@ -107,6 +108,7 @@ Invoke with `/skill-name` in the chat. Each skill is a directory under `.claude/
 | `/verify` | Enforce evidence-based verification before any completion claims — no shortcuts |
 | `/receive-review` | Process code review feedback: technical evaluation, pushback protocol, anti-performative agreement |
 | `/simplify` | Review changed code for reuse, quality, complexity; fix issues found |
+| `/deslop` | Detect and remove AI-generated anti-patterns (hedge words, over-abstraction, filler code) |
 | `/learn` | Extract session patterns and persist to `.claude/memory.md` |
 | `/checkpoint` | Snapshot progress to `tasks/checkpoint.md` for handoff or pause |
 | `/security-scan` | OWASP-focused audit on recently changed files |
