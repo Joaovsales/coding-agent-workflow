@@ -1,39 +1,47 @@
 # Task Plan
 
-> Spec: specs/omc-practices-adoption.md
-> Status: Complete
-> Note: These are config/doc tasks (skills, agents, hooks). No TDD format — each task creates or edits a markdown/shell file.
-
-## Impact Legend
-> **MAJOR** = changes workflow behavior or adds new review gates
-> **MODERATE** = new skill or significant edit to existing behavior
-> **INCREMENTAL** = small additive edit, no behavior change to existing flows
+> Spec: specs/enforce-code-review.md
+> Status: Pending confirmation
+> Note: These are skill/agent doc edits — no TDD format. Each task modifies a markdown file.
 
 ---
 
-## Tier 1 — New Files (CREATE)
+## Task 1 — Add severity classification output format to code-reviewer agent
 
-[x] **MAJOR** — Create Critic agent `.claude/agents/critic.md`
-[x] **MODERATE** — Create `/deslop` skill `.claude/skills/deslop/SKILL.md`
-[x] **INCREMENTAL** — Create evidence hierarchy reference doc `.claude/skills/debug/evidence-hierarchy.md`
+Edit `.claude/agents/code-reviewer.md`:
+- Add the `[MUST-FIX]` / `[SHOULD-FIX]` / `[NITPICK]` output format requirement
+- Add classification rules (NITPICK = cosmetic only, logic/behavior must be SHOULD-FIX+)
+- Update the existing output format section to include severity tags on each finding
 
-## Tier 2 — Edits to `/build` (the MAJOR workflow changes)
+## Task 2 — Add severity classification to wrap-up review agent prompts (Step 4)
 
-[x] **MODERATE** — Add persistence loop to `/build` Phase 4
-[x] **MAJOR** — Add architectural circuit breaker to `/build` error handling
-[x] **MODERATE** — Integrate `/deslop` into `/build` Phase 3
+Edit `.claude/skills/wrap-up-session/SKILL.md` Step 4:
+- Add severity classification instructions to the shared preamble for all 4 agents
+- Add the structured output format (`[SEVERITY] file:line — description`)
+- Add classification rules and the "highest severity wins" dedup rule
 
-## Tier 3 — Edits to Other Skills
+## Task 3 — Replace Step 5 reconciliation logic with enforcement tiers
 
-[x] **INCREMENTAL** — Add commit trailers to `/wrap-up-session` Step 7
-[x] **INCREMENTAL** — Add evidence hierarchy to `/debug` Phase 1 prompt
-[x] **INCREMENTAL** — Add pre-mortem step to `/brainstorm`
+Edit `.claude/skills/wrap-up-session/SKILL.md` Step 5:
+- Replace the current "apply most recommendations" soft rule with severity-based enforcement:
+  - MUST-FIX: apply, no exceptions
+  - SHOULD-FIX: apply by default, ≤3 skips allowed with specific justification
+  - NITPICK: auto-skip
+- Add the reconciliation table format and rules (when to produce it, what each column must contain)
+- Add the "low-ceremony exception" (skip table if ≤3 total findings)
+- Add justification quality rule: must reference specific code reason, not generic dismissal
 
-## Tier 4 — Agent Constraints & Hooks
+## Task 4 — Add enforcement gates to Step 7
 
-[x] **MODERATE** — Add READ-ONLY constraint to `code-reviewer.md` and `security-reviewer.md`
-[x] **INCREMENTAL** — Add kill switch to both hooks
+Edit `.claude/skills/wrap-up-session/SKILL.md` Step 7:
+- Add two new gate conditions to the Code Review Gate table:
+  - Any MUST-FIX skipped → STOP + user prompt
+  - >3 SHOULD-FIX skipped → STOP + user prompt
+- Update the session summary format to show severity breakdown
 
-## Tier 5 — Documentation Updates
+## Task 5 — Verify consistency across all changes
 
-[x] **INCREMENTAL** — Update `CLAUDE.md` tables
+Read both modified files end-to-end and verify:
+- No contradictions between agent format and skill expectations
+- Existing behavior preserved (degraded status, review-fix loop, convergence rule)
+- Severity terminology is consistent everywhere
