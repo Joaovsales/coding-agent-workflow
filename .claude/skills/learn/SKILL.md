@@ -1,6 +1,7 @@
 ---
 name: learn
 description: Extract durable patterns from the current session and persist to memory.md and lessons.md.
+disable-model-invocation: false
 ---
 
 # /learn — Capture Session Learnings
