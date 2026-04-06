@@ -1,6 +1,7 @@
 ---
 name: security-scan
 description: OWASP-focused security audit on recently changed files. Use after code changes to check for vulnerabilities.
+disable-model-invocation: false
 ---
 
 # /security-scan — Security Review

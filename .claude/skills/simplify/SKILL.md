@@ -2,6 +2,7 @@
 name: simplify
 description: Review changed code for reuse, clean code, and SOLID violations, then fix issues found.
 argument-hint: "[optional file path]"
+disable-model-invocation: false
 ---
 
 # /simplify — Code Simplification Review
