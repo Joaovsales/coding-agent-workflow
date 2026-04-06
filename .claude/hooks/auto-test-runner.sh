@@ -4,6 +4,9 @@
 
 set +e  # Don't exit on error, we want to capture failures
 
+# Kill switch: skip hook if SKIP_AUTO_TEST=1
+[ "${SKIP_AUTO_TEST:-0}" = "1" ] && exit 0
+
 # Get modified files from git status
 git_status=$(git status --short 2>/dev/null) || exit 0
 [ -z "$git_status" ] && exit 0
