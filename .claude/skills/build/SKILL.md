@@ -1,6 +1,7 @@
 ---
 name: build
 description: Execute the task plan from tasks/todo.md autonomously using TDD with sub-agent delegation. Use after /plan is confirmed.
+disable-model-invocation: false
 ---
 
 # /build — Autonomous Build Orchestrator
@@ -157,30 +158,60 @@ After all tasks are `[x]`:
 3. Confirm all tests pass and no errors
 4. If anything fails: delegate to `code-debugger` to fix, then re-run
 
-## Phase 3 — Simplify
+## Phase 3 — Simplify & Deslop
 
-Run `/simplify` on all changed files:
+Run `/simplify` then `/deslop` on all changed files:
+
 1. Identify changed files via `git diff --name-only` (against the baseline before build started)
-2. Invoke the `/simplify` skill to review for:
+2. **Simplify pass** — invoke `/simplify` to review for:
    - Code reuse opportunities
    - Clean Code violations (functions >20 LOC, >3 params, poor naming)
    - SOLID principle violations
    - Unnecessary complexity or dead code
 3. Apply suggested improvements
-4. Re-run full test suite to confirm simplifications didn't break anything
+4. **Deslop pass** — invoke `/deslop` on the same changed files to remove:
+   - Hedge words in comments ("should", "might", "probably")
+   - Restating-the-code comments
+   - Over-documented simple functions
+   - Obvious type annotations
+   - Impossible-case error handling on internal functions
+   - Filler abstractions and verbose logging
+5. Re-run full test suite to confirm neither pass broke anything
 
-## Phase 4 — Spec Validation
+## Phase 4 — Spec Validation (Persistence Loop)
 
-Compare what was built against the original spec:
+Compare what was built against the original spec. This phase loops up to 3 rounds to catch and fix gaps.
+
+```
+max_rounds: 3
+previous_failures: []
+```
+
+**For each round:**
 
 1. Re-read `specs/[feature-name].md`
 2. Walk through each **Acceptance Criterion**:
    - For each criterion: identify the test(s) that prove it
    - Mark: `✅ [criterion]` or `❌ [criterion] — [what's missing]`
-3. If any criterion is `❌`:
-   - Create new `[ ]` task in `tasks/todo.md` for the gap
-   - Loop back to **Phase 1** for those tasks only
-4. When all criteria are `✅`: proceed to report
+3. **If all criteria are `✅`**: break → proceed to Phase 5
+4. **If any criterion is `❌`**:
+   a. Compare current failures against `previous_failures`
+   b. **If SAME criteria failed as last round** → **HALT** (circular fix detected):
+      ```
+      ⛔ HALTED — Circular fix detected in Phase 4
+      Round [N]: Same criteria failing as round [N-1]:
+        ❌ [criterion] — failed in both rounds
+      Escalating to user. The spec or architecture may need revision.
+      ```
+   c. **If DIFFERENT failures** → record current failures in `previous_failures`, create new `[ ]` tasks in `tasks/todo.md`, loop back to **Phase 1** for those tasks only
+5. **After round 3 with remaining `❌`**: **HALT** with full status report:
+   ```
+   ⛔ HALTED — Max validation rounds (3) reached
+   Criteria still failing:
+     ❌ [criterion 1] — [what's missing]
+     ❌ [criterion 2] — [what's missing]
+   Escalating to user.
+   ```
 
 ## Phase 5 — Backlog Update
 
@@ -218,9 +249,30 @@ Ready for /wrap-up-session or manual QA.
 ## Error Handling
 
 - **Sub-agent failure**: Retry once with additional context. If still failing, surface the error to user and pause.
-- **Test regression**: Delegate to `code-debugger` with full failure output. Max 3 fix attempts per regression before escalating to user.
+- **Test regression**: Delegate to `code-debugger` with full failure output. Max 3 fix attempts per regression (see Architectural Circuit Breaker below).
 - **Spec gap found late**: Add tasks dynamically and loop back. Do not silently skip criteria.
 - **Build tool missing**: Ask user for the correct command rather than guessing.
+
+### Architectural Circuit Breaker
+
+When `code-debugger` fails **3 times on the same regression**:
+
+1. **STOP** fixing symptoms. The design may be the problem.
+2. Spawn a `planner` agent (`model: "opus"`) with:
+   - The failing test output (all 3 attempts)
+   - The files changed across all attempts
+   - The original spec and task description
+   - Prompt: "Three fix attempts have failed on this regression. Analyze whether the implementation approach or spec is flawed. Return either: (a) a revised approach to try, or (b) 'ARCHITECTURE PROBLEM' with diagnosis of what's fundamentally wrong."
+3. **If planner returns a revised approach**: apply it, re-run tests (counts as attempt 4 — final chance)
+4. **If planner returns ARCHITECTURE PROBLEM**: halt and escalate to user with the full diagnosis
+5. **If attempt 4 also fails**: halt and escalate to user
+
+```
+⛔ HALTED — Architectural circuit breaker triggered
+Regression: [test name]
+3 fix attempts failed + planner analysis indicates: [diagnosis]
+User input required before proceeding.
+```
 
 ## Key Principles
 

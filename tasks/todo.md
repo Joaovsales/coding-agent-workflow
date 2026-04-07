@@ -1,90 +1,26 @@
 # Task Plan
 
-> Spec: specs/superpowers-practices-adoption.md
-> Note: These are documentation/config tasks (skills, agents, hooks). No TDD format — each task is a file creation or edit.
+> Spec: specs/enforce-code-review.md
+> Status: Complete
 
-## Tier 1 — High Impact, Low Effort
+---
 
-[ ] Create `/verify` skill — .claude/skills/verify/SKILL.md
-    Iron law: "NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE"
-    Gate function: IDENTIFY → RUN → READ → VERIFY → CLAIM
-    Rationalization table (excuse/reality pairs)
-    Common failures table (claim/requires/not sufficient)
-    Red flags list (premature satisfaction, "should work", etc.)
-    Integration points: required by /build, /debug, /wrap-up-session
+## Task 1 — Add severity classification output format to code-reviewer agent
 
-[ ] Enhance `/tdd` skill — .claude/skills/tdd/SKILL.md
-    Add iron law: "NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST"
-    Add rationalization table with 12+ excuse/reality pairs
-    Add "Red Flags — STOP and Start Over" section
-    Add "When Stuck" troubleshooting table
-    Create .claude/skills/tdd/testing-anti-patterns.md reference doc
+[x] Edit `.claude/agents/code-reviewer.md`: added `MUST-FIX` / `SHOULD-FIX` / `NITPICK` severity tags, classification rules, and structured output format
 
-[ ] Enhance `/debug` skill — .claude/skills/debug/SKILL.md
-    Add architecture questioning: after 3 failed fixes, STOP and question architecture
-    Add "User Signals You're Doing It Wrong" section
-    Add rationalization table
-    Add iron law: "NO FIXES WITHOUT ROOT CAUSE INVESTIGATION FIRST"
+## Task 2 — Add severity classification to wrap-up review agent prompts (Step 4)
 
-[ ] Enhance `/build` skill — .claude/skills/build/SKILL.md
-    Add 2-stage review after each task:
-      Stage 1: Spec compliance review (does impl match requirements?)
-      Stage 2: Code quality review (is the code clean/maintainable?)
-    Tasks proceed only when both reviews pass
+[x] Edit `.claude/skills/wrap-up-session/SKILL.md` Step 4: added severity classification section with tags, rules, and output format for all 4 agents
 
-## Tier 2 — High Impact, Medium Effort
+## Task 3 — Replace Step 5 reconciliation logic with enforcement tiers
 
-[ ] Create `/brainstorm` skill — .claude/skills/brainstorm/SKILL.md
-    Hard gate: NO implementation until design approved
-    9-step process: context → visual aids → questions (one at a time) → 2-3 approaches → present design → write spec → self-review → user approval → hand off to /plan
-    Multi-option proposals with trade-off tables
-    Spec output: docs/specs/YYYY-MM-DD-<topic>-design.md or specs/<topic>.md
+[x] Edit `.claude/skills/wrap-up-session/SKILL.md` Step 5: replaced soft rules with severity-based enforcement (5.1), reconciliation table (5.2), and renumbered review-fix loop (5.3)
 
-[ ] Create `/receive-review` skill — .claude/skills/receive-review/SKILL.md
-    Response pattern: READ → UNDERSTAND → VERIFY → EVALUATE → RESPOND → IMPLEMENT
-    Forbidden responses: "You're absolutely right!", "Great point!", performative agreement
-    Pushback protocol: when and how to push back with technical reasoning
-    YAGNI check for "professional" feature suggestions
-    Source-specific handling (user vs external reviewer)
-    Implementation order: blocking → simple → complex
+## Task 4 — Add enforcement gates to Step 7 + update summary format
 
-[ ] Enhance `/build` with parallel dispatch — .claude/skills/build/SKILL.md
-    Add decision logic: identify independent tasks that can run in parallel
-    Dispatch pattern: one agent per independent problem domain
-    Agent prompt structure: focused, self-contained, specific output
-    Integration and conflict resolution after parallel agents return
+[x] Edit `.claude/skills/wrap-up-session/SKILL.md` Step 7: added MUST-FIX and SHOULD-FIX gate conditions; updated session summary to show severity breakdown
 
-[ ] Add debug reference docs:
-    .claude/skills/debug/root-cause-tracing.md — backward tracing technique
-    .claude/skills/debug/defense-in-depth.md — multi-layer validation
-    .claude/skills/debug/condition-based-waiting.md — replace timeouts with condition polling
-    .claude/skills/debug/find-polluter.sh — test pollution bisection script
+## Task 5 — Verify consistency across all changes
 
-## Tier 3 — Medium Impact, Medium Effort
-
-[x] Enhance `/wrap-up-session` — .claude/skills/wrap-up-session/SKILL.md
-    Add verification gate before commit (invoke /verify pattern)
-    Add worktree merge-to-main flow when working in worktree
-    Add worktree cleanup after merge
-    Add Step 0 early exit guard (empty session detection)
-    Add base branch auto-detection (main/master/develop/origin/HEAD)
-    Add review-fix-recheck convergence loop (max 2 iterations)
-    Add agent failure handling (log, cover gap manually, don't block)
-    Add no-test-suite handling (discover, warn, skip gracefully)
-    Add push failure handling (retry with backoff, handle rejection types)
-    Add idempotency guard (prevent duplicate session summaries)
-    Add /learn failure handling (non-blocking)
-
-[ ] Create `/writing-skills` meta-skill — .claude/skills/writing-skills/SKILL.md
-    Skill file structure (YAML frontmatter + markdown body)
-    Naming conventions, directory layout
-    When to use iron laws, rationalization tables, reference docs
-    Checklist for completeness
-
-[ ] Enhance session-start hook — .claude/hooks/session-start.sh
-    Inject available skills list into session context
-    Show brief skill descriptions so agent knows when to invoke each
-
-[ ] Update CLAUDE.md — add new skills to table:
-    /verify, /brainstorm, /receive-review, /writing-skills
-    Update descriptions for enhanced skills
+[x] Read both files end-to-end: severity terminology consistent, output format aligned, existing behavior preserved, no contradictions

@@ -5,6 +5,9 @@
 
 set -euo pipefail
 
+# Kill switch: skip hook if SKIP_SESSION_START=1
+[ "${SKIP_SESSION_START:-0}" = "1" ] && exit 0
+
 DIVIDER="════════════════════════════════════════"
 
 echo ""
@@ -69,6 +72,7 @@ echo "  /tdd         — Manual TDD loop with user checkpoints"
 echo "  /debug       — Root cause analysis + bug register"
 echo "  /verify      — Evidence-based verification before claims"
 echo "  /simplify    — Code quality review on changed files"
+echo "  /deslop      — Remove AI-generated anti-patterns from code"
 echo "  /receive-review — Process code review feedback"
 echo "  /security-scan  — OWASP audit on changed files"
 echo "  /learn       — Extract patterns to memory.md"

@@ -2,6 +2,7 @@
 name: brainstorm
 description: Explore a feature idea through divergent design thinking before committing to a spec. Use before /plan for non-trivial features requiring design decisions.
 argument-hint: "[feature idea or problem statement]"
+disable-model-invocation: false
 ---
 
 # /brainstorm — Divergent Design Exploration
@@ -60,6 +61,20 @@ Present distinct design options with trade-offs:
 ## Recommendation
 [Which option and why, with clear reasoning]
 ```
+
+### Step 4.5 — Pre-mortem Analysis
+For each proposed approach, run a pre-mortem:
+
+> "It's 3 months from now and this approach failed. Why?"
+
+Generate **3-5 specific failure scenarios** per approach:
+- Integration risks (breaks existing features, incompatible with current patterns)
+- Scale issues (works for 10 users, breaks at 10,000)
+- Maintenance burden (hard to modify, debug, or extend later)
+- Hidden dependencies (assumes library stays maintained, API stays stable)
+- Team friction (requires knowledge most developers don't have)
+
+Add these failure scenarios to the trade-off table for each approach. Highlight any approach where a failure scenario is both **likely AND high-impact**.
 
 ### Step 5 — Present Design Sections
 For complex features, break the design into digestible sections:

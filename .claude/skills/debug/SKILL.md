@@ -2,6 +2,7 @@
 name: debug
 description: Systematically investigate, diagnose, and fix bugs using root cause analysis. Use when debugging errors, test failures, runtime issues, or when the user reports a bug. Integrates with bug register, lessons learned, and memory.
 argument-hint: "[bug description or error message]"
+disable-model-invocation: false
 ---
 
 # /debug — Bug Investigation & Fix
@@ -51,11 +52,20 @@ Your task:
 1. Reproduce the bug — find or write a minimal failing test
 2. Read all relevant source files before forming hypotheses
 3. Form 2-3 hypotheses ranked by likelihood
-4. Use binary search / state inspection to isolate the root cause
-5. Document the root cause clearly
+4. Rank evidence using the Evidence Strength Hierarchy (see .claude/skills/debug/evidence-hierarchy.md):
+   - Level 1 (strongest): Controlled reproduction (test that isolates exact cause)
+   - Level 2: Primary artifacts (timestamped logs, git history, metrics)
+   - Level 3: Multiple independent sources converging on same explanation
+   - Level 4: Single code-path inference (plausible but not uniquely discriminating)
+   - Level 5: Circumstantial clues (naming, proximity, timing)
+   - Level 6 (weakest): Intuition or analogy
+   Label each piece of evidence with its level. Down-rank hypotheses supported only by Level 5-6 evidence.
+5. Use binary search / state inspection to isolate the root cause
+6. Document the root cause clearly
 
 Return:
 - Root cause (1-2 sentences)
+- Evidence level supporting the conclusion (Level 1-6)
 - Affected files and line numbers
 - Minimal reproduction (test or steps)
 - Recommended fix approach
