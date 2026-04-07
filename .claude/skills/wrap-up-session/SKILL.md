@@ -124,6 +124,28 @@ Launch these four agents simultaneously using the Agent tool. Each agent should:
 - Use `git diff --name-only <base-branch>...HEAD` (the detected base branch from Step 0) to scope review to changed files only
 - Check `git log --oneline -10` for recent commit context before recommending reversals
 - Focus on issues **introduced** by this session, not pre-existing patterns
+- **Classify every finding** using the severity format below
+
+### Severity Classification (required for all agents)
+
+Every finding MUST use exactly one of these severity tags:
+
+| Severity | Definition | Examples |
+|----------|-----------|----------|
+| `MUST-FIX` | Correctness, security, silent failures, data loss | Bugs, injection risks, swallowed exceptions, race conditions, missing auth checks |
+| `SHOULD-FIX` | Quality, maintainability, coverage gaps | SRP violations, missing tests, code smells, broad catches, defensive gaps, performance issues |
+| `NITPICK` | Purely cosmetic — zero logic/behavior impact | Naming style, whitespace, comment wording, import ordering |
+
+**Classification rules:**
+- `NITPICK` is ONLY for cosmetic issues. Any finding involving logic, architecture, correctness, error handling, or security MUST be `SHOULD-FIX` or higher.
+- When in doubt between two levels, choose the higher severity.
+
+**Output format for each finding:**
+```
+[MUST-FIX] file.py:42 — Description of the issue and its impact
+[SHOULD-FIX] handler.py:120 — Description of the issue and its impact
+[NITPICK] utils.py:30 — Description of the issue
+```
 
 ### Agent 1: Codebase Consistency
 - Flag duplicated logic that already exists elsewhere in the codebase
@@ -160,13 +182,41 @@ If any agent errors out (timeout, crash, empty response):
 
 ## Step 5 — Reconcile & Apply Fixes
 
-When agents return their findings:
+When agents return their findings, process them by severity:
 
-1. **Apply most recommendations** — if on the fence, do it
-2. **Resolve conflicts** — prefer reusing existing code (Agent 1) over extracting new abstractions (Agent 2)
-3. **Track skipped items** — only skip with strong justification; note the reason
+### 5.1 — Severity-Based Enforcement
 
-### Review-Fix-Recheck Loop (max 2 iterations)
+| Severity | Action | Skip Rules |
+|----------|--------|------------|
+| `MUST-FIX` | **Apply immediately.** Cannot be skipped. | Skipping a MUST-FIX triggers a hard gate in Step 7. |
+| `SHOULD-FIX` | **Apply by default.** May skip ≤3 total with justification. | Justification must reference a specific code-level reason (e.g., "intentional retry-all pattern per spec"). Generic dismissals ("not relevant", "out of scope", "refactoring suggestion") are NOT valid justifications. |
+| `NITPICK` | **Auto-skip.** No action required. | No justification needed. |
+
+**Conflict resolution:** When agents disagree on severity for the same file/issue, the highest severity wins. Prefer reusing existing code (Agent 1) over extracting new abstractions (Agent 2).
+
+**Deduplication:** If two agents flag the same issue, merge into one finding using the highest severity.
+
+### 5.2 — Review Reconciliation Table
+
+After processing all findings, produce a reconciliation table. **Skip the table if total findings ≤ 3** (low-ceremony exception).
+
+```markdown
+### Review Reconciliation
+
+| # | Agent | Severity | Finding | Action | Justification |
+|---|-------|----------|---------|--------|---------------|
+| 1 | Clean Code | MUST-FIX | Swallowed exception in api.py:45 | FIXED | Added explicit error propagation |
+| 2 | Defensive | SHOULD-FIX | Broad catch in handler.py:120 | SKIPPED | Intentional retry-all pattern per spec |
+| 3 | Consistency | NITPICK | Rename `tmp` to `buffer` in utils.py:30 | SKIPPED | — |
+```
+
+**Table rules:**
+- Every finding from every agent must appear — no silent omissions
+- `MUST-FIX` rows: Action must be `FIXED` (never `SKIPPED`)
+- `SHOULD-FIX` + `SKIPPED` rows: Justification must be code-specific (not generic)
+- `NITPICK` rows: Justification column shows `—`
+
+### 5.3 — Review-Fix-Recheck Loop (max 2 iterations)
 
 After applying fixes from the initial review:
 
@@ -252,11 +302,13 @@ Skip this step entirely — proceed to Step 7.
 
 ### Code Review Gate
 
-Before committing, verify the code review from Step 4 completed with full coverage:
+Before committing, verify the code review from Step 4 completed with full coverage AND the severity enforcement from Step 5 was satisfied:
 
 | Review Status | Action |
 |---------------|--------|
-| **All 4 agents returned results** | Proceed to commit & push |
+| **All 4 agents returned results AND all MUST-FIX applied AND ≤3 SHOULD-FIX skipped** | Proceed to commit & push |
+| **Any MUST-FIX finding was skipped** | **STOP** — present the skipped MUST-FIX finding(s) and ask the user: _"These MUST-FIX findings were not applied: [list]. Proceed anyway? (y/n)"_. Do not push without explicit user approval. |
+| **More than 3 SHOULD-FIX findings were skipped** | **STOP** — present all skipped SHOULD-FIX items with their justifications and ask the user: _"[N] SHOULD-FIX findings were skipped (max 3 allowed): [list]. Approve these skips? (y/n)"_. Do not push without explicit user approval. |
 | **Any agent failed** (status: `degraded`) | **STOP** — report which review dimensions were missed, show the manual spot-check findings, and ask the user: _"Code review was incomplete ([agent name] failed). Proceed with push anyway? (y/n)"_. Do not push without explicit user approval. |
 | **Review-fix loop did not converge** (Step 5 hit max iterations with remaining issues) | **STOP** — list the unresolved issues and ask the user: _"[N] review issues remain unresolved after 2 fix iterations. Proceed with push anyway? (y/n)"_. Do not push without explicit user approval. |
 
@@ -331,7 +383,9 @@ Session wrapped up.
 - Tasks: [X completed, Y pending]
 - Bugs: [N opened, N closed / no changes]
 - Code Review: [PASS / DEGRADED — <agent name> failed / INCOMPLETE — N unresolved issues]
-  - Issues: [N found, N fixed, N skipped]
+  - MUST-FIX: [N found, N fixed]
+  - SHOULD-FIX: [N found, N fixed, N skipped]
+  - NITPICK: [N found, skipped]
 - Tests: [PASS — suite name] or [FAIL — see above] or [SKIPPED — no test suite]
 - Pushed: [yes / no — reason] [user-approved if review gate was overridden]
 ```
