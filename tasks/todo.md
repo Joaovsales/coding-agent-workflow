@@ -1,39 +1,26 @@
 # Task Plan
 
-> Spec: specs/omc-practices-adoption.md
+> Spec: specs/enforce-code-review.md
 > Status: Complete
-> Note: These are config/doc tasks (skills, agents, hooks). No TDD format — each task creates or edits a markdown/shell file.
-
-## Impact Legend
-> **MAJOR** = changes workflow behavior or adds new review gates
-> **MODERATE** = new skill or significant edit to existing behavior
-> **INCREMENTAL** = small additive edit, no behavior change to existing flows
 
 ---
 
-## Tier 1 — New Files (CREATE)
+## Task 1 — Add severity classification output format to code-reviewer agent
 
-[x] **MAJOR** — Create Critic agent `.claude/agents/critic.md`
-[x] **MODERATE** — Create `/deslop` skill `.claude/skills/deslop/SKILL.md`
-[x] **INCREMENTAL** — Create evidence hierarchy reference doc `.claude/skills/debug/evidence-hierarchy.md`
+[x] Edit `.claude/agents/code-reviewer.md`: added `MUST-FIX` / `SHOULD-FIX` / `NITPICK` severity tags, classification rules, and structured output format
 
-## Tier 2 — Edits to `/build` (the MAJOR workflow changes)
+## Task 2 — Add severity classification to wrap-up review agent prompts (Step 4)
 
-[x] **MODERATE** — Add persistence loop to `/build` Phase 4
-[x] **MAJOR** — Add architectural circuit breaker to `/build` error handling
-[x] **MODERATE** — Integrate `/deslop` into `/build` Phase 3
+[x] Edit `.claude/skills/wrap-up-session/SKILL.md` Step 4: added severity classification section with tags, rules, and output format for all 4 agents
 
-## Tier 3 — Edits to Other Skills
+## Task 3 — Replace Step 5 reconciliation logic with enforcement tiers
 
-[x] **INCREMENTAL** — Add commit trailers to `/wrap-up-session` Step 7
-[x] **INCREMENTAL** — Add evidence hierarchy to `/debug` Phase 1 prompt
-[x] **INCREMENTAL** — Add pre-mortem step to `/brainstorm`
+[x] Edit `.claude/skills/wrap-up-session/SKILL.md` Step 5: replaced soft rules with severity-based enforcement (5.1), reconciliation table (5.2), and renumbered review-fix loop (5.3)
 
-## Tier 4 — Agent Constraints & Hooks
+## Task 4 — Add enforcement gates to Step 7 + update summary format
 
-[x] **MODERATE** — Add READ-ONLY constraint to `code-reviewer.md` and `security-reviewer.md`
-[x] **INCREMENTAL** — Add kill switch to both hooks
+[x] Edit `.claude/skills/wrap-up-session/SKILL.md` Step 7: added MUST-FIX and SHOULD-FIX gate conditions; updated session summary to show severity breakdown
 
-## Tier 5 — Documentation Updates
+## Task 5 — Verify consistency across all changes
 
-[x] **INCREMENTAL** — Update `CLAUDE.md` tables
+[x] Read both files end-to-end: severity terminology consistent, output format aligned, existing behavior preserved, no contradictions
