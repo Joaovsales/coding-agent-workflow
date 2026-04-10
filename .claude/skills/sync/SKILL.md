@@ -21,6 +21,7 @@ These are the files/directories managed by the workflow template:
 .claude/skills/       → Skills (slash commands)
 .claude/agents/       → Subagent definitions
 .claude/hooks/        → Lifecycle hooks
+.claude/deployments/  → Deployment adapter runbooks (read by /verify-deployment)
 .claude/settings.json → Hook configuration
 CLAUDE.md             → Project rules & workflow instructions
 ```
@@ -81,12 +82,12 @@ Compare the syncable paths between the current project and the template source.
 # Show changed files in syncable paths only
 # Note: use two-dot diff (not three-dot) — template and project have unrelated histories,
 # so HEAD...workflow/$WORKFLOW_BRANCH fails with "no merge base"
-git diff workflow/$WORKFLOW_BRANCH --stat -- .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json CLAUDE.md
+git diff workflow/$WORKFLOW_BRANCH --stat -- .claude/skills/ .claude/agents/ .claude/hooks/ .claude/deployments/ .claude/settings.json CLAUDE.md
 ```
 
 Then show the full diff:
 ```bash
-git diff workflow/$WORKFLOW_BRANCH -- .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json CLAUDE.md
+git diff workflow/$WORKFLOW_BRANCH -- .claude/skills/ .claude/agents/ .claude/hooks/ .claude/deployments/ .claude/settings.json CLAUDE.md
 ```
 
 **If manual diff mode:**
@@ -127,9 +128,22 @@ For each applied file, briefly note what changed.
 ### Step 6 — Post-Sync
 
 1. Run `git diff --stat` to confirm what was updated
-2. Ask the user if they want to commit the sync:
+2. **New deployment runbooks check**: before Step 5 applied changes, capture the set of runbook files in `.claude/deployments/` (excluding `README.md`). After Step 5, diff against the new set.
+   - **If new runbook files appeared** (e.g. `github-actions.md`, `fly.md`): prompt the user:
+     ```
+     New deployment runbooks synced:
+       - <runbook-1>
+       - <runbook-2>
+
+     Run /setup-deployment now to merge them into CLAUDE.md § Deployment Targets? (y/n)
+     ```
+   - **If user says `y`**: invoke the `/setup-deployment` skill inline. That skill will rescan `.claude/deployments/` for matching `detect_files`, confirm the new services, prompt for branch/project ID, and append/merge the rows into `CLAUDE.md` non-destructively. Wait for it to complete before proceeding to step 3.
+   - **If user says `n`**: print `Skipped. Run /setup-deployment manually when ready.` and continue.
+   - **If no new runbooks appeared**: skip this prompt silently.
+3. Ask the user if they want to commit the sync:
    - Suggested message: `chore: sync workflow updates from coding-agent-workflow`
-3. Remind the user to review `CLAUDE.md` if it was updated — they may need to merge project-specific customizations back in
+   - If `/setup-deployment` also ran, the commit will include both the synced files and any CLAUDE.md changes from setup.
+4. Remind the user to review `CLAUDE.md` if it was updated — they may need to merge project-specific customizations back in
 
 ## Edge Cases
 

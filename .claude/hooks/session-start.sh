@@ -62,25 +62,67 @@ if git rev-parse --is-inside-work-tree &>/dev/null; then
 fi
 
 # ── Deployment Signal Nudge ──────────────────────────────────────────────────
-# If CLAUDE.md lacks a "## Deployment Targets" section AND any known deployment
-# signal file exists at the project root, print a one-line nudge. Non-blocking.
-# Suppressed by creating .claude/deploy-nudge-dismissed.
-if [ ! -f ".claude/deploy-nudge-dismissed" ] && [ -f "CLAUDE.md" ]; then
-  # Match ONLY a literal "## Deployment Targets" heading line — not headings with
-  # extra text like "## Deployment Targets — Schema Reference (Inactive Example)".
-  # This lets the template repo document the schema without activating verification.
-  if ! grep -qE '^## Deployment Targets[[:space:]]*$' CLAUDE.md 2>/dev/null; then
-    DEPLOY_SIGNAL=""
-    for signal in railway.json railway.toml .railway vercel.json .vercel .vercelignore netlify.toml fly.toml render.yaml; do
-      if [ -e "$signal" ]; then
-        DEPLOY_SIGNAL="$signal"
+# Two non-blocking nudges, unified by the same scan logic:
+#
+#   Nudge A: CLAUDE.md has no "## Deployment Targets" section AND a runbook in
+#            .claude/deployments/ has a detect_file that matches the project
+#            root → suggest /setup-deployment (fresh setup).
+#
+#   Nudge B: CLAUDE.md HAS the section, but a runbook has a matching
+#            detect_file AND isn't referenced in the routing table → suggest
+#            /setup-deployment (merge new runbook after /sync).
+#
+# Suppressed globally by creating .claude/deploy-nudge-dismissed.
+# The section-header regex is strict (^## Deployment Targets[[:space:]]*$) so
+# schema-reference headings with extra text don't count.
+
+if [ ! -f ".claude/deploy-nudge-dismissed" ] && [ -f "CLAUDE.md" ] && [ -d ".claude/deployments" ]; then
+  HAS_SECTION=false
+  if grep -qE '^## Deployment Targets[[:space:]]*$' CLAUDE.md 2>/dev/null; then
+    HAS_SECTION=true
+  fi
+
+  UNCONFIGURED_RUNBOOKS=""
+  for runbook in .claude/deployments/*.md; do
+    [ -f "$runbook" ] || continue
+    runbook_name=$(basename "$runbook")
+    [ "$runbook_name" = "README.md" ] && continue
+
+    # If the section exists AND this runbook is already referenced, skip.
+    if [ "$HAS_SECTION" = "true" ] && grep -qF ".claude/deployments/$runbook_name" CLAUDE.md 2>/dev/null; then
+      continue
+    fi
+
+    # Parse detect_files from the YAML frontmatter. Stop at the next top-level
+    # key or the closing `---`. Returns one path per line.
+    while IFS= read -r detect; do
+      [ -z "$detect" ] && continue
+      if [ -e "$detect" ]; then
+        UNCONFIGURED_RUNBOOKS="$UNCONFIGURED_RUNBOOKS $runbook_name"
         break
       fi
-    done
-    if [ -n "$DEPLOY_SIGNAL" ]; then
-      echo ""
-      echo "⚠  Deploy signals detected ($DEPLOY_SIGNAL) but no Deployment Targets in CLAUDE.md."
+    done < <(awk '
+      /^---[[:space:]]*$/ { fm++; if (fm > 2) exit; next }
+      fm != 1 { next }
+      /^detect_files:/ { in_block=1; next }
+      in_block && /^[a-zA-Z_]+:/ { in_block=0 }
+      in_block && /^[[:space:]]*-[[:space:]]*/ {
+        sub(/^[[:space:]]*-[[:space:]]*/, "")
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "")
+        print
+      }
+    ' "$runbook" 2>/dev/null)
+  done
+
+  if [ -n "$UNCONFIGURED_RUNBOOKS" ]; then
+    echo ""
+    if [ "$HAS_SECTION" = "false" ]; then
+      echo "⚠  Deploy signals detected for unconfigured runbook(s):$UNCONFIGURED_RUNBOOKS"
+      echo "   No Deployment Targets section in CLAUDE.md yet."
       echo "   Run /setup-deployment to enable automatic build verification."
+    else
+      echo "⚠  New deployment runbook(s) not yet in Deployment Targets:$UNCONFIGURED_RUNBOOKS"
+      echo "   Run /setup-deployment to merge them into your routing table."
     fi
   fi
 fi
