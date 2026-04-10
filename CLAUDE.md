@@ -42,7 +42,7 @@ Run `/build` to execute the plan autonomously:
 
 ### 4. Wrap Up
 After any user correction: note the root cause in `tasks/lessons.md`.
-At session end: run `/wrap-up-session` to sync learnings, tests, and push.
+At session end: run `/wrap-up-session` to sync learnings, tests, push, and **verify the deployment build** (Step 8). If the project has a `## Deployment Targets` section in this file, wrap-up will not claim success until the post-push build resolves green — looping a `code-debugger` fix cycle up to 3 times before escalating.
 
 ---
 
@@ -113,7 +113,9 @@ Invoke with `/skill-name` in the chat. Each skill is a directory under `.claude/
 | `/checkpoint` | Snapshot progress to `tasks/checkpoint.md` for handoff or pause |
 | `/security-scan` | OWASP-focused audit on recently changed files |
 | `/start-qa` | Restart app, health check, launch browser with log monitoring for manual QA |
-| `/wrap-up-session` | Sync learnings, update task/bug registers, run tests, verify, merge worktree, push |
+| `/setup-deployment` | One-time interactive bootstrap: scan for deploy signals, write `## Deployment Targets` routing into this file |
+| `/verify-deployment` | Wait for post-push deployment build, fetch logs on failure, loop a `code-debugger` fix cycle up to 3 iterations before escalating |
+| `/wrap-up-session` | Sync learnings, update task/bug registers, run tests, verify, merge worktree, push, **then verify deployment build (Step 8)** |
 | `/writing-skills` | Author new skills with proper structure, iron laws, and reference docs |
 | `/sync` | Pull latest skills, hooks, agents from the template repo into the current project |
 | `/folder-context-optimization` | Sweep a folder for legacy/unused files, propose archival |
@@ -169,6 +171,7 @@ Before marking any task complete, confirm:
 .claude/agents/            → Specialized subagents (invoked via Agent tool)
 .claude/skills/            → Skills invokable with /skill-name
 .claude/hooks/             → Lifecycle automation scripts
+.claude/deployments/       → Per-service deployment runbooks (adapter pattern for /verify-deployment)
 specs/                     → Feature specifications
 specs/prd-<name>.md        → Product Requirements Document (from /prd)
 tasks/backlog.md           → Ordered work items by phase (from /prd)
@@ -177,4 +180,47 @@ tasks/todo.md              → Active task plan for current feature (from /plan)
 tasks/bugs.md              → Bug register (opened/fixed per session)
 tasks/lessons.md           → Self-improvement patterns
 tasks/checkpoint.md        → Session snapshots
+tasks/deploy-state.json    → Per-session deployment iteration state (gitignored)
+tasks/deploy-report.md     → Deployment failure report (written by /verify-deployment after max iterations)
 ```
+
+---
+
+## Deployment Verification — Schema Reference (Inactive Example)
+
+> ⚠ **THIS REPO HAS NO ACTIVE DEPLOYMENT TARGETS.** This is the template repo and it doesn't deploy anywhere. The block below documents the schema that downstream projects will populate via `/setup-deployment`. The section header is intentionally **not** the literal `## Deployment Targets` so that `/verify-deployment` and `session-start.sh` treat this repo as having no Deployment Targets and skip silently.
+
+**Downstream projects** that want to enable deployment verification should run `/setup-deployment`, which writes a real `## Deployment Targets` section near the bottom of this file (matched by the exact-match regex `^## Deployment Targets[[:space:]]*$`).
+
+The schema below uses indented code blocks (not fenced) so no `## Deployment Targets` line appears at column 0 in this template repo. A real configured project would look like this:
+
+        ## Deployment Targets
+
+        > Populated by /setup-deployment. Read by /verify-deployment.
+        > Delete this section to disable deployment verification for this project.
+
+        | Service | Runbook                          | Triggers on branch | Project ID    |
+        |---------|----------------------------------|--------------------|---------------|
+        | Railway | .claude/deployments/railway.md   | main               | my-api-prod   |
+        | Vercel  | .claude/deployments/vercel.md    | main               | acme/marketing |
+
+        **Config:**
+        - Max fix iterations: 3
+        - Build timeout: 15m
+        - Preferred status source: github-checks
+
+**Schema rules:**
+
+- The section heading must be **exactly** `## Deployment Targets` (no trailing text). `/verify-deployment` and the session-start hook both match this header with the regex `^## Deployment Targets[[:space:]]*$` so any extra text disables verification.
+- `Service` — display name (free-form, used in reports)
+- `Runbook` — relative path to a runbook file in `.claude/deployments/` whose frontmatter declares the service-specific contract
+- `Triggers on branch` — exact branch name or glob (e.g. `preview/*`); only targets matching the current branch are verified on a given push
+- `Project ID` — free-form string interpolated into the runbook's `dashboard_url_template`; consult each runbook for the expected format
+
+**Config block** (optional, overrides runbook defaults):
+
+- `Max fix iterations` — how many times `/verify-deployment` will loop the `code-debugger` fix cycle before escalating
+- `Build timeout` — max wait per build attempt before declaring `TIMEOUT`
+- `Preferred status source` — `github-checks` (default) or `cli`
+
+To add a new deployment service, drop a runbook file into `.claude/deployments/<service>.md` following the contract in `.claude/deployments/README.md`, then re-run `/setup-deployment`.
