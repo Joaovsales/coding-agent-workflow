@@ -2,6 +2,8 @@
 
 > Adapter contract for `/verify-deployment`. Each file in this directory describes one deployment service. Adding a new service = drop in a new `<service>.md` file. No changes to skills or hooks required.
 
+**Scope note**: "Deployment" is used loosely here. Anything that publishes a commit check run to GitHub after a push is a valid adapter — CI pipelines (GitHub Actions, CircleCI), lint/typecheck workflows, security scans, and literal deploy pipelines (Railway, Vercel, Netlify, Fly.io) all fit the same pattern at the GitHub Checks API layer. The directory name stays `deployments/` because it's the common word for "stuff that happens post-push" even though not every adapter is a true deploy.
+
 This directory is read by:
 
 - **`/verify-deployment`** — loads the runbook for each row in `CLAUDE.md` § Deployment Targets, validates frontmatter against this contract, then drives the wait/log/fix loop.
