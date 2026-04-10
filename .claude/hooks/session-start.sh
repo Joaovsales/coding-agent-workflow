@@ -61,6 +61,30 @@ if git rev-parse --is-inside-work-tree &>/dev/null; then
   echo "🌿  GIT  branch: $BRANCH | uncommitted changes: $UNCOMMITTED"
 fi
 
+# ── Deployment Signal Nudge ──────────────────────────────────────────────────
+# If CLAUDE.md lacks a "## Deployment Targets" section AND any known deployment
+# signal file exists at the project root, print a one-line nudge. Non-blocking.
+# Suppressed by creating .claude/deploy-nudge-dismissed.
+if [ ! -f ".claude/deploy-nudge-dismissed" ] && [ -f "CLAUDE.md" ]; then
+  # Match ONLY a literal "## Deployment Targets" heading line — not headings with
+  # extra text like "## Deployment Targets — Schema Reference (Inactive Example)".
+  # This lets the template repo document the schema without activating verification.
+  if ! grep -qE '^## Deployment Targets[[:space:]]*$' CLAUDE.md 2>/dev/null; then
+    DEPLOY_SIGNAL=""
+    for signal in railway.json railway.toml .railway vercel.json .vercel .vercelignore netlify.toml fly.toml render.yaml; do
+      if [ -e "$signal" ]; then
+        DEPLOY_SIGNAL="$signal"
+        break
+      fi
+    done
+    if [ -n "$DEPLOY_SIGNAL" ]; then
+      echo ""
+      echo "⚠  Deploy signals detected ($DEPLOY_SIGNAL) but no Deployment Targets in CLAUDE.md."
+      echo "   Run /setup-deployment to enable automatic build verification."
+    fi
+  fi
+fi
+
 # ── Available Skills ────────────────────────────────────────────────────────
 echo ""
 echo "SKILLS AVAILABLE"

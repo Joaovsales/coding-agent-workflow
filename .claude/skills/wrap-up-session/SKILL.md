@@ -374,6 +374,48 @@ If `git push` fails:
 
 ---
 
+## Step 8 — Deployment Verification
+
+After a successful push, verify that any deployment service watching this branch actually builds the new commit. The session is not "wrapped up" if production is broken.
+
+This step is **conditional** — it only runs when the project has opted in by adding a `## Deployment Targets` section to `CLAUDE.md`. For projects that don't deploy via PaaS, this step is a silent no-op.
+
+### Opt-out
+
+If `/wrap-up-session` was invoked with `--skip-deploy` (for WIP pushes that aren't expected to build cleanly), skip this step entirely and proceed to Done. Note in the Done banner: `Deployments: [SKIPPED — --skip-deploy flag]`.
+
+### Conditional dispatch
+
+1. Read `CLAUDE.md` and check for a section header line matching **exactly** the regex `^## Deployment Targets[[:space:]]*$`. Headings like `## Deployment Verification — Schema Reference (Inactive Example)` are intentionally not matched, so the template repo can document the schema without activating verification.
+
+2. **If the strict-match section exists**: invoke the `/verify-deployment` skill. That skill handles all polling, log fetching, fix iteration, and escalation per its own contract (`.claude/skills/verify-deployment/SKILL.md`). Wait for it to return a per-target outcome.
+
+3. **If the section is missing**: read every runbook in `.claude/deployments/*.md`, collect every entry from each runbook's `detect_files` field, then scan the project root for any matching file or directory. (No service names are hardcoded here — the list of signals is whatever the shipped runbooks declare.)
+   - **If a signal file is found**: print a one-line nudge and proceed to Done (do not block):
+     ```
+     Deploy signals detected (<file>). Run /setup-deployment to enable automatic build verification.
+     ```
+   - **If no signal file is found**: skip silently and proceed to Done. The project does not deploy via a recognized service.
+
+### Outcome handling
+
+The `/verify-deployment` skill returns one of these overall outcomes. Map each to a Done/STOP action:
+
+| `/verify-deployment` outcome | Action |
+|---|---|
+| `ALL_GREEN` | Proceed to Done. Record per-target attempt counts in the Done banner. |
+| `SKIPPED` (no targets matched current branch, or no `Deployment Targets` section) | Proceed to Done. Banner shows `Deployments: [SKIPPED — reason]`. |
+| `AUTH_FAILED` | **STOP** — credentials are missing for one or more targets. Report which `auth_check_command` failed and ask: _"Resolve credentials and re-run /verify-deployment manually, or proceed without verification? (retry/proceed)"_. Do not claim session success on `proceed` without explicit user override. |
+| `TIMEOUT` | **STOP** — one or more builds did not resolve within the configured timeout. Report the dashboard URL(s) and ask: _"Check the deployment dashboard manually. Mark as wrapped up anyway? (y/n)"_. Do not claim success on `n`. |
+| `CANCELLED` | **STOP** — a build was cancelled (after the user already declined to retry inside `/verify-deployment`). Report and ask: _"A deployment was cancelled. Proceed with wrap-up anyway? (y/n)"_. |
+| `FAILED_MAX_ITERATIONS` | **STOP** — `/verify-deployment` exhausted its 3-iteration fix loop. Point the user to `tasks/deploy-report.md` and DO NOT claim session success. The session is not wrapped up while production is failing. |
+
+### Why this lives in wrap-up-session
+
+`/build` does not push, so the deployment service never sees its commits. Verification is strictly a wrap-up concern — the only place in the workflow where code reaches the remote and triggers a real build.
+
+---
+
 ## Done
 
 Reply:
@@ -388,4 +430,5 @@ Session wrapped up.
   - NITPICK: [N found, skipped]
 - Tests: [PASS — suite name] or [FAIL — see above] or [SKIPPED — no test suite]
 - Pushed: [yes / no — reason] [user-approved if review gate was overridden]
+- Deployments: [<service> ✓ (N attempts), <service> ✓ (N attempts)] or [<service> ✗ FAILED after 3 attempts — see tasks/deploy-report.md, <service> ✓] or [SKIPPED — reason] or [NONE — no Deployment Targets configured]
 ```
