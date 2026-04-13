@@ -51,3 +51,72 @@
 ## Build Status
 
 **All 10 tasks complete.** Implementation matches spec. Ready for user review or `/wrap-up-session`.
+
+---
+
+## Plan: Workflow Insights Improvements
+> Spec: specs/workflow-insights-improvements.md
+> Branch: claude/analyze-session-insights-LGeul
+> Status: Pending user confirmation
+
+### Task 1 — Create `/verify-e2e` skill (AC-1)
+
+[x] VERIFY: `ls .claude/skills/verify-e2e/SKILL.md` exits 0 AND `head -5` shows YAML frontmatter with `name: verify-e2e` -> Create directory `.claude/skills/verify-e2e/` and write `SKILL.md` with sections: frontmatter, When to Invoke, Pre-Flight, Walkthrough Protocol, Evidence Format (writes `tasks/e2e-log.md`), Failure Handling, Iron Laws, Integration
+
+[x] VERIFY: `grep -E "(token injection|simulated DOM|batching)" .claude/skills/verify-e2e/SKILL.md` returns 3+ matches across Iron Laws -> Ensure Iron Laws section explicitly forbids each
+
+[x] VERIFY: `grep -E "verify-e2e" CLAUDE.md` returns a row in the Skills table -> Add `/verify-e2e` row to CLAUDE.md Skills table
+
+### Task 2 — `/plan` spec-persistence hard gate (AC-2)
+
+[x] VERIFY: `grep -F "MUST persist to disk" .claude/skills/plan/SKILL.md` returns 1 match in Step 2 -> Rewrite Step 2 with the hard echo-or-fail pattern
+
+[x] VERIFY: `grep -E "^✓ Spec written:" .claude/skills/plan/SKILL.md` AND `grep -E "Forbidden:" .claude/skills/plan/SKILL.md` both return matches -> Include the required output format and forbidden-actions block
+
+[x] VERIFY: `grep -F "MUST persist" .claude/skills/plan/SKILL.md` returns matches in BOTH Step 2 and Step 3 -> Apply same echo-or-fail pattern to Step 3 for `tasks/todo.md`
+
+### Task 3 — `/build` Phase 4 AC classification + e2e routing (AC-3)
+
+[x] VERIFY: `grep -E "logic.*integration.*user-facing|user-facing.*logic" .claude/skills/build/SKILL.md` returns matches in BOTH Pre-Flight and Phase 4 -> Add new Pre-Flight Check step "Classify acceptance criteria"; modify Phase 4 to add classification table
+
+[x] VERIFY: `grep -F "/verify-e2e" .claude/skills/build/SKILL.md` returns at least 1 match in Phase 4 -> Phase 4 invokes `/verify-e2e` when any AC is `user-facing`
+
+[x] VERIFY: `grep -F "✅✅" .claude/skills/build/SKILL.md` returns at least 1 match -> Add the `✅✅` status mark for e2e-walkthrough-verified ACs
+
+### Task 4 — `/wrap-up-session` duplicate sweep + Step 6.3 (AC-4)
+
+[x] VERIFY: `grep -F "Duplicate Plan Block Detection" .claude/skills/wrap-up-session/SKILL.md` returns 1 match in Step 2 -> Add the subsection covering duplicate headings, orphan subtasks, stale plan blocks
+
+[x] VERIFY: `grep -E "^## Step 6.3" .claude/skills/wrap-up-session/SKILL.md` returns 1 match -> Insert new Step 6.3 "E2E Coverage Gate" between Step 6 and Step 6.5
+
+[x] VERIFY: `grep -F "tasks/e2e-log.md" .claude/skills/wrap-up-session/SKILL.md` returns matches in Step 6.3 -> Step 6.3 references the e2e log as evidence source
+
+[x] VERIFY: `grep -E "e2e|E2E" .claude/skills/wrap-up-session/SKILL.md | grep -i "done\|banner\|coverage"` shows banner mention -> Update Done banner to include e2e coverage status
+
+### Task 5 — `CLAUDE.md` ladder + observability + quality gate + wrap-up (AC-5)
+
+[x] VERIFY: `grep -E "^## Tool Preference Ladder" CLAUDE.md` returns 1 match AND `grep -F "fails auth twice" CLAUDE.md` returns 1 match -> Insert `## Tool Preference Ladder` section after Core Principles with table covering Supabase/Vercel/GitHub/Library Docs/Browser E2E and the password-twice-stop rule
+
+[x] VERIFY: `grep -E "^## Observability Discipline" CLAUDE.md` returns 1 match AND `grep -F "failure-only reporting" CLAUDE.md` returns 1 match -> Insert `## Observability Discipline` section with the failure-only rule
+
+[x] VERIFY: `grep -F "user-facing acceptance criterion" CLAUDE.md` returns 1 match in `## Quality Gate` -> Add e2e walkthrough row to Quality Gate checklist
+
+[x] VERIFY: `grep -B2 -A5 "### 4. Wrap Up" CLAUDE.md | grep -F "/verify-e2e"` returns 1 match -> Amend Wrap Up section to mention `/verify-e2e` precondition
+
+### Task 6 — `/sync` legacy `.claude/commands/` migration (AC-6)
+
+[x] VERIFY: `grep -F "Legacy Directory Migration" .claude/skills/sync/SKILL.md` returns 1 match -> Insert new step before "Show What Changed" titled "Legacy Directory Migration"
+
+[x] VERIFY: `grep -E "archive|delete|skip" .claude/skills/sync/SKILL.md | wc -l` shows the three options documented -> Step prompts user with archive/delete/skip options when `.claude/commands/` exists
+
+[x] VERIFY: `grep -F "overlapping basenames" .claude/skills/sync/SKILL.md` returns 1 match -> Step surfaces conflict list when both dirs contain overlapping entries; refuses auto-resolve
+
+[x] VERIFY: `grep -F "silent no-op" .claude/skills/sync/SKILL.md` returns 1 match in the legacy migration step -> Step is silent no-op when `.claude/commands/` is absent
+
+### Task 7 — Cross-cutting integrity (AC-7)
+
+[x] VERIFY: `git diff --name-only main...HEAD` lists exactly: `.claude/skills/verify-e2e/SKILL.md`, `.claude/skills/plan/SKILL.md`, `.claude/skills/build/SKILL.md`, `.claude/skills/wrap-up-session/SKILL.md`, `.claude/skills/sync/SKILL.md`, `CLAUDE.md`, `specs/workflow-insights-improvements.md`, `tasks/todo.md` -> Confirm scope did not leak into other files
+
+[x] VERIFY: For each modified SKILL.md, `head -6` shows valid frontmatter (`---` open, `name:`, `description:`, `disable-model-invocation:`, `---` close) -> Spot-check each file's frontmatter integrity
+
+[x] VERIFY: `grep -F "/verify-e2e" .claude/skills/build/SKILL.md .claude/skills/wrap-up-session/SKILL.md CLAUDE.md` returns matches in all three AND the skill name in `verify-e2e/SKILL.md` frontmatter matches exactly -> Cross-references resolve consistently

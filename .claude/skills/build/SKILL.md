@@ -27,6 +27,15 @@ Bridges the gap between `/plan` (design) and `/wrap-up-session` (close).
 5. Identify the project's test runner and build tooling (check `package.json`, `Makefile`, `pyproject.toml`, etc.)
 6. Run the full test suite once to establish a **green baseline**
    - If tests fail before you start: fix or flag to user before proceeding
+7. **Classify acceptance criteria** — for each AC in the spec, tag as `logic | integration | user-facing`. Store the classification in the build log so Phase 4 knows which need e2e evidence.
+
+   | AC type | Signals |
+   |---|---|
+   | `logic` | Pure functions, validators, transforms, utilities — no I/O |
+   | `integration` | API endpoints, DB queries, service-to-service calls, background jobs |
+   | `user-facing` | Auth flows, form submissions, navigation, UI state, anything a user sees or clicks |
+
+   When an AC mixes types, classify by the highest tier present (`user-facing` > `integration` > `logic`).
 
 ## Phase 1 — Task Execution (TDD Loop)
 
@@ -187,13 +196,32 @@ max_rounds: 3
 previous_failures: []
 ```
 
+### Evidence Required by AC Type
+
+Use the classification from Pre-Flight Step 7 to determine what evidence each AC needs:
+
+| AC type | Evidence required |
+|---|---|
+| `logic` | Unit test passes (covers the function in isolation) |
+| `integration` | Integration test passes (real API/DB/service interaction) |
+| `user-facing` | **E2E walkthrough via `/verify-e2e`** — entry exists in `tasks/e2e-log.md` for the current commit short-sha |
+
+If ANY AC is classified `user-facing`, you MUST invoke `/verify-e2e` before declaring Phase 4 complete. Unit coverage alone is insufficient for user-facing ACs — `/verify-e2e` runs a real browser through the real flow and writes evidence to `tasks/e2e-log.md`.
+
+Status marks distinguish evidence strength:
+
+- ✅ [criterion] — covered by unit or integration test `<name>`
+- ✅✅ [criterion] — covered by e2e walkthrough (see `tasks/e2e-log.md` entry for `<feature-name>` at `<short-sha>`)
+- ❌ [criterion] — [what's missing]
+
 **For each round:**
 
 1. Re-read `specs/[feature-name].md`
-2. Walk through each **Acceptance Criterion**:
-   - For each criterion: identify the test(s) that prove it
-   - Mark: `✅ [criterion]` or `❌ [criterion] — [what's missing]`
-3. **If all criteria are `✅`**: break → proceed to Phase 5
+2. For every AC classified `user-facing`, invoke `/verify-e2e` (skip if already invoked this round and e2e log shows a PASS entry for the current commit)
+3. Walk through each **Acceptance Criterion**:
+   - For each criterion: identify the evidence that proves it (test name OR e2e log entry)
+   - Mark using the status marks above
+4. **If all criteria are `✅` or `✅✅`**: break → proceed to Phase 5
 4. **If any criterion is `❌`**:
    a. Compare current failures against `previous_failures`
    b. **If SAME criteria failed as last round** → **HALT** (circular fix detected):

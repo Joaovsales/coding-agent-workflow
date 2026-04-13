@@ -72,6 +72,44 @@ Store the detected branch name — use `workflow/$WORKFLOW_BRANCH` in all subseq
 
 If using manual diff mode, use the `/tmp/coding-agent-workflow` clone as the source.
 
+### Step 2.5 — Legacy Directory Migration
+
+Older versions of this workflow shipped slash commands under `.claude/commands/`. The current layout uses `.claude/skills/`. Projects synced before the rename retain a stale `.claude/commands/` directory whose entries can shadow or contradict the canonical skills.
+
+Detect and resolve before showing diffs:
+
+1. Check whether `.claude/commands/` exists in the target project (`ls .claude/commands/ 2>/dev/null`)
+2. **If absent:** silent no-op — do not log anything, proceed to Step 3.
+3. **If present:** list its entries, then check for **overlapping basenames** with `.claude/skills/`:
+   - Build the set `commands_basenames = basename(file) without extension for file in .claude/commands/`
+   - Build the set `skills_basenames = basename(dir) for dir in .claude/skills/`
+   - Compute the intersection
+4. **If overlapping basenames exist:** surface the conflict list and refuse to auto-resolve:
+   ```
+   ⛔ Conflict: the following entries exist in BOTH .claude/commands/ and .claude/skills/:
+     - <basename1>
+     - <basename2>
+   These would shadow each other at runtime. Resolve manually before re-running /sync:
+     - Decide which version is authoritative (usually the skills/ version)
+     - Delete the obsolete copy
+     - Re-run /sync
+   ```
+   Do NOT prompt for archive/delete in this case — the user must intervene.
+5. **If no overlapping basenames:** prompt the user with three options:
+   ```
+   Legacy directory .claude/commands/ found with N entries.
+   The current workflow uses .claude/skills/ exclusively.
+   How should we handle the legacy directory?
+     [archive]  Rename to .claude/commands.legacy/ (preserves contents)
+     [delete]   Remove .claude/commands/ entirely
+     [skip]     Leave it in place for now (re-prompted next /sync)
+   Choose: archive / delete / skip
+   ```
+6. Apply the user's choice:
+   - `archive`: `mv .claude/commands .claude/commands.legacy`
+   - `delete`: `rm -rf .claude/commands` (confirm once more before running)
+   - `skip`: log "Legacy migration skipped — will re-prompt next /sync" and proceed
+
 ### Step 3 — Show What Changed
 
 Compare the syncable paths between the current project and the template source.

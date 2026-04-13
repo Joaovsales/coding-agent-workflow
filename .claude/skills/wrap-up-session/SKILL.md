@@ -82,6 +82,18 @@ Read `tasks/todo.md` and reconcile it against the actual state of the code:
 - Mark any completed items `[x]` that aren't already marked
 - Leave remaining items `[ ]`
 
+### Duplicate Plan Block Detection
+
+Before generating the session summary, scan `tasks/todo.md` for stale or duplicated content:
+
+1. **Duplicate `## Plan:` headings** — two or more headings with the same feature name. Merge them: promote any `[ ]` subtask that is unchecked in the older block but missing from the newer one, then remove the duplicate heading.
+2. **Orphan unchecked subtasks** — a `[ ]` item under a plan whose siblings are all `[x]`. Flag these to the user:
+   > _"Plan '<name>' has N unchecked subtasks while others are complete. Are these genuinely pending or should they be closed? (pending/close)"_
+3. **Stale plan blocks** — `## Plan:` blocks whose referenced spec file (`> Spec: specs/...`) no longer exists on disk. Flag for archival:
+   > _"Plan '<name>' references a missing spec '<path>'. Archive this plan block? (y/n)"_
+
+Do not proceed to the Idempotency Check while duplicates remain. Resolving them keeps the task register honest before a session summary is appended.
+
 ### Idempotency Check
 
 Generate a **session fingerprint** from the commit range: the short SHA of the first and last commit on this branch beyond `<base-branch>` (e.g., `a1b2c3f..d4e5f6a`). Include this fingerprint in the session summary header.
@@ -272,6 +284,23 @@ Run in order: lint/typecheck, unit tests, integration tests, e2e tests.
 
 ---
 
+## Step 6.3 — E2E Coverage Gate
+
+For every acceptance criterion in the specs touched this session (`git diff --name-only <base-branch>...HEAD -- specs/`):
+
+1. Re-classify each AC as `logic | integration | user-facing` using the same rules as `/build` Pre-Flight Step 7
+2. For each user-facing AC, confirm a `/verify-e2e` walkthrough ran during the session by checking `tasks/e2e-log.md` for an entry whose Spec line and Commit short-sha match the current commit range
+3. If any user-facing AC has no matching e2e log entry: **STOP** and ask:
+   > _"AC [ID] is user-facing but has no e2e walkthrough recorded in tasks/e2e-log.md. Run /verify-e2e now, or acknowledge the gap? (run/acknowledge)"_
+4. On `run`: invoke `/verify-e2e`, then re-check
+5. On `acknowledge`: record the gap in `tasks/lessons.md` under "E2E Gaps" with the AC ID and reason, then proceed. Do not silently skip.
+
+**If no specs were touched this session:** this gate is a silent no-op — proceed to Step 6.5.
+
+The e2e coverage gate exists because unit and integration tests pass while a user-facing flow can still be broken. The `/verify-e2e` log is the only evidence that a real browser walked the real flow against the current commit.
+
+---
+
 ## Step 6.5 — Worktree Integration (if applicable)
 
 If working in a git worktree (check with `git worktree list`):
@@ -429,6 +458,7 @@ Session wrapped up.
   - SHOULD-FIX: [N found, N fixed, N skipped]
   - NITPICK: [N found, skipped]
 - Tests: [PASS — suite name] or [FAIL — see above] or [SKIPPED — no test suite]
+- E2E coverage: [N user-facing ACs verified via /verify-e2e / NONE — no specs touched / GAP — N user-facing ACs acknowledged without e2e]
 - Pushed: [yes / no — reason] [user-approved if review gate was overridden]
 - Deployments: [<service> ✓ (N attempts), <service> ✓ (N attempts)] or [<service> ✗ FAILED after 3 attempts — see tasks/deploy-report.md, <service> ✓] or [SKIPPED — reason] or [NONE — no Deployment Targets configured]
 ```
