@@ -43,8 +43,27 @@ If working from a backlog item, use its description and the PRD context to pre-f
 
 Wait for complete answers before proceeding.
 
-### 2. Write the Spec
-Create `specs/[feature-name].md`:
+### 2. Write the Spec (MUST persist to disk)
+
+This step is not complete until both conditions hold:
+
+1. The file `specs/<feature-name>.md` exists on disk (verify with `ls specs/`)
+2. You have printed its **absolute path** in your message output
+
+**Forbidden:**
+- Presenting the spec inline as a code block without writing the file
+- Claiming the spec is "drafted" without a path to point to
+- Asking the user "should I save this?" — always save, then confirm location
+
+**Required output format at end of Step 2:**
+
+```
+✓ Spec written: /absolute/path/to/specs/<feature-name>.md
+```
+
+If you cannot write the file (permission error, directory missing), STOP and report the error — do not fall back to inline presentation.
+
+Spec template:
 
 ```markdown
 # Spec: [Feature Name]
@@ -72,8 +91,24 @@ Create `specs/[feature-name].md`:
 - `path/to/component.tsx` — [why]
 ```
 
-### 3. Write the Plan
-Write the task breakdown to `tasks/todo.md`:
+### 3. Write the Plan (MUST persist to disk)
+
+Same echo-or-fail pattern as Step 2 — applied to `tasks/todo.md`:
+
+1. The file `tasks/todo.md` exists on disk and contains the new `## Plan:` block (verify with `grep -F "## Plan:" tasks/todo.md`)
+2. You have printed its **absolute path** in your message output
+
+**Required output format at end of Step 3:**
+
+```
+✓ Plan written: /absolute/path/to/tasks/todo.md
+```
+
+**Forbidden:** presenting the plan inline only, batching plan + spec into a single "draft" without writing both files.
+
+If `tasks/todo.md` already exists with prior content, **append** the new `## Plan:` block — do not overwrite.
+
+Plan template:
 
 ```markdown
 ## Plan: [Feature Name]

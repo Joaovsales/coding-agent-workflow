@@ -42,6 +42,7 @@ Run `/build` to execute the plan autonomously:
 
 ### 4. Wrap Up
 After any user correction: note the root cause in `tasks/lessons.md`.
+**Before** `/wrap-up-session`: if any acceptance criterion in the touched specs describes user-facing behavior, run `/verify-e2e` first. Unit tests alone do not close a user-flow AC. The wrap-up E2E Coverage Gate (Step 6.3) will halt and prompt if user-facing ACs lack a `tasks/e2e-log.md` entry for the current commit.
 At session end: run `/wrap-up-session` to sync learnings, tests, push, and **verify the deployment build** (Step 8). If the project has a `## Deployment Targets` section in this file, wrap-up will not claim success until the post-push build resolves green — looping a `code-debugger` fix cycle up to 3 times before escalating.
 
 ---
@@ -118,6 +119,7 @@ Invoke with `/skill-name` in the chat. Each skill is a directory under `.claude/
 | `/wrap-up-session` | Sync learnings, update task/bug registers, run tests, verify, merge worktree, push, **then verify deployment build (Step 8)** |
 | `/writing-skills` | Author new skills with proper structure, iron laws, and reference docs |
 | `/sync` | Pull latest skills, hooks, agents from the template repo into the current project |
+| `/verify-e2e` | Force end-to-end browser walkthrough of user-facing acceptance criteria; writes evidence to `tasks/e2e-log.md` |
 | `/folder-context-optimization` | Sweep a folder for legacy/unused files, propose archival |
 
 ---
@@ -154,11 +156,40 @@ Prefer editing existing files. Never skip git hooks. Keep commits atomic and des
 
 ---
 
+## Tool Preference Ladder
+
+Before reaching for a generic CLI, check this ladder. Using project-specific MCPs first avoids auth prompts, password walls, and flaky subprocess output.
+
+| Domain | Prefer | Over |
+|---|---|---|
+| Supabase DB / migrations / schema | `mcp__supabase__apply_migration`, `execute_sql`, `get_logs` | `supabase db push`, `psql` |
+| Vercel deploys / logs | `mcp__vercel__get_deployment_build_logs`, `get_runtime_logs` | `vercel logs` |
+| GitHub PRs / reviews / CI | `mcp__github__*` | `gh` CLI |
+| Library docs | `mcp__context7__resolve-library-id` → `get-library-docs` | Web search, guessing from memory |
+| Browser E2E validation | Playwright/Chrome MCP with real cookie-based auth | Headless `curl` + token injection |
+
+**Rule:** If a CLI asks for a password or fails auth twice, STOP and use the MCP. Do not guess credentials, do not retry with `--password` flags.
+
+---
+
+## Observability Discipline
+
+Recurring jobs (cron, smoke tests, health checks, `/loop` tasks) must follow **failure-only reporting**:
+
+- **Success path:** silent (exit 0, no log line, no notification)
+- **Failure path:** loud (structured error, actionable context, exit non-zero)
+- Never log "15/15 passed" every iteration — it trains the reader to ignore the channel
+
+If a passing run must be recorded, write it to a metrics sink (counter, gauge), not to a human-readable log or chat channel.
+
+---
+
 ## Quality Gate
 
 Before marking any task complete, confirm:
 - [ ] All relevant tests pass
 - [ ] New code has ≥80% test coverage
+- [ ] **Every user-facing acceptance criterion has an e2e walkthrough recorded in `tasks/e2e-log.md`** (see `/verify-e2e`)
 - [ ] No linting or type errors
 - [ ] Code passes Clean Code + SOLID review
 - [ ] No new security vulnerabilities
