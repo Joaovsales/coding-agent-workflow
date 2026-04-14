@@ -13,6 +13,35 @@ Pull the latest skills, hooks, agents, and config from the `coding-agent-workflo
 - **GitHub**: `Joaovsales/coding-agent-workflow`
 - **Remote name convention**: `workflow`
 
+## Automatic Drift Notification
+
+The `session-start.sh` hook checks the `workflow` remote once per 24h and prints a
+one-line `🔄 TEMPLATE DRIFT` notice at session start when syncable paths differ
+from `workflow/<default-branch>`. It does **not** modify files — it only nudges
+you to run `/sync`.
+
+**Enable on a fresh project:**
+
+```bash
+git remote add workflow https://github.com/Joaovsales/coding-agent-workflow.git
+```
+
+Once the remote exists, the hook takes over automatically. Fetch is capped at a
+5-second timeout (offline sessions stay silent). Cache lives at
+`.claude/.sync-check-cache` (gitignored).
+
+**Silence the notification:**
+
+```bash
+touch .claude/sync-check-dismissed
+```
+
+**Force a re-check now** (bypass the 24h cache):
+
+```bash
+rm .claude/.sync-check-cache
+```
+
 ## Syncable Paths
 
 These are the files/directories managed by the workflow template:

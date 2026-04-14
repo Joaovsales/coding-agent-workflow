@@ -1,2 +1,6 @@
 # Deployment verification state — per-session, not committed
 tasks/deploy-state.json
+
+# Session-start template drift-check cache (per-clone, not committed)
+.claude/.sync-check-cache
+.claude/sync-check-dismissed

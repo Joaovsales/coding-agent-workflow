@@ -85,6 +85,62 @@ if [ ! -f ".claude/deploy-nudge-dismissed" ] && [ -f "CLAUDE.md" ]; then
   fi
 fi
 
+# ── Workflow Template Drift Check ────────────────────────────────────────────
+# Notifies if the coding-agent-workflow template has new commits affecting
+# syncable paths (.claude/skills, .claude/agents, .claude/hooks, settings.json).
+# Silent when in sync (observability discipline: loud only on actionable state).
+#
+# Preconditions:
+#   - A git remote named 'workflow' must exist (skipped otherwise)
+#   - Not dismissed via .claude/sync-check-dismissed
+#
+# Behaviour:
+#   - Fetches at most once per 24h (cached in .claude/.sync-check-cache)
+#   - 5s network timeout — never hangs the session if offline
+#   - Reports drift count; user runs /sync to review & apply
+WORKFLOW_CHECK_CACHE=".claude/.sync-check-cache"
+WORKFLOW_CHECK_MAX_AGE=86400  # 24 hours
+
+if [ ! -f ".claude/sync-check-dismissed" ] \
+   && git rev-parse --is-inside-work-tree &>/dev/null \
+   && git remote get-url workflow &>/dev/null; then
+
+  NEED_FETCH=1
+  if [ -f "$WORKFLOW_CHECK_CACHE" ]; then
+    CACHE_MTIME=$(stat -c %Y "$WORKFLOW_CHECK_CACHE" 2>/dev/null \
+                  || stat -f %m "$WORKFLOW_CHECK_CACHE" 2>/dev/null \
+                  || echo 0)
+    CACHE_AGE=$(( $(date +%s) - CACHE_MTIME ))
+    [ "$CACHE_AGE" -lt "$WORKFLOW_CHECK_MAX_AGE" ] && NEED_FETCH=0
+  fi
+
+  DRIFT_COUNT=0
+  WORKFLOW_BRANCH=""
+
+  if [ "$NEED_FETCH" = "1" ]; then
+    WORKFLOW_BRANCH=$(git ls-remote --symref workflow HEAD 2>/dev/null \
+      | awk '/^ref:/ {sub("refs/heads/","",$2); print $2; exit}')
+    WORKFLOW_BRANCH=${WORKFLOW_BRANCH:-main}
+
+    if timeout 5 git fetch workflow "$WORKFLOW_BRANCH" &>/dev/null; then
+      DRIFT_COUNT=$(git diff --name-only "workflow/$WORKFLOW_BRANCH" -- \
+        .claude/skills .claude/agents .claude/hooks .claude/settings.json 2>/dev/null \
+        | wc -l | tr -d ' ')
+      printf '%s\n%s\n' "$DRIFT_COUNT" "$WORKFLOW_BRANCH" > "$WORKFLOW_CHECK_CACHE"
+    fi
+  else
+    DRIFT_COUNT=$(sed -n '1p' "$WORKFLOW_CHECK_CACHE" 2>/dev/null || echo 0)
+    WORKFLOW_BRANCH=$(sed -n '2p' "$WORKFLOW_CHECK_CACHE" 2>/dev/null)
+    WORKFLOW_BRANCH=${WORKFLOW_BRANCH:-main}
+  fi
+
+  if [ "${DRIFT_COUNT:-0}" -gt 0 ]; then
+    echo ""
+    echo "🔄  TEMPLATE DRIFT — $DRIFT_COUNT file(s) differ from workflow/$WORKFLOW_BRANCH"
+    echo "    Run /sync to review and apply updates (or 'touch .claude/sync-check-dismissed' to silence)."
+  fi
+fi
+
 # ── Available Skills ────────────────────────────────────────────────────────
 echo ""
 echo "SKILLS AVAILABLE"
