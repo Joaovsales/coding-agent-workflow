@@ -208,6 +208,8 @@ Use the classification from Pre-Flight Step 7 to determine what evidence each AC
 
 If ANY AC is classified `user-facing`, you MUST invoke `/verify-e2e` before declaring Phase 4 complete. Unit coverage alone is insufficient for user-facing ACs — `/verify-e2e` runs a real browser through the real flow and writes evidence to `tasks/e2e-log.md`.
 
+**Non-skippable**: The Build Report is blocked until every user-facing AC shows a `✅✅` mark referencing a `tasks/e2e-log.md` entry whose commit short-sha matches the current HEAD. "Form renders in jsdom" / "unit test passes" / "spot-checked manually" are NOT substitutes. If `/verify-e2e` cannot run (no browser available, auth missing), HALT and escalate — do not fall back to unit evidence for a user-facing AC.
+
 Status marks distinguish evidence strength:
 
 - ✅ [criterion] — covered by unit or integration test `<name>`
@@ -248,9 +250,19 @@ If `tasks/backlog.md` exists:
 2. Mark the item as `[x]` in `tasks/backlog.md`
 3. Update `tasks/project-context.md` `[CURRENT-PHASE]` section if the phase is now complete (all items `[x]`)
 
-## Phase 6 — Build Report
+## Phase 6 — Build Report (MUST include persistence echo)
 
-Output the final report to the user:
+The build is not "done" until you have proven what is on disk. End your turn with
+the report below, populated from **real command output**, not recollection.
+
+### Required persistence proofs (run these, paste their output)
+
+1. `git status --short`            — shows uncommitted changes (if any)
+2. `git log --oneline <base>..HEAD` — shows commits created this build
+3. `ls specs/ | grep <feature>`    — confirms spec is on disk
+4. `grep -c '^\[x\]' tasks/todo.md` vs `grep -c '^\[ \]' tasks/todo.md`
+
+Then output:
 
 ```
 ══════════════════════════════════════
@@ -262,17 +274,35 @@ Output the final report to the user:
 📐 Spec Validation: [all criteria met / N gaps remain]
 🧹 Simplify: [N improvements applied]
 
-Files Changed:
-  [git diff --stat summary]
+Files on disk (persistence proof):
+  ✓ Spec: /absolute/path/to/specs/<feature-name>.md
+  ✓ Plan: /absolute/path/to/tasks/todo.md
+  ✓ Source changes: [git diff --stat summary — paste actual output]
+
+Git state:
+  Branch: <branch>
+  Commits this build: [N]  (paste `git log --oneline <base>..HEAD` output)
+  Uncommitted changes: [Y/N — paste `git status --short` if non-empty]
+  Pushed: [NOT YET — /build does not push. /wrap-up-session handles push.]
 
 Acceptance Criteria:
-  ✅ [criterion 1]
-  ✅ [criterion 2]
+  ✅✅ [user-facing criterion — e2e log entry: tasks/e2e-log.md @ <short-sha>]
+  ✅   [logic/integration criterion — test: <test-name>]
   ...
 
-Ready for /wrap-up-session or manual QA.
+Next: /wrap-up-session (runs reviews, tests, commits, pushes).
 ══════════════════════════════════════
 ```
+
+### Forbidden completion patterns
+
+- Claiming "build complete" without the persistence proof block above
+- Stating a file was "created" or "updated" without showing its absolute path
+- Omitting the `Pushed:` line (even to say "NOT YET" — it must be explicit)
+- Using past-tense verbs ("I wrote", "I saved") with no corresponding command output
+
+If any required proof command fails or returns empty, STOP and investigate.
+Do not emit the Build Report.
 
 ## Error Handling
 
