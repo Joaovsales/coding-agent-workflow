@@ -8,6 +8,13 @@ set -euo pipefail
 # Kill switch: skip hook if SKIP_SESSION_START=1
 [ "${SKIP_SESSION_START:-0}" = "1" ] && exit 0
 
+# ── Active-session sentinel ──────────────────────────────────────────────────
+# Written here, removed by session-stop.sh. Cron jobs that source
+# cron-quiet-hours.sh use its presence to suppress human-readable reporting
+# during active sessions (failure-only path in observability discipline).
+SENTINEL="${CLAUDE_SESSION_SENTINEL:-/tmp/claude-code-session-active}"
+printf 'pid=%s\nstarted=%s\nrepo=%s\n' "$$" "$(date -u +%FT%TZ)" "$(pwd)" > "$SENTINEL" 2>/dev/null || true
+
 DIVIDER="════════════════════════════════════════"
 
 echo ""

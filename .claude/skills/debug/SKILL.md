@@ -12,10 +12,14 @@ Systematically investigate and fix bugs using root cause analysis, the `code-deb
 ## The Iron Law
 
 ```
-NO FIXES WITHOUT ROOT CAUSE INVESTIGATION FIRST
+NO FIXES WITHOUT THE ROOT-CAUSE PRELUDE (Phase 0.5) AND REPRODUCTION (Phase 1)
 ```
 
-If you haven't completed Phase 1 (Reproduce & Isolate), you cannot propose fixes. Symptom fixes are failure.
+You cannot propose fixes until:
+1. The **Root-Cause Prelude** (Phase 0.5) has listed 3 candidates and picked one based on disconfirming evidence, AND
+2. Phase 1 (Reproduce & Isolate) has produced a minimal failing reproduction.
+
+Symptom fixes are failure. Single-hypothesis tunnel vision is failure.
 
 ## Pre-Flight — Load Context
 
@@ -32,6 +36,48 @@ If you haven't completed Phase 1 (Reproduce & Isolate), you cannot propose fixes
 3. **Identify the bug**:
    - If `$ARGUMENTS` provided: use as the bug description
    - If no arguments: ask the user to describe the bug, provide error output, or point to the failing test
+
+## Phase 0.5 — Root-Cause Prelude (MANDATORY before any Edit)
+
+Before touching a single file, post this block to the user and wait for confirmation
+OR explicitly pick a branch and name the disconfirming evidence. This exists because
+the #1 debugging failure mode is committing to hypothesis #1 and editing the wrong
+component (see the WhatsApp UserMenu/Banner and dual-SIM sagas in memory).
+
+### Required output — "Top-3 Candidates"
+
+```
+🔎 Root-Cause Prelude — [bug summary]
+
+Reproduction confirmed: [YES — <how> | NO — need <screenshot/logs/steps>]
+
+Top-3 candidate root causes (ranked by prior likelihood):
+
+1. [hypothesis] — <component/file:line>
+   Supporting: [observation + evidence level 1-6]
+   Disconfirming test: [one cheap check that would rule this OUT]
+
+2. [hypothesis] — <component/file:line>
+   Supporting: [observation + evidence level]
+   Disconfirming test: [cheap check]
+
+3. [hypothesis] — <component/file:line>
+   Supporting: [observation + evidence level]
+   Disconfirming test: [cheap check]
+
+Picked: #<N> because [disconfirming evidence for others is stronger than for this].
+```
+
+### Rules
+
+- **Do not skip this block** even for "obvious" bugs. Obvious bugs are where wrong-component detours happen.
+- **Do not collapse to 1 candidate** until disconfirming checks have been run on the other two. Listing one candidate = speculation.
+- **If reproduction is `NO`**: STOP and ask the user for a screenshot, log excerpt, or exact repro steps. Do not proceed to Phase 1.
+- **If the user redirects** ("look at X instead", "that's not the bug"): re-run this prelude with their new information. Do not continue with the old hypothesis.
+
+Only after the prelude passes do you delegate to Phase 1.
+
+---
 
 ## Phase 1 — Reproduce & Isolate
 

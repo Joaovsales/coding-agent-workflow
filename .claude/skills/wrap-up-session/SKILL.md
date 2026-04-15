@@ -130,9 +130,9 @@ Then:
 
 ---
 
-## Step 4 — Parallel Code Review (4 agents)
+## Step 4 — Parallel Code Review (5 agents)
 
-Launch these four agents simultaneously using the Agent tool. Each agent should:
+Launch these five agents **in a single message with multiple Agent tool calls**, so they run concurrently. Sequential dispatch defeats the purpose. Each agent should:
 - Use `git diff --name-only <base-branch>...HEAD` (the detected base branch from Step 0) to scope review to changed files only
 - Check `git log --oneline -10` for recent commit context before recommending reversals
 - Focus on issues **introduced** by this session, not pre-existing patterns
@@ -180,6 +180,17 @@ Every finding MUST use exactly one of these severity tags:
 - Flag missing edge case tests, error path tests, boundary conditions
 - Check that existing tests still align with the changed behavior
 - Recommend specific tests to add (unit, integration, or e2e)
+
+### Agent 5: Adversarial Critic (`critic` subagent, model: sonnet)
+- Read the spec(s) touched this session and every AC
+- Ask "what AC is this missing?" and "what user-facing behavior would break?"
+- Specifically hunt for: response-shape mismatches between handler and consumer,
+  declared-done-without-e2e patterns, duplicate todo blocks, stale spec references
+- Check the API contract changes against any clients (frontend, tests, docs)
+- Report findings in the same severity format as Agents 1-4
+
+The critic is the guard against the "declared done before E2E" failure mode.
+It cares about gaps between spec and implementation, not style.
 
 ### Agent Failure Handling
 
@@ -335,7 +346,7 @@ Before committing, verify the code review from Step 4 completed with full covera
 
 | Review Status | Action |
 |---------------|--------|
-| **All 4 agents returned results AND all MUST-FIX applied AND ≤3 SHOULD-FIX skipped** | Proceed to commit & push |
+| **All 5 agents returned results AND all MUST-FIX applied AND ≤3 SHOULD-FIX skipped** | Proceed to commit & push |
 | **Any MUST-FIX finding was skipped** | **STOP** — present the skipped MUST-FIX finding(s) and ask the user: _"These MUST-FIX findings were not applied: [list]. Proceed anyway? (y/n)"_. Do not push without explicit user approval. |
 | **More than 3 SHOULD-FIX findings were skipped** | **STOP** — present all skipped SHOULD-FIX items with their justifications and ask the user: _"[N] SHOULD-FIX findings were skipped (max 3 allowed): [list]. Approve these skips? (y/n)"_. Do not push without explicit user approval. |
 | **Any agent failed** (status: `degraded`) | **STOP** — report which review dimensions were missed, show the manual spot-check findings, and ask the user: _"Code review was incomplete ([agent name] failed). Proceed with push anyway? (y/n)"_. Do not push without explicit user approval. |
