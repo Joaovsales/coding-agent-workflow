@@ -4,3 +4,8 @@ tasks/deploy-state.json
 # Session-start template drift-check cache (per-clone, not committed)
 .claude/.sync-check-cache
 .claude/sync-check-dismissed
+
+# Personal, per-project Claude Code overrides — gitignored by convention.
+# Imported by CLAUDE.md alongside .claude/project.md (committed, team-shared).
+# Use this file for personal shortcuts, local paths, and experimental preferences.
+CLAUDE.local.md

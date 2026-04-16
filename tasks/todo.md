@@ -120,3 +120,66 @@
 [x] VERIFY: For each modified SKILL.md, `head -6` shows valid frontmatter (`---` open, `name:`, `description:`, `disable-model-invocation:`, `---` close) -> Spot-check each file's frontmatter integrity
 
 [x] VERIFY: `grep -F "/verify-e2e" .claude/skills/build/SKILL.md .claude/skills/wrap-up-session/SKILL.md CLAUDE.md` returns matches in all three AND the skill name in `verify-e2e/SKILL.md` frontmatter matches exactly -> Cross-references resolve consistently
+
+---
+
+## Plan: Separate Project Config from Synced CLAUDE.md
+> Spec: specs/separate-project-config.md
+> Branch: claude/separate-project-config-7rywh
+> Status: Pending user confirmation
+
+### Task 1 — Add "Routing Table Schema" section to deployments README (AC: schema docs relocated)
+
+[x] VERIFY: `grep -E "^## Routing Table Schema" .claude/deployments/README.md` returns 1 match AND the section documents the four columns (Service, Runbook, Triggers on branch, Project ID), the optional Config block (Max fix iterations, Build timeout, Preferred status source), and includes a worked example -> Edit `.claude/deployments/README.md` to append the schema section ported from CLAUDE.md's "Inactive Example" block. Use fenced code blocks (no need for the indented-block hack — README is not scanned by the activation regex).
+
+### Task 2 — Create `.claude/project.md` template stub (AC: project.md exists as clean stub)
+
+[x] VERIFY: `test -f .claude/project.md` exits 0 AND `head -20 .claude/project.md` shows: H1 title "Project-Specific Configuration", a blockquote explaining "Imported by CLAUDE.md, safe to edit, /sync never touches this file", and a `## Deployment Targets` placeholder block using indented (NOT fenced) code so the activation regex stays unmatched in the template repo -> Write `.claude/project.md`. Pattern after the existing inactive-example trick: section heading must NOT be the literal `^## Deployment Targets[[:space:]]*$` in this template; use something like `## Deployment Targets (placeholder — run /setup-deployment to populate)` so the template repo stays inactive.
+
+[x] VERIFY: `grep -E '^## Deployment Targets[[:space:]]*$' .claude/project.md` returns ZERO matches AND running `.claude/hooks/session-start.sh` produces no Deployment Targets nudge after this file exists -> Confirm the template stub does not accidentally activate verification.
+
+### Task 3 — Update `.gitignore` to exclude `CLAUDE.local.md` (AC: gitignore covers CLAUDE.local.md)
+
+[x] VERIFY: `grep -F "CLAUDE.local.md" .gitignore` returns 1 match AND `git check-ignore CLAUDE.local.md` exits 0 (when the file would exist) -> Edit `.gitignore` to add `CLAUDE.local.md` with a brief comment explaining its purpose.
+
+### Task 4 — Refactor `CLAUDE.md`: strip schema example, add banner + imports (AC: CLAUDE.md is template-only)
+
+[x] VERIFY: `grep -F "## Deployment Verification — Schema Reference" CLAUDE.md` returns ZERO matches AND `grep -F "@.claude/project.md" CLAUDE.md` returns 1 match in the first 30 lines AND `grep -F "@CLAUDE.local.md" CLAUDE.md` returns 1 match in the first 30 lines AND `grep -F "DO NOT EDIT" CLAUDE.md` returns 1 match preceding the imports -> Edit `CLAUDE.md` to: (a) delete the "Deployment Verification — Schema Reference (Inactive Example)" section entirely, (b) insert the DO NOT EDIT banner + two `@import` lines directly after the H1 title and intro blockquote, before the "Session Start Checklist" section.
+
+[x] VERIFY: All other content in CLAUDE.md (Session Start Checklist, Workflow, Agents table, Model Routing, Skills table, Core Principles, Tool Preference Ladder, Observability Discipline, Quality Gate, Key Directories) is byte-identical to before — checked via `git diff CLAUDE.md` showing only the schema-section deletion and the banner+imports insertion -> Run `git diff` and confirm no incidental edits.
+
+### Task 5 — Update `/setup-deployment` skill to write into `.claude/project.md` (AC: setup-deployment writes to project.md)
+
+[x] VERIFY: `grep -F "CLAUDE.md" .claude/skills/setup-deployment/SKILL.md` returns ZERO matches in instructional contexts that talk about *writing* the table (some prose mentions are fine where they describe the historical/template relationship) AND `grep -F ".claude/project.md" .claude/skills/setup-deployment/SKILL.md` returns matches in: the description frontmatter, the "Step 4 — Check existing state" section heading and body, the abort-on-missing message, and the "Writes are confined to" guarantee -> Edit `setup-deployment/SKILL.md` to swap all write-target references from `CLAUDE.md` to `.claude/project.md`. Update the abort case: if `.claude/project.md` cannot be created or written, abort with a clear message — do NOT fall back to writing CLAUDE.md.
+
+[x] VERIFY: `grep -F "auto-create" .claude/skills/setup-deployment/SKILL.md` OR `grep -F "create if missing" .claude/skills/setup-deployment/SKILL.md` returns at least 1 match in Step 4 -> Add explicit instruction: if `.claude/project.md` does not exist, create it from a known stub before writing the Deployment Targets table.
+
+### Task 6 — Update `/verify-deployment` to read from `.claude/project.md` with CLAUDE.md fallback (AC: verify-deployment reads new path)
+
+[x] VERIFY: `grep -F ".claude/project.md" .claude/skills/verify-deployment/SKILL.md` returns matches in: the Step 1 read instruction AND the section-heading regex documentation AND the deprecation-warning fallback AND the "section references a runbook file that doesn't exist" edge-case wording -> Edit `verify-deployment/SKILL.md` to read project.md first; if not present or section absent, fall back to CLAUDE.md and emit `⚠ Deprecation: ## Deployment Targets found in CLAUDE.md. Run /sync to migrate to .claude/project.md.` once per invocation.
+
+[x] VERIFY: The strict-match regex `^## Deployment Targets[[:space:]]*$` is preserved (still matches only the literal heading, not headings with extra text) -> Confirm regex unchanged.
+
+### Task 7 — Update `session-start.sh` hook to check project.md first (AC: hook reads new path)
+
+[x] VERIFY: Reading `.claude/hooks/session-start.sh` shows the Deployment Targets check now greps `.claude/project.md` first (when it exists), then falls back to `CLAUDE.md` AND the nudge message updated to reference project.md as the target file ("no Deployment Targets in .claude/project.md") AND the hook still exits 0 in all paths AND running the hook in the current template repo produces no nudge (project.md stub uses non-matching heading per Task 2) -> Edit `.claude/hooks/session-start.sh:75-90` to layer the grep across both files.
+
+### Task 8 — Update `/sync` skill: layered model docs + auto-migration procedure (AC: sync documents new model + auto-migrates)
+
+[x] VERIFY: `grep -F "Layered Configuration Model" .claude/skills/sync/SKILL.md` OR `grep -F "Project Config Layering" .claude/skills/sync/SKILL.md` returns 1 match -> Add a new section near the top explaining the four-layer stack and which files /sync touches.
+
+[x] VERIFY: `grep -F ".claude/project.md" .claude/skills/sync/SKILL.md` shows project.md added to the "Never sync" list (it is project-specific) AND removed from any "syncable paths" list -> Update the syncable-paths block.
+
+[x] VERIFY: `grep -F "Legacy CLAUDE.md Migration" .claude/skills/sync/SKILL.md` OR `grep -F "Migrate Deployment Targets" .claude/skills/sync/SKILL.md` returns 1 match in a new step that runs BEFORE Step 3 (Show What Changed) -> Insert new step "Step 2.6 — Legacy CLAUDE.md Migration" using the same prompt-and-confirm pattern as the existing Step 2.5 legacy commands migration.
+
+[x] VERIFY: The migration step documents: (a) detection via `grep -E '^## Deployment Targets[[:space:]]*$' CLAUDE.md`, (b) prompt with default-no, (c) extract block from heading through end-of-config-block, (d) append to `.claude/project.md` (creating from stub if missing), (e) remove block from CLAUDE.md, (f) add CLAUDE.local.md to .gitignore if missing, (g) idempotency note (re-running is safe), (h) conflict refusal when BOTH project.md has Deployment Targets AND CLAUDE.md has the legacy block, (i) abort-overall-sync when user declines migration (do not partially apply) -> Confirm all nine bullets in the new step.
+
+[x] VERIFY: The "CLAUDE.md conflicts" warning in the existing Edge Cases section is REMOVED (or rewritten to reflect that CLAUDE.md is now safe to overwrite) -> Edit Edge Cases section.
+
+### Task 9 — Update `.claude/memory.md` with the architectural decision (AC: decision recorded)
+
+[x] VERIFY: `grep -F "Layered config" .claude/memory.md` OR `grep -F "project.md import" .claude/memory.md` returns 1 match in the Architecture Decisions table -> Append a row to the Architecture Decisions table: `| Layered config (CLAUDE.md template + .claude/project.md project + CLAUDE.local.md personal) | Lets /sync overwrite template safely; uses native @import; clear ownership per layer |`
+
+### Task 10 — End-to-end consistency review (AC: all spec criteria satisfied, no regressions)
+
+[x] VERIFY: Walked all 13 acceptance criteria from `specs/separate-project-config.md` and confirmed each is satisfied by a Task 1-9 deliverable. Ran `.claude/hooks/session-start.sh` end-to-end and confirmed it exits 0 with no Deployment Targets nudge. Ran `grep -E '^## Deployment Targets[[:space:]]*$' CLAUDE.md .claude/project.md` and confirmed ZERO matches in either file (template repo stays inactive). Ran `git grep -l "CLAUDE.md" .claude/skills/setup-deployment/ .claude/skills/verify-deployment/ .claude/hooks/session-start.sh` to confirm only fallback / deprecation references remain in code paths (all primary read/write targets now point to project.md). Confirmed no skills outside the migration scope (build/, tdd/, wrap-up-session/, plan/, code-reviewer.md) were modified -> Document the verification in this task's checkbox before marking complete.

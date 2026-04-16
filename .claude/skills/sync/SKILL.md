@@ -8,6 +8,19 @@ disable-model-invocation: false
 
 Pull the latest skills, hooks, agents, and config from the `coding-agent-workflow` template repo into the current project.
 
+## Layered Configuration Model
+
+Claude Code config is split across layers so `/sync` can overwrite the template-managed layer safely without touching project-specific content:
+
+| File | Scope | Committed? | Touched by /sync? |
+|---|---|---|---|
+| `CLAUDE.md` | Template rules only (imports the layers below) | Yes | **Yes — overwritten wholesale** |
+| `.claude/project.md` | Team-shared, project-specific rules + Deployment Targets | Yes | **Never** |
+| `CLAUDE.local.md` | Personal per-project overrides | No (gitignored) | **Never** |
+| `~/.claude/CLAUDE.md` | Cross-project personal | N/A (global) | **Never** |
+
+`CLAUDE.md` uses Claude Code's native `@.claude/project.md` and `@CLAUDE.local.md` import syntax to inline the lower layers into the session's system prompt, so rules added to any layer still take effect. The split exists purely to make `/sync` safe — nothing about how Claude reads rules changes.
+
 ## Source Repo
 
 - **GitHub**: `Joaovsales/coding-agent-workflow`
@@ -55,7 +68,9 @@ CLAUDE.md             → Project rules & workflow instructions
 ```
 
 **Never sync** (project-specific state):
+- `.claude/project.md` — project-specific rules, Deployment Targets, team conventions
 - `.claude/memory.md` — project-specific learnings
+- `CLAUDE.local.md` — personal per-project overrides (gitignored)
 - `tasks/` — project-specific task state
 - `specs/` — project-specific feature specs
 
@@ -139,6 +154,57 @@ Detect and resolve before showing diffs:
    - `delete`: `rm -rf .claude/commands` (confirm once more before running)
    - `skip`: log "Legacy migration skipped — will re-prompt next /sync" and proceed
 
+### Step 2.6 — Legacy CLAUDE.md Migration
+
+Earlier versions of this workflow wrote the `## Deployment Targets` routing table directly into `CLAUDE.md`. The current layout keeps project-specific content in `.claude/project.md` so `/sync` can overwrite `CLAUDE.md` safely.
+
+Before showing the diff, detect and offer to auto-migrate:
+
+1. **Detect** with the exact-match regex:
+   ```bash
+   grep -qE '^## Deployment Targets[[:space:]]*$' CLAUDE.md 2>/dev/null
+   ```
+2. **If absent**: silent no-op — do not log anything, proceed to Step 3.
+3. **If present in `CLAUDE.md` AND also present in `.claude/project.md`**: ambiguous state. Refuse to auto-migrate:
+   ```
+   ⛔ Conflict: ## Deployment Targets exists in BOTH CLAUDE.md AND .claude/project.md.
+   Manually consolidate before re-running /sync:
+     - Decide which section is authoritative
+     - Delete the other
+     - Re-run /sync
+   ```
+   Do NOT prompt — user must intervene.
+4. **If present only in `CLAUDE.md`**: prompt with default-no:
+   ```
+   Legacy Deployment Targets section found in CLAUDE.md.
+   The current layout keeps this section in .claude/project.md so /sync can
+   overwrite CLAUDE.md safely without wiping your deployment config.
+
+   Migrate now? [y/N]:
+   ```
+5. **On `y`** — apply the migration:
+   a. Extract the block from the `^## Deployment Targets[[:space:]]*$` heading through the end of the `**Config:**` bullet list (or end-of-file / next `^## ` heading, whichever comes first)
+   b. If `.claude/project.md` does not exist, create it from this stub:
+      ```markdown
+      # Project-Specific Configuration
+
+      > Imported by CLAUDE.md. Safe to edit — /sync never touches this file.
+      ```
+   c. Append the extracted block to `.claude/project.md` (separated by a blank line from any existing content)
+   d. Remove the same block from `CLAUDE.md`
+   e. Ensure `.gitignore` contains `CLAUDE.local.md`; add it if missing with a comment header
+   f. Stage all three files (`CLAUDE.md`, `.claude/project.md`, `.gitignore`) for the user to review
+   g. Log: `✓ Migrated Deployment Targets from CLAUDE.md → .claude/project.md`
+6. **On `n` (or default)** — **abort the entire sync**:
+   ```
+   Sync aborted — CLAUDE.md cannot be safely overwritten while Deployment Targets
+   still lives in it. Re-run /sync and choose 'y' to migrate, or manually move the
+   section to .claude/project.md.
+   ```
+   Do NOT partially apply. The whole sync stops here.
+
+**Idempotency**: running `/sync` a second time after a successful migration finds no matching section in `CLAUDE.md`, takes the silent no-op path in step 2, and proceeds normally. Re-runs are safe.
+
 ### Step 3 — Show What Changed
 
 Compare the syncable paths between the current project and the template source.
@@ -200,7 +266,8 @@ For each applied file, briefly note what changed.
 
 ## Edge Cases
 
-- **CLAUDE.md conflicts**: If the project has customized CLAUDE.md, warn the user that syncing will overwrite their changes. Suggest they diff manually and merge sections.
+- **CLAUDE.md is safe to overwrite**: thanks to the layered config model, `CLAUDE.md` contains only template rules + imports of `.claude/project.md` and `CLAUDE.local.md`. Project-specific content lives in those imported files, which `/sync` never touches. Legacy projects with content inlined into `CLAUDE.md` are handled by the Step 2.6 migration step above.
 - **settings.json merge**: If the project has custom hooks in `.claude/settings.json`, show both versions and help the user merge rather than overwrite.
 - **New files**: Files that exist in the template but not the project are shown as NEW and can be added.
 - **Deleted files**: Files that exist in the project's `.claude/` but NOT in the template are flagged — they may be project-specific additions (don't remove them).
+- **`.claude/project.md` missing in the target project**: expected for fresh projects that haven't run `/setup-deployment` yet. `/sync` does not create it — that happens lazily on first write by `/setup-deployment` or the migration step above.

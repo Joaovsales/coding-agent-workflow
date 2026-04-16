@@ -1,12 +1,12 @@
 ---
 name: setup-deployment
-description: One-time interactive bootstrap for deployment verification. Scans the project for deployment signal files, asks the user to confirm detected services and project IDs, and writes the routing table into CLAUDE.md.
+description: One-time interactive bootstrap for deployment verification. Scans the project for deployment signal files, asks the user to confirm detected services and project IDs, and writes the routing table into .claude/project.md.
 disable-model-invocation: false
 ---
 
 # /setup-deployment — Deployment Verification Bootstrap
 
-Configure `/verify-deployment` for this project. Scans the project for deployment signal files, confirms detected services with the user, prompts for the per-service routing details, and writes the `## Deployment Targets` section into `CLAUDE.md`.
+Configure `/verify-deployment` for this project. Scans the project for deployment signal files, confirms detected services with the user, prompts for the per-service routing details, and writes the `## Deployment Targets` section into `.claude/project.md`. (Legacy location: `CLAUDE.md`. Projects synced before the project-config split keep their existing section there until `/sync` migrates it.)
 
 This skill is idempotent. Re-running it offers to update existing routing rather than duplicating it.
 
@@ -89,15 +89,36 @@ Store the responses as `{ service_name → { branch, project_id } }`.
 
 ---
 
-## Step 4 — Check existing CLAUDE.md state
+## Step 4 — Check existing .claude/project.md state
 
-Read `CLAUDE.md`. Look for an existing `## Deployment Targets` section.
+Read `.claude/project.md`. **If the file does not exist, auto-create it** from the stub below before writing the Deployment Targets table. Do NOT fall back to writing into `CLAUDE.md` — that file is template-managed and overwritten by `/sync`.
+
+**Stub content (create if missing):**
+
+```markdown
+# Project-Specific Configuration
+
+> Imported by CLAUDE.md. Safe to edit — /sync never touches this file.
+
+```
+
+If `.claude/project.md` cannot be created or written (permission error, filesystem failure), **abort** with:
+
+```
+setup-deployment: could not write .claude/project.md — <specific error>.
+This file is required for deployment target configuration. Resolve the filesystem
+error and re-run /setup-deployment. Do NOT manually add the Deployment Targets
+section to CLAUDE.md — it will be wiped on the next /sync.
+```
+
+Once `.claude/project.md` exists, look for an existing `## Deployment Targets` section in it. (Also check `CLAUDE.md` for a legacy section; if one is found there, instruct the user to run `/sync` first, which will auto-migrate the legacy section into `.claude/project.md` before /setup-deployment proceeds.)
 
 | Existing state | Action |
 |---|---|
-| Section absent | Append a new section at the end of CLAUDE.md (after the last existing section) |
+| Section absent in project.md | Append a new section at the end of `.claude/project.md` |
 | Section present, no overlapping services | Add the new rows to the existing table; preserve existing rows |
 | Section present, same service appears | Ask: `<service> is already configured for branch <X>. Replace with the new branch <Y>? (y/n)` — replace on yes, skip on no |
+| Legacy section present in CLAUDE.md | Abort: `Legacy Deployment Targets section found in CLAUDE.md. Run /sync first to migrate it to .claude/project.md, then re-run /setup-deployment.` |
 
 **Format of the inserted section:**
 
@@ -172,7 +193,7 @@ Next steps:
   2. Push a commit to a configured branch
   3. Run /verify-deployment (or /wrap-up-session, which calls it automatically)
 
-To disable: delete the "## Deployment Targets" section from CLAUDE.md.
+To disable: delete the "## Deployment Targets" section from .claude/project.md.
 To suppress the session-start nudge without enabling: touch .claude/deploy-nudge-dismissed
 ```
 
@@ -180,7 +201,7 @@ To suppress the session-start nudge without enabling: touch .claude/deploy-nudge
 
 ## Edge Cases
 
-- **No `CLAUDE.md` at the project root** — abort with: `CLAUDE.md not found at the project root. /setup-deployment requires CLAUDE.md to write the routing table into.`
+- **`.claude/` directory missing** — abort with: `.claude/ directory not found at the project root. /setup-deployment requires .claude/ to write .claude/project.md into.`
 - **Multiple detect_files match for the same service** — that's fine, just pick the first matching file for the summary line. The service is still listed once.
 - **User runs setup with services already configured** — Step 4's merge logic handles this without duplication. The interview in Step 3 only re-asks for services the user explicitly confirms in Step 2.
 - **Two different runbooks declare overlapping `detect_files`** (e.g. both list `Dockerfile`) — list both as detected and let the user toggle in the `edit` flow. Don't auto-pick.
@@ -191,7 +212,7 @@ To suppress the session-start nudge without enabling: touch .claude/deploy-nudge
 
 ## Invariants
 
-1. **Idempotent** — running setup twice with the same answers produces the same `CLAUDE.md` state, not duplicate rows.
+1. **Idempotent** — running setup twice with the same answers produces the same `.claude/project.md` state, not duplicate rows.
 2. **Non-destructive** — never overwrites a user's existing Config block values; never removes existing rows for services the user didn't re-confirm.
 3. **No hardcoded service list** — discovery is purely from `.claude/deployments/*.md`. Adding a new runbook there makes it immediately available to setup.
-4. **Writes are confined to** `CLAUDE.md` and `.gitignore`. No other files are modified.
+4. **Writes are confined to** `.claude/project.md` and `.gitignore`. **Never writes to CLAUDE.md** — that file is template-managed and overwritten by `/sync`, so any project-specific content there would be lost.
