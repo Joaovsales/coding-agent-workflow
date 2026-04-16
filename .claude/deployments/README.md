@@ -139,3 +139,57 @@ When the agent gives up after 3 iterations, check the dashboard for:
 The frontmatter schema is the contract between runbooks and `/verify-deployment`. Adding new optional fields is non-breaking. Renaming or removing fields is breaking and requires updating every runbook in this directory plus the validation logic in `/verify-deployment`.
 
 If you need a field that doesn't exist yet, add it as **optional** first, ship runbooks that use it, then promote it to required only when every starter runbook in this directory has been updated.
+
+---
+
+## Routing Table Schema
+
+This section documents the `## Deployment Targets` section that lives in a project's `.claude/project.md` file. `/setup-deployment` writes it; `/verify-deployment` and `session-start.sh` read it.
+
+### Location
+
+The `## Deployment Targets` section lives in **`.claude/project.md`** (project-specific config, committed). It used to live in `CLAUDE.md`; legacy projects may still have it there — `/sync` offers automatic migration and the tooling falls back to `CLAUDE.md` with a deprecation warning when the section is not yet migrated.
+
+The section heading must be **exactly** `## Deployment Targets` with no trailing text. `/verify-deployment` and the session-start hook match this header with the regex `^## Deployment Targets[[:space:]]*$`, so any extra text (e.g. `## Deployment Targets (placeholder)`) intentionally disables verification — this is how the template repo documents the schema without activating it.
+
+### Columns
+
+| Column | Type | Description |
+|---|---|---|
+| `Service` | string | Display name (free-form, used in reports) |
+| `Runbook` | path | Relative path to a runbook file in `.claude/deployments/` whose frontmatter declares the service-specific contract |
+| `Triggers on branch` | string | Exact branch name or glob (e.g. `preview/*`); only targets matching the current branch are verified on a given push |
+| `Project ID` | string | Free-form identifier interpolated into the runbook's `dashboard_url_template`; consult each runbook for the expected format |
+
+### Config Block (optional)
+
+Overrides runbook defaults. Placed directly below the table.
+
+| Field | Default | Description |
+|---|---|---|
+| `Max fix iterations` | `3` | How many times `/verify-deployment` will loop the `code-debugger` fix cycle before escalating |
+| `Build timeout` | runbook's `default_timeout_minutes` | Max wait per build attempt before declaring `TIMEOUT` |
+| `Preferred status source` | `github-checks` | Either `github-checks` or `cli` |
+
+### Worked Example
+
+```markdown
+## Deployment Targets
+
+> Populated by /setup-deployment. Read by /verify-deployment.
+> Delete this section to disable deployment verification for this project.
+
+| Service | Runbook                          | Triggers on branch | Project ID     |
+|---------|----------------------------------|--------------------|----------------|
+| Railway | .claude/deployments/railway.md   | main               | my-api-prod    |
+| Vercel  | .claude/deployments/vercel.md    | main               | acme/marketing |
+
+**Config:**
+- Max fix iterations: 3
+- Build timeout: 15m
+- Preferred status source: github-checks
+```
+
+### Disabling Verification
+
+Delete the `## Deployment Targets` section from `.claude/project.md` (or rename its heading so it no longer matches the exact regex). Both tooling paths will then skip verification silently.

@@ -29,6 +29,7 @@
 | Subagents for research | Keeps main context clean and focused |
 | Memory.md + lessons.md | Two-tier learning: tactical (lessons.md) vs strategic (memory.md) |
 | Claude Code primary | Claude Code supports agents, skills, hooks natively without IDE lock-in |
+| Layered config (CLAUDE.md template + .claude/project.md project + CLAUDE.local.md personal) | Lets `/sync` overwrite template safely; uses native `@import`; clear ownership per layer |
 
 ---
 
