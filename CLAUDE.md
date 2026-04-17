@@ -217,41 +217,6 @@ tasks/deploy-report.md     → Deployment failure report (written by /verify-dep
 
 ---
 
-## Deployment Verification — Schema Reference (Inactive Example)
+## Deployment Verification
 
-> ⚠ **THIS REPO HAS NO ACTIVE DEPLOYMENT TARGETS.** This is the template repo and it doesn't deploy anywhere. The block below documents the schema that downstream projects will populate via `/setup-deployment`. The section header is intentionally **not** the literal `## Deployment Targets` so that `/verify-deployment` and `session-start.sh` treat this repo as having no Deployment Targets and skip silently.
-
-**Downstream projects** that want to enable deployment verification should run `/setup-deployment`, which writes a real `## Deployment Targets` section near the bottom of this file (matched by the exact-match regex `^## Deployment Targets[[:space:]]*$`).
-
-The schema below uses indented code blocks (not fenced) so no `## Deployment Targets` line appears at column 0 in this template repo. A real configured project would look like this:
-
-        ## Deployment Targets
-
-        > Populated by /setup-deployment. Read by /verify-deployment.
-        > Delete this section to disable deployment verification for this project.
-
-        | Service | Runbook                          | Triggers on branch | Project ID    |
-        |---------|----------------------------------|--------------------|---------------|
-        | Railway | .claude/deployments/railway.md   | main               | my-api-prod   |
-        | Vercel  | .claude/deployments/vercel.md    | main               | acme/marketing |
-
-        **Config:**
-        - Max fix iterations: 3
-        - Build timeout: 15m
-        - Preferred status source: github-checks
-
-**Schema rules:**
-
-- The section heading must be **exactly** `## Deployment Targets` (no trailing text). `/verify-deployment` and the session-start hook both match this header with the regex `^## Deployment Targets[[:space:]]*$` so any extra text disables verification.
-- `Service` — display name (free-form, used in reports)
-- `Runbook` — relative path to a runbook file in `.claude/deployments/` whose frontmatter declares the service-specific contract
-- `Triggers on branch` — exact branch name or glob (e.g. `preview/*`); only targets matching the current branch are verified on a given push
-- `Project ID` — free-form string interpolated into the runbook's `dashboard_url_template`; consult each runbook for the expected format
-
-**Config block** (optional, overrides runbook defaults):
-
-- `Max fix iterations` — how many times `/verify-deployment` will loop the `code-debugger` fix cycle before escalating
-- `Build timeout` — max wait per build attempt before declaring `TIMEOUT`
-- `Preferred status source` — `github-checks` (default) or `cli`
-
-To add a new deployment service, drop a runbook file into `.claude/deployments/<service>.md` following the contract in `.claude/deployments/README.md`, then re-run `/setup-deployment`.
+This template repo has no active deployment targets. Downstream projects: run `/setup-deployment` to populate a `## Deployment Targets` section here. Schema reference: `.claude/deployments/README.md`.
