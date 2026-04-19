@@ -2,6 +2,13 @@
 
 > Primary configuration for Claude Code. Rules apply to all sessions in this repository.
 
+> ⚠ **DO NOT EDIT — this file is template-managed and overwritten by `/sync`.**
+> Project-specific rules go in `.claude/project.md` (committed, team-shared).
+> Personal overrides go in `CLAUDE.local.md` (gitignored).
+
+@.claude/project.md
+@CLAUDE.local.md
+
 ## Session Start Checklist
 
 At the start of every session:
@@ -43,7 +50,7 @@ Run `/build` to execute the plan autonomously:
 ### 4. Wrap Up
 After any user correction: note the root cause in `tasks/lessons.md`.
 **Before** `/wrap-up-session`: if any acceptance criterion in the touched specs describes user-facing behavior, run `/verify-e2e` first. Unit tests alone do not close a user-flow AC. The wrap-up E2E Coverage Gate (Step 6.3) will halt and prompt if user-facing ACs lack a `tasks/e2e-log.md` entry for the current commit.
-At session end: run `/wrap-up-session` to sync learnings, tests, push, and **verify the deployment build** (Step 8). If the project has a `## Deployment Targets` section in this file, wrap-up will not claim success until the post-push build resolves green — looping a `code-debugger` fix cycle up to 3 times before escalating.
+At session end: run `/wrap-up-session` to sync learnings, tests, push, and **verify the deployment build** (Step 8). If the project has a `## Deployment Targets` section in `.claude/project.md`, wrap-up will not claim success until the post-push build resolves green — looping a `code-debugger` fix cycle up to 3 times before escalating.
 
 ---
 
@@ -114,7 +121,7 @@ Invoke with `/skill-name` in the chat. Each skill is a directory under `.claude/
 | `/checkpoint` | Snapshot progress to `tasks/checkpoint.md` for handoff or pause |
 | `/security-scan` | OWASP-focused audit on recently changed files |
 | `/start-qa` | Restart app, health check, launch browser with log monitoring for manual QA |
-| `/setup-deployment` | One-time interactive bootstrap: scan for deploy signals, write `## Deployment Targets` routing into this file |
+| `/setup-deployment` | One-time interactive bootstrap: scan for deploy signals, write `## Deployment Targets` routing into `.claude/project.md` |
 | `/verify-deployment` | Wait for post-push deployment build, fetch logs on failure, loop a `code-debugger` fix cycle up to 3 iterations before escalating |
 | `/wrap-up-session` | Sync learnings, update task/bug registers, run tests, verify, merge worktree, push, **then verify deployment build (Step 8)** |
 | `/writing-skills` | Author new skills with proper structure, iron laws, and reference docs |
@@ -215,8 +222,3 @@ tasks/deploy-state.json    → Per-session deployment iteration state (gitignore
 tasks/deploy-report.md     → Deployment failure report (written by /verify-deployment after max iterations)
 ```
 
----
-
-## Deployment Verification
-
-This template repo has no active deployment targets. Downstream projects: run `/setup-deployment` to populate a `## Deployment Targets` section here. Schema reference: `.claude/deployments/README.md`.

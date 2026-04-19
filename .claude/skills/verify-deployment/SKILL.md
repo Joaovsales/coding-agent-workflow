@@ -6,7 +6,9 @@ disable-model-invocation: false
 
 # /verify-deployment — Post-Push Deployment Verification
 
-Wait for the deployment service(s) configured in `CLAUDE.md` § Deployment Targets to finish building the current commit. On failure, fetch logs, delegate the fix to `code-debugger`, push the fix as a new commit, and loop. Maximum 3 fix iterations per service before escalation.
+Wait for the deployment service(s) configured in `.claude/project.md` § Deployment Targets to finish building the current commit. On failure, fetch logs, delegate the fix to `code-debugger`, push the fix as a new commit, and loop. Maximum 3 fix iterations per service before escalation.
+
+**Note**: The routing table moved from `CLAUDE.md` to `.claude/project.md` so `/sync` can overwrite the template-managed `CLAUDE.md` without wiping deployment config. This skill falls back to `CLAUDE.md` when the section is still in the legacy location and emits a one-time deprecation warning prompting the user to run `/sync` to auto-migrate.
 
 This skill is **service-agnostic by construction**. No specific deployment service is named anywhere in this file. All service-specific behavior comes from runbook files in `.claude/deployments/<service>.md`. Adding a new service is a drop-in change to that directory.
 
@@ -28,9 +30,20 @@ Exit. Do not proceed.
 
 ### 2. Locate the routing table
 
-Read `CLAUDE.md`. Look for a section header line that matches **exactly** `^## Deployment Targets[[:space:]]*$` — the heading must be `## Deployment Targets` with no trailing text. Headings like `## Deployment Targets — Schema Reference (Inactive Example)` are intentionally not matched, so the template repo can document the schema without activating verification.
+Look for a section header line that matches **exactly** `^## Deployment Targets[[:space:]]*$` — the heading must be `## Deployment Targets` with no trailing text. Headings like `## Deployment Targets (placeholder — run /setup-deployment to populate)` are intentionally not matched, so the template repo can document the schema without activating verification.
 
-**If the section is missing:**
+**Search order (primary, then legacy fallback):**
+
+1. **`.claude/project.md`** (primary location) — read the file if it exists and grep for the exact header regex above
+2. **`CLAUDE.md`** (legacy fallback) — only if step 1 did not find a matching section. If the section IS found here, emit the deprecation warning below **once per invocation** and proceed using the CLAUDE.md section:
+
+   ```
+   ⚠ Deprecation: ## Deployment Targets found in CLAUDE.md. Run /sync to migrate
+     to .claude/project.md — CLAUDE.md is template-managed and its project-specific
+     content will be wiped the next time /sync overwrites it.
+   ```
+
+**If the section is missing from BOTH files:**
 
 - For each runbook in `.claude/deployments/*.md` (excluding `README.md`), parse its frontmatter and read `detect_files`
 - Check the project root for any matching signal file
@@ -103,8 +116,8 @@ Initialize:
 
 - `started_at` = now
 - `iteration` = current value from `tasks/deploy-state.json` for this `{commit_sha, service}` key, or `0`
-- `timeout` = CLAUDE.md config `Build timeout` if set, else runbook `default_timeout_minutes`
-- `max_iterations` = CLAUDE.md config `Max fix iterations` if set, else `3`
+- `timeout` = project.md config `Build timeout` if set, else runbook `default_timeout_minutes`
+- `max_iterations` = project.md config `Max fix iterations` if set, else `3`
 
 Persist `{ service, iteration, last_sha, started_at }` to `tasks/deploy-state.json` so a session resume can pick up where polling left off.
 
@@ -279,7 +292,7 @@ Clean up `tasks/deploy-state.json` only on `ALL_GREEN` or `SKIPPED` — leaving 
 - **No check runs returned within the first 30 seconds** (the service hasn't picked up the push yet): keep polling at the normal cadence. Don't escalate this as a failure — the service may be slow to register.
 - **Runbook references a CLI that isn't installed**: `auth_check_command` exits non-zero (command not found = exit 127), which triggers the AUTH_FAILED path. Report includes "command not found — install the CLI or switch to github-checks".
 - **`.claude/deployments/` directory missing entirely**: there are no runbooks to validate against. Skip verification with: `No runbooks found in .claude/deployments/. Run /setup-deployment to populate.`
-- **CLAUDE.md `Deployment Targets` section references a runbook file that doesn't exist**: skip that target with `<service>: runbook file not found at <path>`. Continue with other targets.
+- **`.claude/project.md` `Deployment Targets` section references a runbook file that doesn't exist** (or the same in the legacy `CLAUDE.md` location during fallback): skip that target with `<service>: runbook file not found at <path>`. Continue with other targets.
 - **Code-debugger applies a fix that breaks local tests**: per the debugger's own protocol, it should report failure rather than commit. If a diff exists but tests fail, do NOT commit — skip directly to D.6 (count as failed iteration).
 
 ---
