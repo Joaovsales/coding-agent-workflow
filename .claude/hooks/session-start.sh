@@ -3,7 +3,7 @@
 # Orients the agent at the beginning of every session by surfacing memory,
 # active tasks, and recent lessons without requiring manual reads.
 
-set -euo pipefail
+set -eo pipefail
 
 # Kill switch: skip hook if SKIP_SESSION_START=1
 [ "${SKIP_SESSION_START:-0}" = "1" ] && exit 0
@@ -29,9 +29,9 @@ if [ -f "$MEMORY_FILE" ]; then
   echo "📚  MEMORY  (.claude/memory.md)"
   echo "────────────────────────────────"
   # Show just the Patterns & Lessons and Architecture Decisions sections
-  awk '/^## Architecture Decisions/,/^## (Stack|Patterns|Session)/' "$MEMORY_FILE" | head -20
+  awk '/^## Architecture Decisions/,/^## (Stack|Patterns|Session)/' "$MEMORY_FILE" | head -20 || true
   echo ""
-  awk '/^## Patterns & Lessons/,/^## Session History/' "$MEMORY_FILE" | head -30
+  awk '/^## Patterns & Lessons/,/^## Session History/' "$MEMORY_FILE" | head -30 || true
 else
   echo ""
   echo "📚  No .claude/memory.md found — consider running /learn to initialise it."
