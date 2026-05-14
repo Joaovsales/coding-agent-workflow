@@ -126,6 +126,7 @@ Invoke with `/skill-name` in the chat. Each skill is a directory under `.claude/
 | `/wrap-up-session` | Sync learnings, update task/bug registers, run tests, verify, merge worktree, push, **then verify deployment build (Step 8)** |
 | `/writing-skills` | Author new skills with proper structure, iron laws, and reference docs |
 | `/sync` | Pull latest skills, hooks, agents from the template repo into the current project |
+| `/session-design-review` | End-of-session code review tutorial based on 'A Philosophy of Software Design' by John Ousterhout |
 | `/verify-e2e` | Force end-to-end browser walkthrough of user-facing acceptance criteria; writes evidence to `tasks/e2e-log.md` |
 | `/folder-context-optimization` | Sweep a folder for legacy/unused files, propose archival |
 
