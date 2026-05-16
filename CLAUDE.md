@@ -68,6 +68,7 @@ Use specialized agents to keep the main context window clean.
 | `code-debugger` | `sonnet` | Debugging failing tests and runtime errors |
 | `security-reviewer` | `sonnet` | OWASP checks, auth flows, injection vectors |
 | `critic` | `sonnet` | Adversarial quality gate for plans, code, and specs |
+| `software-design-expert-review` | `sonnet` | APOSD structural design review (read-only) — depth, leakage, temporal decomposition, unknown unknowns, error design |
 | `context-document-optimizer` | `sonnet` | Compress large docs for token efficiency |
 
 **Delegation rule**: Use subagents for research, exploration, and parallel analysis. One focused task per subagent.
@@ -89,7 +90,7 @@ Use specialized agents to keep the main context window clean.
 When invoking the **Agent tool**, always pass the `model` parameter:
 
 - **Planning agents** (`planner`): `model: "opus"`
-- **Coding agents** (`backend-developer`, `frontend-developer`, `code-reviewer`, `code-debugger`, `frontend-design-validator`, `context-document-optimizer`, `security-reviewer`, `critic`): `model: "sonnet"`
+- **Coding agents** (`backend-developer`, `frontend-developer`, `code-reviewer`, `code-debugger`, `frontend-design-validator`, `context-document-optimizer`, `security-reviewer`, `critic`, `software-design-expert-review`): `model: "sonnet"`
 - **Explore agents** (codebase search, file discovery, grep): `model: "haiku"`
 
 ### Rules
@@ -126,7 +127,8 @@ Invoke with `/skill-name` in the chat. Each skill is a directory under `.claude/
 | `/wrap-up-session` | Sync learnings, update task/bug registers, run tests, verify, merge worktree, push, **then verify deployment build (Step 8)** |
 | `/writing-skills` | Author new skills with proper structure, iron laws, and reference docs |
 | `/sync` | Pull latest skills, hooks, agents from the template repo into the current project |
-| `/session-design-review` | End-of-session code review tutorial based on 'A Philosophy of Software Design' by John Ousterhout |
+| `/software-design-expert-learn` | End-of-session APOSD design **tutorial** for learning — based on 'A Philosophy of Software Design' by John Ousterhout |
+| `/software-design-expert-review` | APOSD structural design **gate** — runs the `software-design-expert-review` agent on changed files, maps findings to MUST-FIX/SHOULD-FIX/NITPICK, and issues a GO/HOLD/STOP verdict. Auto-invoked by `/build` Phase 3.5. |
 | `/verify-e2e` | Force end-to-end browser walkthrough of user-facing acceptance criteria; writes evidence to `tasks/e2e-log.md` |
 | `/folder-context-optimization` | Sweep a folder for legacy/unused files, propose archival |
 
@@ -145,6 +147,13 @@ Fetch live library docs before implementing with external packages. Use `resolve
 - Single abstraction level per function
 - Meaningful names (no abbreviations, no `data`, `info`, `manager`)
 - DRY: no duplicated logic; KISS: straightforward over clever
+
+**APOSD Design Principles**
+- Information hiding: interfaces simple, implementations hidden
+- Pull complexity downward: callers should not need to know internal state machines, lock types, or DB schemas
+- Prefer depth over shallowness: a module with a complex interface for simple functionality is a red flag
+- General-purpose over special-case: if a module can be made more general without adding complexity, do it
+- Define errors out of existence: design away exceptions rather than handling them
 
 **SOLID Principles**
 - Single Responsibility: one reason to change per class/function
