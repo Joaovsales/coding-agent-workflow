@@ -101,6 +101,7 @@ Choose the appropriate sub-agent based on the task:
 | `code-reviewer` | Feature spec + coding standards only — no project-context needed |
 | `code-debugger` | Failing test + relevant code only — no project-context needed |
 | `security-reviewer` | `[ARCHITECTURE]` + `[NON-FUNCTIONAL]` |
+| `aposd-design-reviewer` | Git diff only — read-only, no project-context needed |
 
 Do NOT pass the full project-context to every agent. Extract only the relevant sections to keep agent context focused.
 
@@ -187,6 +188,40 @@ Run `/simplify` then `/deslop` on all changed files:
    - Filler abstractions and verbose logging
 5. Re-run full test suite to confirm neither pass broke anything
 
+## Phase 3.5 — APOSD Design Quality Gate
+
+After the code is functionally correct and simplified, run a structural design review using the `/aposd-design-review` skill. This gate catches APOSD red flags (information leakage, shallow modules, temporal decomposition, unknown unknowns) that accrue technical debt even when tests pass.
+
+### Gate Invocation
+
+1. Collect changed files: `git diff --name-only <base>..HEAD` (against the build baseline)
+2. Dispatch the `aposd-design-reviewer` agent (`model: sonnet`) — one call if ≤5 files, chunked by subsystem if more
+3. Parse findings and reconcile severities (deduplicate, keep highest)
+
+### Severity Classification
+
+| Tag | Source APOSD Severity | Examples |
+|-----|----------------------|----------|
+| `MUST-FIX` | CRITICAL / HIGH | R8 Unknown Unknowns (hidden side effects), R10 Conjoined Methods (unsafe ordering), R5 Temporal Decomposition, R6 Change Amplification, R9 Shallow Module |
+| `SHOULD-FIX` | MEDIUM | R1 Repetition ≥3×, R7 High Cognitive Load (caller must know internals) |
+| `NITPICK` | LOW | R2 Pass-Through Methods, R4 Vague Names on local variables |
+
+### Gate Behavior
+
+| Condition | Action |
+|-----------|--------|
+| Zero MUST-FIX and zero SHOULD-FIX | 🟢 **PASS** — proceed to Phase 4 |
+| Zero MUST-FIX and ≤3 SHOULD-FIX | 🟡 **HOLD** — note findings as design debt in the Build Report and proceed |
+| Any MUST-FIX found, or >3 SHOULD-FIX found | 🔴 **STOP** — halt build. Present findings and ask user: _"Build halted: [N] MUST-FIX APOSD findings. Fix now and retry, or acknowledge and proceed? (fix/acknowledge)"_ |
+
+**On `fix`:** Convert findings into `[ ]` tasks appended to `tasks/todo.md`. Re-run **only this Phase 3.5** after fixes (not Phases 1–3). Full test suite must still pass after the fix.
+
+**On `acknowledge`:** Log all findings in `tasks/design-debt.md` (create if absent) with date + commit short-sha. Downgrade to HOLD and proceed.
+
+**Agent failure:** If the `aposd-design-reviewer` agent errors out, mark review status `degraded`, log the error, and proceed with a warning in the Build Report. Do not block the build on agent infrastructure failure.
+
+---
+
 ## Phase 4 — Spec Validation (Persistence Loop)
 
 Compare what was built against the original spec. This phase loops up to 3 rounds to catch and fix gaps.
@@ -272,6 +307,7 @@ Then output:
 📋 Tasks: [X] completed, [Y] added during build
 🧪 Tests: [N] total, [N] passing, [0] failing
 📐 Spec Validation: [all criteria met / N gaps remain]
+🏛️ Design Gate: [PASS / HOLD / STOP] — [N MUST-FIX, N SHOULD-FIX, N NITPICK]
 🧹 Simplify: [N improvements applied]
 
 Files on disk (persistence proof):
