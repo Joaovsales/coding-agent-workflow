@@ -17,12 +17,13 @@
 | `frontend-developer` | React/Vue/Angular components, responsive UI, accessibility |
 | `frontend-design-validator` | Validate UI against design reference documents |
 
-### Quality & Security
+### Quality & Security / Design
 | Agent | Purpose |
 |-------|---------|
 | `code-reviewer` | Post-implementation quality review — Clean Code, SOLID, bugs |
 | `code-debugger` | Root-cause analysis for errors, test failures, runtime bugs |
 | `security-reviewer` | OWASP checks, injection vectors, auth flows, data exposure |
+| `software-design-expert-review` | Read-only APOSD structural review — depth, leakage, coupling, unknown unknowns, error design |
 
 ### Utilities
 | Agent | Purpose |

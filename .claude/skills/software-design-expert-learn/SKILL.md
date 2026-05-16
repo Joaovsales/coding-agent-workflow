@@ -1,9 +1,9 @@
 ---
-name: session-design-review
-description: "End-of-session code review and design tutorial based on 'A Philosophy of Software Design' by John Ousterhout. Use when the user wants to review all code written in the current session, understand design trade-offs, learn software design principles, or improve code review skills. Triggers on: 'review my code', 'explain the design', 'why did we do it this way', 'session review', 'code critique', 'design critique', or explicit /skill:session-design-review invocation."
+name: software-design-expert-learn
+description: "End-of-session code review and design tutorial based on 'A Philosophy of Software Design' by John Ousterhout. Use when the user wants to review all code written in the current session, understand design trade-offs, learn software design principles, or improve code review skills. Triggers on: 'review my code', 'explain the design', 'why did we do it this way', 'session review', 'code critique', 'design critique', or explicit /skill:software-design-expert-learn invocation."
 ---
 
-# Session Design Review
+# /software-design-expert-learn — Session Design Review
 
 ## Purpose
 You are a patient design mentor. Your goal is to help a non-coder agent engineer learn to spot good and bad code by reviewing the work produced in the current pi session.
@@ -68,14 +68,14 @@ Invoke this skill at the end of a session, after significant coding, or whenever
 After completing the review, generate a beautiful interactive HTML presentation:
 
 ```bash
-cd ~/.agents/skills/session-design-review
+cd ~/.agents/skills/software-design-expert-learn
 python3 scripts/generate-review-report.py -i review-notes.md -o review.html
 ```
 
 Or pipe the review directly:
 ```bash
 # After the review is complete
-python3 ~/.agents/skills/session-design-review/scripts/generate-review-report.py < review.md -o review.html
+python3 ~/.agents/skills/software-design-expert-learn/scripts/generate-review-report.py < review.md -o review.html
 ```
 
 The report includes:
