@@ -2,7 +2,6 @@
 name: quality-gate
 description: 3-phase post-build quality review: structural quality (simplify), AI anti-patterns (deslop), APOSD design review. Run after all build tasks complete.
 argument-hint: "[--scope <path>]"
-harness: universal
 ---
 
 # /quality-gate — Post-Build Quality Review
@@ -105,13 +104,23 @@ try { doThing(); } catch (e) { throw e; }  // passthrough
 
 **Mandate**: "Are modules well-designed?" — deep/shallow, info leakage, complexity flow.
 
-Invoke `/aposd-guardrail` on the files in scope.
+### Inline checks (all harnesses):
 
-The guardrail runs its full review (P1–P7 principles + R1–R10 red flags) and returns a 🟢/🟡/🔴 verdict.
+Read all changed files together. For each module, check:
 
-- **🟢 GO**: proceed to output
-- **🟡 HOLD**: apply the required refactors listed by the guardrail, run tests, then proceed
-- **🔴 STOP**: halt quality-gate, escalate to user — do not mark the build complete until the design issue is resolved
+1. **Deep vs shallow**: Is the interface simpler than the implementation? Shallow = interface as complex as implementation → flag
+2. **Information leakage**: Does a design decision appear in >1 file? → flag
+3. **Pull complexity down**: Does the caller need internal knowledge to use this? → flag
+4. **Temporal decomposition**: Is the module split by execution order, not responsibility? → flag
+5. **Pass-through methods**: Any method that just forwards to another with same signature? → flag
+6. **Vague names**: Any public name that requires reading the body to understand? → flag
+7. **Conjoined methods**: Methods so coupled you can't use one without the other? → flag
+
+Report findings as `file:line [MUST-FIX/SHOULD-FIX/NITPICK] — description`. Apply MUST-FIX and SHOULD-FIX fixes inline. Run tests after fixes.
+
+## Claude Code Enhancements
+
+Dispatch the `software-design-expert-review` skill (invokes `software-design-expert-review` agent, model: sonnet) instead of running inline Phase 3. The agent is read-only — it reports findings only. Apply MUST-FIX and SHOULD-FIX findings in the main context after the agent returns. Run tests after applying fixes.
 
 ---
 
@@ -130,7 +139,7 @@ Phase 2 — AI Anti-Patterns
   Removed: [N lines — list with file:line and category]
   Tests: [PASS / FAIL — N reverted]
 
-Phase 3 — APOSD Design (/aposd-guardrail)
+Phase 3 — APOSD Design (/software-design-expert-review)
   Verdict: 🟢 GO / 🟡 HOLD (N refactors applied) / 🔴 STOP
   Tests: [PASS / FAIL]
 

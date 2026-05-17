@@ -244,4 +244,4 @@ For 2+ independent tasks: dispatch in parallel (multiple Agent tool calls in a s
 Phase 1 Step 2 remains inline (no agent). Spec compliance check is a read + compare, not a coding task.
 
 ### Quality Gate
-In Phase 3, invoke `/quality-gate` normally. The quality-gate skill invokes `/aposd-guardrail` for Phase 3 (harness-universal).
+In Phase 3, invoke `/quality-gate` normally. The quality-gate skill dispatches `software-design-expert-review` for Phase 3 on Claude Code.

@@ -23,6 +23,7 @@
 | `security-reviewer` | `sonnet` | OWASP checks, auth flows, injection vectors |
 | `critic` | `sonnet` | Adversarial quality gate for plans, code, specs |
 | `context-document-optimizer` | `sonnet` | Compress large docs for token efficiency |
+| `software-design-expert-review` | `sonnet` | Read-only APOSD design audit — depth, leakage, error design (dispatched by `/quality-gate`) |
 
 **Rule**: One focused task per subagent. Pass `model` explicitly on every Agent tool call.
 
@@ -51,8 +52,9 @@ Rules: never `opus` for code writing; never `haiku` for coding or planning; alwa
 | `/debug` | Root cause analysis, bug register, loop verification |
 | `/tdd` | Manual TDD loop with user checkpoints |
 | `/verify` | Evidence-based verification gate (`--scope deployment\|e2e`) |
-| `/quality-gate` | 3-phase post-build review: structural, AI anti-patterns, APOSD (invokes /aposd-guardrail) |
-| `/aposd-guardrail` | APOSD design review: deep/shallow, info leakage, red flags, Go/No-Go verdict |
+| `/quality-gate` | 3-phase post-build review: structural quality, AI anti-patterns, APOSD design |
+| `/software-design-expert-review` | APOSD structural design gate — depth, leakage, error design; GO/HOLD/STOP verdict |
+| `/software-design-expert-learn` | APOSD design tutorial — end-of-session learning review based on Ousterhout |
 | `/receive-review` | Process code review feedback with pushback protocol |
 | `/learn` | Extract session patterns → `memory.md` + `lessons.md` |
 | `/checkpoint` | Snapshot progress to `tasks/checkpoint.md` |
