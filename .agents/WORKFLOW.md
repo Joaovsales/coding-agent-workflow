@@ -69,6 +69,25 @@ Use Read tools before editing. Check file existence. Validate from actual conten
 - Meaningful names — no abbreviations, no `data`, `info`, `manager`
 - DRY and KISS
 
+**APOSD Design**
+- Information hiding: interfaces simple, implementations hidden
+- Pull complexity downward: callers should not need to know internal state machines, lock types, or DB schemas
+- Prefer depth over shallowness: a module with a complex interface for simple functionality is a red flag
+- General-purpose over special-case: if a module can be made more general without adding complexity, do it
+- Define errors out of existence: design away exceptions rather than handling them
+
+**SOLID**
+- Single Responsibility: one reason to change per class/function
+- Open/Closed: extend via strategy/registry, not conditionals
+- Liskov: subclasses must honor contracts
+- Interface Segregation: small, focused interfaces
+- Dependency Inversion: inject dependencies, depend on abstractions
+
+**Observability Discipline**
+Recurring jobs (cron, smoke tests, health checks) must follow failure-only reporting:
+- Success path: silent (exit 0, no log line)
+- Failure path: loud (structured error, actionable context, exit non-zero)
+
 **Minimal Impact**
 Only touch what is necessary. No unsolicited refactors. No proactive documentation.
 
@@ -77,6 +96,18 @@ Explicit errors only. No `except: pass`. No fallback values hiding broken assump
 
 **File & Git Hygiene**
 Prefer editing existing files. Never skip git hooks. Atomic, descriptive commits.
+
+---
+
+## Quality Gate
+
+Before marking any task complete, confirm:
+- [ ] All relevant tests pass
+- [ ] New code has ≥80% test coverage
+- [ ] Every user-facing AC has an e2e walkthrough recorded in `tasks/e2e-log.md` (see `/verify --scope e2e`)
+- [ ] No linting or type errors
+- [ ] Code passes Clean Code + SOLID review
+- [ ] No new security vulnerabilities
 
 ---
 
