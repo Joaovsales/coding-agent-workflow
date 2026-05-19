@@ -1,5 +1,11 @@
 #!/bin/bash
-# Pre-push guard — invoked as a PreToolUse hook on Bash calls.
+# DEPRECATED — no longer registered in settings.json.
+# Gate 1 (typecheck + lint before push) moved to .agents/git-hooks/pre-push
+#   — a standard git hook installed by install.sh, harness-agnostic.
+# Gate 2 (unpushed-commit warning at session end) is covered by session-stop.sh.
+# Kept as reference; safe to delete.
+#
+# Pre-push guard — formerly invoked as a PreToolUse hook on Bash calls.
 # Purpose:
 #   1. When the command is `git push`, run typecheck + lint before allowing the push.
 #   2. When the command is a "done"-signaling echo/reply (best-effort match), warn

@@ -128,6 +128,11 @@ fi
 step "Setting up git template dir → $GIT_TEMPLATE_DIR"
 mkdir -p "$GIT_TEMPLATE_DIR/hooks"
 
+# pre-push hook: typecheck + lint before every git push (harness-agnostic)
+cp "$REPO_DIR/.agents/git-hooks/pre-push" "$GIT_TEMPLATE_DIR/hooks/pre-push"
+chmod +x "$GIT_TEMPLATE_DIR/hooks/pre-push"
+ok "installed" "pre-push hook (typecheck + lint before every git push)"
+
 # post-init hook: copies Claude project scaffold into newly init'd repos
 cat > "$GIT_TEMPLATE_DIR/hooks/post-init" <<'HOOK'
 #!/usr/bin/env bash
