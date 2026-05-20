@@ -6,9 +6,10 @@ Applies to all sessions regardless of harness (Claude Code, Pi, or other).
 
 ## Session Start Checklist
 
-1. Read `.claude/memory.md` for persistent patterns and lessons
+1. Read `tasks/memory.md` for persistent patterns and lessons
 2. Check `tasks/todo.md` for in-progress work
 3. Check `tasks/lessons.md` for self-improvement notes
+4. Run `/memory-maintain` (self-gates — only does work every 5 sessions or when overdue)
 
 ---
 
@@ -122,7 +123,8 @@ specs/                     → Feature specifications
 tasks/todo.md              → Active task plan
 tasks/backlog.md           → Ordered work items (from /prd)
 tasks/project-context.md   → Compressed agent briefing (auto-generated)
+tasks/memory.md            → Project memory (architecture decisions, patterns, session history)
 tasks/bugs.md              → Bug register
-tasks/lessons.md           → Self-improvement patterns
+tasks/lessons.md           → Self-improvement patterns (tactical, per-session)
 tasks/checkpoint.md        → Session snapshots
 ```

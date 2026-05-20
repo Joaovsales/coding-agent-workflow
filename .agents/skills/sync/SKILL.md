@@ -69,7 +69,7 @@ CLAUDE.md             → Project rules & workflow instructions
 
 **Never sync** (project-specific state):
 - `.claude/project.md` — project-specific rules, Deployment Targets, team conventions
-- `.claude/memory.md` — project-specific learnings
+- `tasks/memory.md` — project-specific learnings
 - `CLAUDE.local.md` — personal per-project overrides (gitignored)
 - `tasks/` — project-specific task state
 - `specs/` — project-specific feature specs

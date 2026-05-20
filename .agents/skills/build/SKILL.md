@@ -15,7 +15,7 @@ Bridges the gap between `/plan` (design) and `/wrap-up-session` (close).
    - If empty or missing: **STOP** — run `/plan` first
 2. Read the spec from `specs/` that matches the current plan
    - If no spec found: **STOP** — run `/plan` first
-3. Load `tasks/lessons.md` and `.claude/memory.md` for context
+3. Load `tasks/lessons.md` and `tasks/memory.md` for context
 4. Load `tasks/project-context.md` if it exists (architecture, protection list, conventions)
 5. Identify the project's test runner (check `package.json`, `Makefile`, `pyproject.toml`, etc.)
 6. Run the full test suite once to establish a **green baseline**

@@ -48,7 +48,7 @@ Create or overwrite `tasks/checkpoint.md`:
 
 ## How to Resume
 1. Read this file and `tasks/todo.md`
-2. Read `.claude/memory.md` for project context
+2. Read `tasks/memory.md` for project context
 3. Continue from the first `[ ]` item in `tasks/todo.md`
 ```
 

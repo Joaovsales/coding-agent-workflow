@@ -23,10 +23,10 @@ echo "  SESSION START — Coding Agent Workflow"
 echo "$DIVIDER"
 
 # ── Memory ──────────────────────────────────────────────────────────────────
-MEMORY_FILE=".claude/memory.md"
+MEMORY_FILE="tasks/memory.md"
 if [ -f "$MEMORY_FILE" ]; then
   echo ""
-  echo "📚  MEMORY  (.claude/memory.md)"
+  echo "📚  MEMORY  (tasks/memory.md)"
   echo "────────────────────────────────"
   # Show just the Patterns & Lessons and Architecture Decisions sections
   awk '/^## Architecture Decisions/,/^## (Stack|Patterns|Session)/' "$MEMORY_FILE" | head -20 || true
@@ -34,7 +34,19 @@ if [ -f "$MEMORY_FILE" ]; then
   awk '/^## Patterns & Lessons/,/^## Session History/' "$MEMORY_FILE" | head -30 || true
 else
   echo ""
-  echo "📚  No .claude/memory.md found — consider running /learn to initialise it."
+  echo "📚  No tasks/memory.md found — consider running /learn to initialise it."
+fi
+
+# ── Memory Maintenance Check ─────────────────────────────────────────────────
+# Count session history entries. Nudge when maintenance is due (every 5 sessions).
+# The /memory-maintain skill is also called every session start via WORKFLOW.md
+# step 4 — the skill self-gates, so this nudge is a belt-and-suspenders signal.
+if [ -f "$MEMORY_FILE" ]; then
+  SESSION_COUNT=$(grep -c '^### [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}' "$MEMORY_FILE" 2>/dev/null || true)
+  if [ "${SESSION_COUNT:-0}" -gt 0 ] && [ $(( SESSION_COUNT % 5 )) -eq 0 ]; then
+    echo ""
+    echo "🔧  MEMORY MAINTENANCE DUE ($SESSION_COUNT sessions) — /memory-maintain will run at session start."
+  fi
 fi
 
 # ── Active Tasks ─────────────────────────────────────────────────────────────
@@ -188,6 +200,7 @@ echo "  /software-design-expert-learn  — APOSD design tutorial (end-of-session
 echo "  /receive-review  — Process code review feedback"
 echo "  /security-scan   — OWASP audit on changed files"
 echo "  /learn       — Extract patterns to memory.md"
+echo "  /memory-maintain — Consolidate, prune, and organize project memory"
 echo "  /checkpoint  — Snapshot progress for handoff"
 echo "  /wrap-up-session — Close session: review, test, push"
 echo "  /writing-skills  — Author new skills"

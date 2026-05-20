@@ -57,6 +57,7 @@ Rules: never `opus` for code writing; never `haiku` for coding or planning; alwa
 | `/software-design-expert-learn` | APOSD design tutorial — end-of-session learning review based on Ousterhout |
 | `/receive-review` | Process code review feedback with pushback protocol |
 | `/learn` | Extract session patterns → `memory.md` + `lessons.md` |
+| `/memory-maintain` | Consolidate, prune, and organize project memory every 5 sessions |
 | `/checkpoint` | Snapshot progress to `tasks/checkpoint.md` |
 | `/security-scan` | OWASP-focused audit on recently changed files |
 | `/start-qa` | Restart app + health check + browser with log monitoring |

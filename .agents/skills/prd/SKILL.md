@@ -37,7 +37,7 @@ and the backlog is generated.
 ### Step 1 — Explore Existing Context
 
 - Read codebase structure if anything exists (package.json, directory layout, key files)
-- Read `.claude/memory.md` for prior decisions
+- Read `tasks/memory.md` for prior decisions
 - Check if a PRD or backlog already exists:
   - If PRD exists: ask "Update the existing PRD or create a new one?"
   - If backlog exists with completed items: warn that regenerating will need to preserve `[x]` items

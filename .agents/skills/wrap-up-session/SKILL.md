@@ -51,10 +51,16 @@ If `tasks/project-context.md` exists:
 
 ## Step 1 — Capture Learnings
 
-Run `/learn` to extract patterns and append to `.claude/memory.md` and `tasks/lessons.md`.
+Run `/learn` to extract patterns and append to `tasks/memory.md` and `tasks/lessons.md`.
 
 If `/learn` produces no patterns: log "No patterns captured" and continue.
 If `/learn` errors: log the error, continue. Learnings are valuable but not blocking.
+
+---
+
+## Step 1.5 — Memory Maintenance
+
+Run `/memory-maintain` (it self-gates on the session count — runs every 5 sessions automatically).
 
 ---
 

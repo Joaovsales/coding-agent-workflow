@@ -7,7 +7,7 @@ harness: universal
 
 # /learn — Capture Session Learnings
 
-Extract durable patterns from this session and persist them into `.claude/memory.md` and `tasks/lessons.md`.
+Extract durable patterns from this session and persist them into `tasks/memory.md` and `tasks/lessons.md`.
 
 ## Steps
 
@@ -36,10 +36,10 @@ Skip trivial or one-off observations. Only persist patterns with reuse value.
 **Evidence**: What triggered this insight
 ```
 
-### 4. Append to `.claude/memory.md`
+### 4. Append to `tasks/memory.md`
 Under the "Patterns & Lessons" section, append each new learning.
 
-### 5. Append Session Summary to `.claude/memory.md`
+### 5. Append Session Summary to `tasks/memory.md`
 Under the "Session History" section:
 
 ```
@@ -52,7 +52,7 @@ Under the "Session History" section:
 Mirror the patterns into `tasks/lessons.md` if it exists (tactical, project-specific lessons).
 
 ### 7. Confirm
-Reply: "Learnings captured. `.claude/memory.md` and `tasks/lessons.md` updated."
+Reply: "Learnings captured. `tasks/memory.md` and `tasks/lessons.md` updated."
 
 ---
 

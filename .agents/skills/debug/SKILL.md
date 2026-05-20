@@ -21,7 +21,7 @@ You cannot propose fixes until:
 ## Pre-Flight — Load Context
 
 1. **Read memory and lessons**:
-   - Read `.claude/memory.md` for known patterns and architectural context
+   - Read `tasks/memory.md` for known patterns and architectural context
    - Read `tasks/lessons.md` for past debugging patterns and gotchas
    - Check if the current bug matches any known pattern — apply the known fix first
 
