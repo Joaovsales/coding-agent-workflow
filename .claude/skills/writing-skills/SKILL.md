@@ -2,7 +2,7 @@
 name: writing-skills
 description: Author new skills with proper structure, iron laws, and reference docs. Use when creating or improving skills for the workflow.
 argument-hint: "[skill name or purpose]"
-disable-model-invocation: false
+harness: universal
 ---
 
 # /writing-skills — Skill Authoring Guide
@@ -13,10 +13,10 @@ Skills are the building blocks of the workflow. A well-written skill makes the a
 
 ## Skill File Structure
 
-Every skill lives in `.claude/skills/<skill-name>/SKILL.md`:
+Every skill lives in `.agents/skills/<skill-name>/SKILL.md` (canonical, harness-neutral). Claude Code also keeps a backwards-compat copy in `.claude/skills/` — when writing a new skill, create it in `.agents/skills/` and copy to `.claude/skills/`:
 
 ```
-.claude/skills/
+.agents/skills/
   my-skill/
     SKILL.md              # Main skill file (required)
     reference-doc.md      # Supporting reference (optional)

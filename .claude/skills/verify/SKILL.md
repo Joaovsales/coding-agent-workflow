@@ -1,14 +1,15 @@
 ---
 name: verify
-description: Enforce evidence-based verification before any completion claims. Use before committing, creating PRs, marking tasks done, or claiming success.
-disable-model-invocation: false
+description: Enforce evidence-based verification before any completion claims. Supports --scope deployment and --scope e2e. Use before committing, creating PRs, marking tasks done, or claiming success.
+argument-hint: "[--scope deployment|e2e]"
+harness: universal
 ---
 
 # /verify — Verification Before Completion
 
 ## Overview
 
-Claiming work is complete without verification is dishonesty, not efficiency. Every claim of success — tests passing, bugs fixed, builds clean, requirements met — must be backed by fresh, direct evidence obtained in the same message as the claim. Memory of a previous run is not evidence. Confidence is not evidence. Only output from a command you just ran is evidence.
+Claiming work is complete without verification is dishonesty, not efficiency. Every claim of success must be backed by fresh, direct evidence obtained in the same message as the claim. Memory of a previous run is not evidence. Confidence is not evidence. Only output from a command you just ran is evidence.
 
 ## The Iron Law
 
@@ -16,9 +17,9 @@ Claiming work is complete without verification is dishonesty, not efficiency. Ev
 NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE
 ```
 
-If you have not run the verification command in this message, you cannot claim it passes. "It passed earlier" is not verification. "I'm confident it passes" is not verification. Running the command and reading the output is verification.
+---
 
-## The Gate Function
+## Default Mode (no flag)
 
 Before making any completion claim, execute every step in sequence:
 
@@ -26,151 +27,144 @@ Before making any completion claim, execute every step in sequence:
 2. **RUN**: Execute the FULL command — no truncation, no partial scope, no skipped phases.
 3. **READ**: Read the complete output. Check the exit code. Count failures. Do not skim.
 4. **VERIFY**: Does the output confirm the claim?
-   - If NO: State the actual status with the evidence. Do not claim completion.
-   - If YES: State the claim WITH the supporting evidence (exit code, test counts, output excerpt).
+   - If NO: State the actual status with evidence. Do not claim completion.
+   - If YES: State the claim WITH supporting evidence (exit code, test counts, output excerpt).
 5. **ONLY THEN**: Make the claim.
 
 Skip any step = lying, not verifying.
 
-## Common Failures
+### Common Failures
 
 | Claim | Requires | Not Sufficient |
 |-------|----------|----------------|
-| Tests pass | Full test suite run with 0 failures and exit code 0 | "Tests passed before my change", partial suite run, running only the new test |
-| Linter clean | Linter run on all changed files with 0 errors/warnings | Assuming no lint errors, running on a subset of files |
-| Build succeeds | Build command exits 0 with no errors in output | Previous build succeeded, type checker passed |
-| Bug fixed | Reproduction test now passes AND full suite still green | Reading the fix and concluding it is correct |
-| Regression test works | Red-Green cycle: test failed before fix, passes after | Writing a test that only runs green |
-| Agent completed | Reading agent output AND independently running verification commands | Trusting agent's self-reported "success" |
-| Requirements met | Each acceptance criterion mapped to a passing test or demonstrated behavior | Reviewing the spec and believing the implementation matches |
+| Tests pass | Full test suite with 0 failures and exit code 0 | Partial suite run, running only the new test |
+| Linter clean | Linter on all changed files with 0 errors | Assuming no lint errors |
+| Build succeeds | Build command exits 0 with no errors | Previous build succeeded |
+| Bug fixed | Reproduction test passes AND full suite green | Reading the fix and concluding it's correct |
+| Requirements met | Each AC mapped to passing test or demonstrated behavior | Reviewing the spec and believing it matches |
 
-## Red Flags — STOP
-
-If you notice any of the following, stop and run the verification gate before proceeding:
+### Red Flags — STOP
 
 - Using "should", "probably", "seems to", "likely", or "appears to" in a completion statement
-- Expressing satisfaction before verification ("Great!", "Perfect!", "Done!", "That fixed it!")
-- About to commit, push, or open a PR without a fresh test run in the same message
+- Expressing satisfaction before verification ("Great!", "Perfect!", "Done!")
+- About to commit or push without a fresh test run in the same message
 - Trusting an agent's success report without independently running verification commands
-- Relying on partial verification ("I ran the unit tests" when integration tests also exist)
-- Claiming a bug is fixed without running the reproduction test
-- Any wording that implies success without having run and read verification output
-
-These are not edge cases. They are common failure modes. Treat each one as a hard stop.
-
-## Rationalization Prevention
-
-The following rationalizations are not acceptable. Each has a correct response.
-
-| Excuse | Reality |
-|--------|---------|
-| "Should work now" | RUN the verification command |
-| "I'm confident" | Confidence is not evidence — run the command |
-| "Just this once" | There are no exceptions to this rule |
-| "Linter passed" | Linter is not compiler, compiler is not test suite — run all three |
-| "Agent said success" | Agents self-report; verify independently with your own command run |
-| "I'm tired" | Exhaustion does not change what counts as evidence |
-| "Partial check is enough" | Partial verification proves partial things — run the full scope |
-| "Different words so the rule doesn't apply" | The spirit of this rule governs, not the letter — if it is a completion claim, verify it |
-| "The test I wrote proves it" | Only if the test ran red before the fix and green after — confirm both |
-| "I reviewed the diff and it looks correct" | Code review is useful; it does not replace test execution |
-
-## Verification Patterns
-
-### Tests
-
-**Correct:**
-```
-Run: pytest tests/ -v
-Output: 47 passed, 0 failed (exit 0)
-Claim: All tests pass.
-```
-
-**Incorrect:**
-```
-I made the fix. The tests should be passing now.
-```
+- Relying on partial verification
 
 ---
 
-### Regression Tests (TDD Red-Green)
+## `--scope deployment`
 
-**Correct:**
-```
-Before fix — Run: pytest tests/test_auth.py::test_token_expiry -v
-Output: FAILED (exit 1) — confirms reproduction
+Wait for post-push deployment builds to resolve. On failure, fetch logs, fix, push, and loop. Maximum 3 fix iterations per service before escalation.
 
-After fix — Run: pytest tests/test_auth.py::test_token_expiry -v && pytest tests/ -v
-Output: PASSED, 47 passed, 0 failed (exit 0)
-Claim: Bug is fixed. Regression test passes. No regressions introduced.
-```
+This scope is **service-agnostic** — all service-specific behavior comes from runbook files in `tasks/deployments/<service>.md`.
 
-**Incorrect:**
-```
-I wrote a test for this case and the fix looks correct.
-```
+### Pre-Flight
 
----
+1. Run `git status --porcelain`. If any output: STOP — uncommitted changes must be resolved first.
+2. Locate the routing table: look for `^## Deployment Targets[[:space:]]*$` in `.claude/project.md` (primary, Claude Code only), then `CLAUDE.md` (legacy fallback with deprecation warning).
+3. Resolve: `git rev-parse HEAD` (current SHA), `git rev-parse --abbrev-ref HEAD` (branch), confirm remote exists.
+4. Filter: keep only target rows whose `Triggers on branch` matches the current branch. If empty: skip silently.
 
-### Build
+### Per-Target Verification
 
-**Correct:**
-```
-Run: npm run build
-Output: Build complete. 0 errors. (exit 0)
-Claim: Build succeeds.
-```
+For each applicable target:
 
-**Incorrect:**
-```
-The TypeScript errors are resolved so the build should pass.
-```
+**A. Load and validate the runbook** from `tasks/deployments/<service>.md`. Required fields: `name`, `display_name`, `detect_files`, `status_source`, `auth_check_command`, `dashboard_url_template`, `default_timeout_minutes`.
 
----
+**B. Auth check**: run `auth_check_command`. If non-zero: mark `AUTH_FAILED`, move to next target.
 
-### Requirements Checklist
+**C. Poll for build status**:
+- `github-checks` path: poll `mcp__github__get_commit`, filter by `check_contexts`, wait for all to succeed
+- `cli` path: run `cli_status_command`, parse `state` or `status` field
+- Poll intervals: 15s for first 2min, then 30s. Timeout per runbook config.
+- Transient errors retry at polling layer (5s → 10s → 20s backoff). Don't consume a fix iteration.
 
-**Correct:**
-```
-Acceptance criteria from specs/auth.md:
-[AC-1] Token expires after 1 hour — test_token_expiry: PASS
-[AC-2] Refresh token rotates on use — test_refresh_rotation: PASS
-[AC-3] Revoked tokens rejected — test_revoked_token: PASS
-Full suite: 47 passed, 0 failed.
-Claim: All acceptance criteria met.
-```
+**D. Fix loop** (max 3 iterations on failure):
+1. Fetch logs (via `log_fetch_command` or `details_url`)
+2. Match `common_failure_patterns` hints
+3. Diagnose and apply fix in main context
+4. Commit fix as NEW commit: `fix(deploy): <summary> [deploy-retry N/3]`
+5. Push and restart poll
 
-**Incorrect:**
-```
-The implementation covers all the acceptance criteria described in the spec.
-```
+**E. Escalation**: after 3 failed iterations, write `tasks/deploy-report.md` and mark `FAILED_MAX_ITERATIONS`.
+
+### Outcomes
+
+| State | Action |
+|-------|--------|
+| `ALL_GREEN` | Proceed, record attempt counts |
+| `AUTH_FAILED` | STOP — report which auth check failed |
+| `TIMEOUT` | STOP — report dashboard URL, ask user |
+| `CANCELLED` | STOP — ask user whether to proceed |
+| `FAILED_MAX_ITERATIONS` | STOP — point to `tasks/deploy-report.md` |
+| `SKIPPED` | Proceed |
 
 ---
 
-### Agent Delegation Results
+## `--scope e2e`
 
-**Correct:**
-```
-Agent returned. Running independent verification:
-Run: pytest tests/ -v
-Output: 52 passed, 0 failed (exit 0)
-Run: npm run lint
-Output: 0 errors, 0 warnings (exit 0)
-Claim: Agent implementation is verified. Tests and linter are clean.
+Force end-to-end browser validation of user-facing acceptance criteria.
+
+Unit tests prove functions work. E2E walkthroughs prove features work.
+
+### Pre-Flight
+
+1. Read the active spec from `specs/` and extract **user-facing ACs**
+2. Verify the app is running locally (check dev server, start via `/start-qa` if not)
+3. Verify the browser MCP is available (Playwright or Chrome)
+4. Load authentication state as a real user would — cookie-based session, not injected tokens
+
+### Walkthrough Protocol
+
+For each user-facing AC:
+
+1. **Describe the user journey** in plain language
+2. **Execute each step in the real browser** via MCP tool calls: navigate, click, type, submit, wait
+3. **Assert observable state**: URL, required text/elements, network status, no console errors
+4. **Negative path check**: at least one failure variant per AC
+
+### Evidence Format
+
+Append to `tasks/e2e-log.md`:
+
+```markdown
+## E2E Walkthrough — <Feature Name> — <YYYY-MM-DD> <short-sha>
+
+Spec: specs/<feature>.md
+Commit: <full-sha>
+
+### AC-1: <criterion text>
+Journey: <plain-language steps>
+Steps executed:
+  ✓ Navigate /path → 200, element visible
+  ✓ Fill form, submit → 302 redirect
+  ✓ Assert session state
+Negative: invalid input rejected with inline error ✓
+Result: PASS
 ```
 
-**Incorrect:**
-```
-The backend-developer agent completed the task successfully.
-```
+The log is **append-only**. Never overwrite prior walkthroughs — they form the audit trail.
+
+### Failure Handling
+
+- **Step fails**: STOP, report exact step + evidence, hand back to `/build` or `/debug`
+- **MCP browser unavailable**: STOP. Do not fall back to curl or unit tests.
+- **Auth fails twice**: STOP, report to user — this is usually a session misconfiguration
+- **Dev server unreachable**: STOP, invoke `/start-qa`, then resume
+
+### Iron Laws
+
+1. A real browser must load the real app — no jsdom, no headless emulation bypassing the network
+2. Authentication must go through the real login flow — no token injection
+3. Every user-facing AC gets its own walkthrough entry — no batching
+4. A failed step halts the walkthrough — do not cascade to the next AC
+5. Evidence is the `tasks/e2e-log.md` entry — if the entry doesn't exist, the walkthrough didn't happen
+
+---
 
 ## Integration
 
-- **Required by**: `/build` (Phase 2 after each task, Phase 4 spec validation), `/debug` (Phase 3 loop verification), `/wrap-up-session` (Step 6 before commit)
-- **Invoke before**: committing, PR creation, marking any task `[x]`, moving to the next task, reporting completion to the user
-
-When any of the above trigger points is reached, run through the Gate Function for every claim that will appear in the completion report. Do not batch-assert without batch-verifying.
-
-## The Bottom Line
-
-No shortcuts for verification. Run the command. Read the output. THEN claim the result. This is non-negotiable.
+- **Default mode required by**: `/build` (after each task and in Phase 4), `/debug` (Phase 3), `/wrap-up-session` (Step 6)
+- **`--scope e2e` invoked by**: `/build` Phase 4 (user-facing ACs), `/wrap-up-session` Step 6.3
+- **`--scope deployment` invoked by**: `/wrap-up-session` Step 8

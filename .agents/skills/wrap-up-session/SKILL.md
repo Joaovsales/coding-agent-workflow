@@ -249,13 +249,13 @@ If NOT in a worktree: skip.
 
 ## Step 8 — Deployment Verification
 
-After push, verify deployment services if `## Deployment Targets` section exists in `.claude/project.md`.
+After push, verify deployment services if `## Deployment Targets` section exists in `.claude/project.md` (Claude Code only).
 
 Use `/verify --scope deployment` to poll, fetch logs on failure, and loop a `code-debugger` fix cycle up to 3 iterations.
 
 If `--skip-deploy` flag was passed: skip this step entirely.
 
-If no `## Deployment Targets` section: scan `.claude/deployments/*.md` for signal files. If found, nudge user to run `/setup-deployment`. If not found: skip silently.
+If no `## Deployment Targets` section: scan `tasks/deployments/*.md` for signal files. If found, nudge user to run `/setup-deployment`. If not found: skip silently.
 
 ---
 

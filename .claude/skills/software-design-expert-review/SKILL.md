@@ -121,7 +121,7 @@ Findings: [N MUST-FIX, N SHOULD-FIX, N NITPICK]
 
 ## References
 
-- `.claude/skills/software-design-expert-learn/references/principles.md` — Full APOSD principles catalog
+- `.agents/skills/software-design-expert-learn/references/principles.md` — Full APOSD principles catalog
 - `.claude/agents/software-design-expert-review.md` — The agent prompt and red flag definitions
 
 ## Confidence Note for Builders

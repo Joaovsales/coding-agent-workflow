@@ -57,12 +57,12 @@ Skip any step = lying, not verifying.
 
 Wait for post-push deployment builds to resolve. On failure, fetch logs, fix, push, and loop. Maximum 3 fix iterations per service before escalation.
 
-This scope is **service-agnostic** — all service-specific behavior comes from runbook files in `.claude/deployments/<service>.md`.
+This scope is **service-agnostic** — all service-specific behavior comes from runbook files in `tasks/deployments/<service>.md`.
 
 ### Pre-Flight
 
 1. Run `git status --porcelain`. If any output: STOP — uncommitted changes must be resolved first.
-2. Locate the routing table: look for `^## Deployment Targets[[:space:]]*$` in `.claude/project.md` (primary), then `CLAUDE.md` (legacy fallback with deprecation warning).
+2. Locate the routing table: look for `^## Deployment Targets[[:space:]]*$` in `.claude/project.md` (primary, Claude Code only), then `CLAUDE.md` (legacy fallback with deprecation warning).
 3. Resolve: `git rev-parse HEAD` (current SHA), `git rev-parse --abbrev-ref HEAD` (branch), confirm remote exists.
 4. Filter: keep only target rows whose `Triggers on branch` matches the current branch. If empty: skip silently.
 
@@ -70,7 +70,7 @@ This scope is **service-agnostic** — all service-specific behavior comes from 
 
 For each applicable target:
 
-**A. Load and validate the runbook** from `.claude/deployments/<service>.md`. Required fields: `name`, `display_name`, `detect_files`, `status_source`, `auth_check_command`, `dashboard_url_template`, `default_timeout_minutes`.
+**A. Load and validate the runbook** from `tasks/deployments/<service>.md`. Required fields: `name`, `display_name`, `detect_files`, `status_source`, `auth_check_command`, `dashboard_url_template`, `default_timeout_minutes`.
 
 **B. Auth check**: run `auth_check_command`. If non-zero: mark `AUTH_FAILED`, move to next target.
 
