@@ -1,7 +1,7 @@
 ---
 name: sync
 description: Pull latest skills, hooks, agents, and config from the coding-agent-workflow template repo.
-disable-model-invocation: false
+harness: universal
 ---
 
 # /sync — Sync Workflow Updates from Template Repo
@@ -10,16 +10,29 @@ Pull the latest skills, hooks, agents, and config from the `coding-agent-workflo
 
 ## Layered Configuration Model
 
-Claude Code config is split across layers so `/sync` can overwrite the template-managed layer safely without touching project-specific content:
+Config is split across layers so `/sync` can overwrite template-managed files safely without touching project-specific content.
+
+### Harness-neutral layer (both Claude Code and Pi)
+
+| Path | Scope | Committed? | Touched by /sync? |
+|---|---|---|---|
+| `.agents/skills/` | Canonical skills — readable by any harness | Yes | **Yes** |
+| `.agents/WORKFLOW.md` | Shared workflow rules | Yes | **Yes** |
+
+### Claude Code layer
 
 | File | Scope | Committed? | Touched by /sync? |
 |---|---|---|---|
-| `CLAUDE.md` | Template rules only (imports the layers below) | Yes | **Yes — overwritten wholesale** |
+| `CLAUDE.md` | Template entry point (imports the layers below) | Yes | **Yes — overwritten wholesale** |
 | `.claude/project.md` | Team-shared, project-specific rules + Deployment Targets | Yes | **Never** |
 | `CLAUDE.local.md` | Personal per-project overrides | No (gitignored) | **Never** |
 | `~/.claude/CLAUDE.md` | Cross-project personal | N/A (global) | **Never** |
 
-`CLAUDE.md` uses Claude Code's native `@.claude/project.md` and `@CLAUDE.local.md` import syntax to inline the lower layers into the session's system prompt, so rules added to any layer still take effect. The split exists purely to make `/sync` safe — nothing about how Claude reads rules changes.
+`CLAUDE.md` uses Claude Code's native `@` import syntax to inline `.claude/project.md` and `CLAUDE.local.md` into the session prompt. The split exists purely to make `/sync` safe — nothing about how Claude reads rules changes.
+
+### Pi layer
+
+Pi has no native config layering. Its single entry point is `.agents/WORKFLOW.md` (the harness-neutral layer above). Pi-specific settings live in `pi-settings.json` at the project root if the Pi harness is configured.
 
 ## Source Repo
 
@@ -60,16 +73,18 @@ rm .claude/.sync-check-cache
 These are the files/directories managed by the workflow template:
 
 ```
-.claude/skills/       → Skills (slash commands)
-.claude/agents/       → Subagent definitions
-.claude/hooks/        → Lifecycle hooks
-.claude/settings.json → Hook configuration
-CLAUDE.md             → Project rules & workflow instructions
+.agents/skills/       → Canonical skills (harness-neutral)
+.agents/WORKFLOW.md   → Shared workflow rules (harness-neutral)
+.claude/skills/       → Claude Code backwards-compat copy of .agents/skills/
+.claude/agents/       → Subagent definitions (Claude Code only)
+.claude/hooks/        → Lifecycle hooks (Claude Code only)
+.claude/settings.json → Hook configuration (Claude Code only)
+CLAUDE.md             → Claude Code entry point (imports .agents/ + .claude/project.md)
 ```
 
 **Never sync** (project-specific state):
 - `.claude/project.md` — project-specific rules, Deployment Targets, team conventions
-- `.claude/memory.md` — project-specific learnings
+- `tasks/memory.md` — project-specific learnings
 - `CLAUDE.local.md` — personal per-project overrides (gitignored)
 - `tasks/` — project-specific task state
 - `specs/` — project-specific feature specs
@@ -214,12 +229,12 @@ Compare the syncable paths between the current project and the template source.
 # Show changed files in syncable paths only
 # Note: use two-dot diff (not three-dot) — template and project have unrelated histories,
 # so HEAD...workflow/$WORKFLOW_BRANCH fails with "no merge base"
-git diff workflow/$WORKFLOW_BRANCH --stat -- .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json CLAUDE.md
+git diff workflow/$WORKFLOW_BRANCH --stat -- .agents/skills/ .agents/WORKFLOW.md .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json CLAUDE.md
 ```
 
 Then show the full diff:
 ```bash
-git diff workflow/$WORKFLOW_BRANCH -- .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json CLAUDE.md
+git diff workflow/$WORKFLOW_BRANCH -- .agents/skills/ .agents/WORKFLOW.md .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json CLAUDE.md
 ```
 
 **If manual diff mode:**

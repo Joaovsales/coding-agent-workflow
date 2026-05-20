@@ -166,7 +166,7 @@ if [ ! -f ".claude/sync-check-dismissed" ] \
 
     if timeout 5 git fetch workflow "$WORKFLOW_BRANCH" &>/dev/null; then
       DRIFT_COUNT=$(git diff --name-only "workflow/$WORKFLOW_BRANCH" -- \
-        .claude/skills .claude/agents .claude/hooks .claude/settings.json 2>/dev/null \
+        .agents/skills .agents/WORKFLOW.md .claude/skills .claude/agents .claude/hooks .claude/settings.json 2>/dev/null \
         | wc -l | tr -d ' ')
       printf '%s\n%s\n' "$DRIFT_COUNT" "$WORKFLOW_BRANCH" > "$WORKFLOW_CHECK_CACHE"
     fi
