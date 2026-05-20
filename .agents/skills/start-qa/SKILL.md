@@ -12,11 +12,11 @@ Restart the application, launch a browser for manual QA as fast as possible, and
 
 ## Step 1 — Load or Build Project Config
 
-Check if `.claude/qa-config.md` exists in the project root.
+Check if `tasks/qa-config.md` exists in the project root.
 
 ### If the file EXISTS — load it and skip to Step 2
 
-Read `.claude/qa-config.md` and use its values for all subsequent steps. Do not re-scan the project.
+Read `tasks/qa-config.md` and use its values for all subsequent steps. Do not re-scan the project.
 
 ### If the file DOES NOT EXIST — run one-time discovery
 
@@ -48,7 +48,7 @@ Scan the project's configuration files to determine:
 
 7. **How to access runtime logs** — e.g., `docker compose logs -f`, log file path, or terminal process
 
-Once discovered, **write `.claude/qa-config.md`** with this exact structure:
+Once discovered, **write `tasks/qa-config.md`** with this exact structure:
 
 ```markdown
 # QA Config — [Project Name]
@@ -71,7 +71,7 @@ Once discovered, **write `.claude/qa-config.md`** with this exact structure:
 <Any project-specific quirks discovered during setup, e.g. "requires .env to exist", "run migrations before starting", etc.>
 ```
 
-Confirm to the user: "First run — project config saved to `.claude/qa-config.md`. Edit that file any time to update startup behavior."
+Confirm to the user: "First run — project config saved to `tasks/qa-config.md`. Edit that file any time to update startup behavior."
 
 ---
 
@@ -122,7 +122,7 @@ You can start manual QA now.
 Immediately after launching the browser, start a background loop using the pre-QA test command from config:
 
 ```
-/loop 2m Read .claude/qa-config.md to get the pre-QA test command and log command. Run the pre-QA test command. If it fails or any infrastructure issue is detected: read logs using the log command, diagnose the root cause, fix it, and re-run. Report to the user only when something fails or when all checks pass clean. Do not interrupt QA for passing tests.
+/loop 2m Read tasks/qa-config.md to get the pre-QA test command and log command. Run the pre-QA test command. If it fails or any infrastructure issue is detected: read logs using the log command, diagnose the root cause, fix it, and re-run. Report to the user only when something fails or when all checks pass clean. Do not interrupt QA for passing tests.
 ```
 
 ---
