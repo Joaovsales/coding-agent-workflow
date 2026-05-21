@@ -1,6 +1,7 @@
 # Project-Specific Configuration
 
-> Imported by `CLAUDE.md`. Safe to edit — `/sync` never touches this file.
+> **Claude Code only.** Imported by `CLAUDE.md` via `@` syntax. Safe to edit — `/sync` never touches this file.
+> Pi equivalent: `AGENTS.md` at the project root.
 >
 > This is where team-shared, project-specific rules, deployment targets, and
 > conventions live. `CLAUDE.md` is template-managed and overwritten by `/sync`,

@@ -1,4 +1,8 @@
-# Shared Workflow — Harness-Neutral
+# Shared Workflow — Human-Readable Reference
+
+> **This file is not loaded into agent context automatically.**
+> Rules are inlined directly in `CLAUDE.md`, which both Claude Code and Pi read natively at session start.
+> Edit this file to keep it in sync with `CLAUDE.md` — but `CLAUDE.md` is the authoritative source.
 
 Applies to all sessions regardless of harness (Claude Code, Pi, or other).
 

@@ -12,27 +12,34 @@ Pull the latest skills, hooks, agents, and config from the `coding-agent-workflo
 
 Config is split across layers so `/sync` can overwrite template-managed files safely without touching project-specific content.
 
-### Harness-neutral layer (both Claude Code and Pi)
+### Shared layer (both Claude Code and Pi read this natively)
 
 | Path | Scope | Committed? | Touched by /sync? |
 |---|---|---|---|
+| `CLAUDE.md` | All shared rules inline: workflow, principles, skills index | Yes | **Yes — overwritten wholesale** |
 | `.agents/skills/` | Canonical skills — readable by any harness | Yes | **Yes** |
-| `.agents/WORKFLOW.md` | Shared workflow rules | Yes | **Yes** |
+| `.agents/WORKFLOW.md` | Human-readable mirror of CLAUDE.md rules (reference only) | Yes | **Yes** |
 
-### Claude Code layer
+Both Claude Code and Pi read `CLAUDE.md` natively at session start. All shared workflow rules and coding principles live there inline — no `@` import required for shared content.
+
+### Claude Code additional layer
 
 | File | Scope | Committed? | Touched by /sync? |
 |---|---|---|---|
-| `CLAUDE.md` | Template entry point (imports the layers below) | Yes | **Yes — overwritten wholesale** |
 | `.claude/project.md` | Team-shared, project-specific rules + Deployment Targets | Yes | **Never** |
 | `CLAUDE.local.md` | Personal per-project overrides | No (gitignored) | **Never** |
 | `~/.claude/CLAUDE.md` | Cross-project personal | N/A (global) | **Never** |
 
-`CLAUDE.md` uses Claude Code's native `@` import syntax to inline `.claude/project.md` and `CLAUDE.local.md` into the session prompt. The split exists purely to make `/sync` safe — nothing about how Claude reads rules changes.
+`CLAUDE.md` uses Claude Code's native `@` import syntax to pull in `.claude/project.md` and `CLAUDE.local.md`. This layering exists so `/sync` can overwrite `CLAUDE.md` without touching project-specific content.
 
-### Pi layer
+### Pi additional layer
 
-Pi has no native config layering. Its single entry point is `.agents/WORKFLOW.md` (the harness-neutral layer above). Pi-specific settings live in `pi-settings.json` at the project root if the Pi harness is configured.
+| File | Scope | Committed? | Touched by /sync? |
+|---|---|---|---|
+| `AGENTS.md` | Team-shared, project-specific rules for Pi | Yes | **Never** |
+| `~/.pi/agent/AGENTS.md` | Cross-project personal | N/A (global) | **Never** |
+
+Pi reads `CLAUDE.md` (shared rules) + `AGENTS.md` (project-specific additions). `AGENTS.md` is Pi's equivalent of `.claude/project.md`.
 
 ## Source Repo
 
@@ -73,17 +80,18 @@ rm .claude/.sync-check-cache
 These are the files/directories managed by the workflow template:
 
 ```
+CLAUDE.md             → Shared rules: workflow, principles, skills index (both harnesses)
 .agents/skills/       → Canonical skills (harness-neutral)
-.agents/WORKFLOW.md   → Shared workflow rules (harness-neutral)
+.agents/WORKFLOW.md   → Human-readable mirror of CLAUDE.md rules (reference only)
 .claude/skills/       → Claude Code backwards-compat copy of .agents/skills/
 .claude/agents/       → Subagent definitions (Claude Code only)
 .claude/hooks/        → Lifecycle hooks (Claude Code only)
 .claude/settings.json → Hook configuration (Claude Code only)
-CLAUDE.md             → Claude Code entry point (imports .agents/ + .claude/project.md)
 ```
 
 **Never sync** (project-specific state):
-- `.claude/project.md` — project-specific rules, Deployment Targets, team conventions
+- `AGENTS.md` — Pi project-specific rules (Pi's equivalent of .claude/project.md)
+- `.claude/project.md` — Claude Code project-specific rules, Deployment Targets, team conventions
 - `tasks/memory.md` — project-specific learnings
 - `CLAUDE.local.md` — personal per-project overrides (gitignored)
 - `tasks/` — project-specific task state
@@ -281,7 +289,7 @@ For each applied file, briefly note what changed.
 
 ## Edge Cases
 
-- **CLAUDE.md is safe to overwrite**: thanks to the layered config model, `CLAUDE.md` contains only template rules + imports of `.claude/project.md` and `CLAUDE.local.md`. Project-specific content lives in those imported files, which `/sync` never touches. Legacy projects with content inlined into `CLAUDE.md` are handled by the Step 2.6 migration step above.
+- **CLAUDE.md is safe to overwrite**: `CLAUDE.md` contains only shared template rules (workflow, principles, skills index). Project-specific content lives in `.claude/project.md` (Claude Code) or `AGENTS.md` (Pi), which `/sync` never touches. The `@.claude/project.md` and `@CLAUDE.local.md` imports at the top of `CLAUDE.md` are Claude Code layering — they survive the overwrite unchanged since `/sync` replaces the whole file with the same imports.
 - **settings.json merge**: If the project has custom hooks in `.claude/settings.json`, show both versions and help the user merge rather than overwrite.
 - **New files**: Files that exist in the template but not the project are shown as NEW and can be added.
 - **Deleted files**: Files that exist in the project's `.claude/` but NOT in the template are flagged — they may be project-specific additions (don't remove them).
