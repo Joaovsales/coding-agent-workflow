@@ -1,4 +1,8 @@
 #!/bin/bash
+# DEPRECATED — no longer registered in settings.json.
+# Test discipline is enforced by /build (full suite after every task).
+# Kept as reference; safe to delete.
+#
 # Claude Code Auto-Test Runner Hook
 # Runs tests and creates task files for failures
 
