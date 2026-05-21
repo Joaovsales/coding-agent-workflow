@@ -39,7 +39,7 @@ fi
 
 # ── Memory Maintenance Check ─────────────────────────────────────────────────
 # Count session history entries. Nudge when maintenance is due (every 5 sessions).
-# The /memory-maintain skill is also called every session start via WORKFLOW.md
+# The /memory-maintain skill is also called every session start via CLAUDE.md
 # step 4 — the skill self-gates, so this nudge is a belt-and-suspenders signal.
 if [ -f "$MEMORY_FILE" ]; then
   SESSION_COUNT=$(grep -c '^### [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}' "$MEMORY_FILE" 2>/dev/null || true)
@@ -166,7 +166,7 @@ if [ ! -f ".claude/sync-check-dismissed" ] \
 
     if timeout 5 git fetch workflow "$WORKFLOW_BRANCH" &>/dev/null; then
       DRIFT_COUNT=$(git diff --name-only "workflow/$WORKFLOW_BRANCH" -- \
-        .agents/skills .agents/WORKFLOW.md .claude/skills .claude/agents .claude/hooks .claude/settings.json 2>/dev/null \
+        .agents/skills .claude/skills .claude/agents .claude/hooks .claude/settings.json CLAUDE.md 2>/dev/null \
         | wc -l | tr -d ' ')
       printf '%s\n%s\n' "$DRIFT_COUNT" "$WORKFLOW_BRANCH" > "$WORKFLOW_CHECK_CACHE"
     fi

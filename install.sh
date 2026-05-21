@@ -3,7 +3,7 @@
 #
 # What this does:
 #   1. Copies skills and agents into ~/.claude/ (global Claude Code config)
-#   2. Copies .agents/ into ~/.agents/ (harness-neutral skills + WORKFLOW.md)
+#   2. Copies .agents/ into ~/.agents/ (harness-neutral skills)
 #   3. Installs a global SessionStart hook that orients Claude in any project
 #   4. Sets up a git template dir so `git init` auto-installs a post-init hook
 #   5. Configures ~/.claude/settings.json with skills path
@@ -43,7 +43,7 @@ ok "copied" "$(find "$CLAUDE_HOME/skills" -name 'SKILL.md' | wc -l | tr -d ' ') 
 step "Installing shared workflow → ~/.agents/"
 mkdir -p "$HOME/.agents"
 cp -r "$REPO_DIR/.agents/"* "$HOME/.agents/"
-ok "copied" "~/.agents/ ($(find "$HOME/.agents/skills" -name 'SKILL.md' | wc -l | tr -d ' ') skills, WORKFLOW.md)"
+ok "copied" "~/.agents/ ($(find "$HOME/.agents/skills" -name 'SKILL.md' | wc -l | tr -d ' ') skills)"
 
 # ── 4. Global agents ─────────────────────────────────────────────────────────
 step "Installing global agents → ~/.claude/agents/"

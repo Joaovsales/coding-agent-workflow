@@ -18,7 +18,6 @@ Config is split across layers so `/sync` can overwrite template-managed files sa
 |---|---|---|---|
 | `CLAUDE.md` | All shared rules inline: workflow, principles, skills index | Yes | **Yes — overwritten wholesale** |
 | `.agents/skills/` | Canonical skills — readable by any harness | Yes | **Yes** |
-| `.agents/WORKFLOW.md` | Human-readable mirror of CLAUDE.md rules (reference only) | Yes | **Yes** |
 
 Both Claude Code and Pi read `CLAUDE.md` natively at session start. All shared workflow rules and coding principles live there inline — no `@` import required for shared content.
 
@@ -82,7 +81,6 @@ These are the files/directories managed by the workflow template:
 ```
 CLAUDE.md             → Shared rules: workflow, principles, skills index (both harnesses)
 .agents/skills/       → Canonical skills (harness-neutral)
-.agents/WORKFLOW.md   → Human-readable mirror of CLAUDE.md rules (reference only)
 .claude/skills/       → Claude Code backwards-compat copy of .agents/skills/
 .claude/agents/       → Subagent definitions (Claude Code only)
 .claude/hooks/        → Lifecycle hooks (Claude Code only)
@@ -237,12 +235,12 @@ Compare the syncable paths between the current project and the template source.
 # Show changed files in syncable paths only
 # Note: use two-dot diff (not three-dot) — template and project have unrelated histories,
 # so HEAD...workflow/$WORKFLOW_BRANCH fails with "no merge base"
-git diff workflow/$WORKFLOW_BRANCH --stat -- .agents/skills/ .agents/WORKFLOW.md .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json CLAUDE.md
+git diff workflow/$WORKFLOW_BRANCH --stat -- .agents/skills/ .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json CLAUDE.md
 ```
 
 Then show the full diff:
 ```bash
-git diff workflow/$WORKFLOW_BRANCH -- .agents/skills/ .agents/WORKFLOW.md .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json CLAUDE.md
+git diff workflow/$WORKFLOW_BRANCH -- .agents/skills/ .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json CLAUDE.md
 ```
 
 **If manual diff mode:**
