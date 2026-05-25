@@ -65,30 +65,67 @@ Invoke this skill at the end of a session, after significant coding, or whenever
 - When showing code, use small diffs, not walls of text.
 
 ## Generate Interactive HTML Report
-After completing the review, generate a beautiful interactive HTML presentation:
 
-```bash
-cd ~/.agents/skills/software-design-expert-learn
-python3 scripts/generate-review-report.py -i review-notes.md -o review.html
+After completing the review, hand off rendering to the `/html-presentation` skill. This skill owns the visual and information-design quality of HTML deliverables — do not roll your own template.
+
+### Step 1 — Assemble structured input
+
+Build a JSON payload that captures the review. Save it to `tasks/design-review.json`:
+
+```json
+{
+  "title": "Session Design Review",
+  "subtitle": "<project> · <date>",
+  "takeaway": "<one sentence — the single design insight from this session>",
+  "meta": { "Project": "<name>", "Date": "<YYYY-MM-DD>", "Files": "<N>" },
+  "summary_cards": [
+    { "label": "Files changed", "value": "<N>", "hint": "<top paths>" },
+    { "label": "Principles applied", "value": "<N>", "hint": "<top names>" },
+    { "label": "Red flags", "value": "<N>", "hint": "<top flag>" },
+    { "label": "Key module", "value": "<name>", "hint": "<deep/shallow?>" }
+  ],
+  "sections": [
+    { "id": "summary",     "title": "Session Summary",        "icon": "📋", "body_md": "..." },
+    { "id": "narrative",   "title": "What Changed and Why",   "icon": "📝", "body_md": "..." },
+    { "id": "principles",  "title": "Principles Applied",     "icon": "📐", "body_md": "..." },
+    { "id": "redflags",    "title": "Red Flags",              "icon": "🚩", "body_md": "..." },
+    { "id": "improvements","title": "Concrete Improvements",  "icon": "🛠️", "body_md": "..." }
+  ],
+  "code_blocks": [
+    { "lang": "python", "code": "...", "caption": "Before — leaked DB schema to caller" },
+    { "lang": "python", "code": "...", "caption": "After — caller sees one function" }
+  ],
+  "references": [
+    { "title": "APOSD Course", "url": "https://web.stanford.edu/~ouster/cgi-bin/cs190-winter25/" },
+    { "title": "Module Depth", "url": "https://web.stanford.edu/~ouster/cgi-bin/cs190-winter25/lecture.php?topic=modularDesign" }
+  ],
+  "reflection": "If you had to change <key design decision> tomorrow, how many files would you touch?"
+}
 ```
 
-Or pipe the review directly:
+Apply the information-design rules from `/html-presentation`:
+- The `takeaway` is mandatory — one sentence stating the single insight.
+- Exactly 3–5 summary cards.
+- Headers communicate ("Auth is now a deep module"), not just label ("Auth").
+- Every code block has a `caption` explaining intent, not syntax.
+
+### Step 2 — Invoke `/html-presentation`
+
+Call the skill via the Skill tool with the path to your JSON. It will render the HTML and report the artifact path back. Pass the mode as `report` (default) — slides are reserved for very short executive summaries.
+
+If you cannot use the Skill tool, run the generator directly:
+
 ```bash
-# After the review is complete
-python3 ~/.agents/skills/software-design-expert-learn/scripts/generate-review-report.py < review.md -o review.html
+python3 .agents/skills/html-presentation/scripts/generate-presentation.py \
+    --input tasks/design-review.json \
+    --mode report \
+    --output tasks/design-review.html
 ```
 
-The report includes:
-- **Session summary cards** (files changed, principles evaluated, red flags, code snippets)
-- **Git diff** with syntax highlighting and expand/collapse
-- **Review narrative** with formatted markdown
-- **Principles grid** showing which APOSD principles were discussed, with links to Stanford course lectures
-- **Red flags checklist** with visual indicators for flags found vs. clean
-- **Code snippets** with language labels and copy-to-clipboard buttons
-- **Key takeaway** reflection box
-- **Dark/light theme toggle** and **sidebar navigation**
+### Step 3 — Surface the artifact
 
-All documentation links point to the [Stanford APOSD course](https://web.stanford.edu/~ouster/cgi-bin/cs190-winter25/).
+Send the resulting `.html` file to the user with a one-line caption ("Session design review — open this in a browser").
 
 ## References
-See [references/principles.md](references/principles.md) for the full catalog of APOSD principles and red flags.
+- [references/principles.md](references/principles.md) — full catalog of APOSD principles and red flags.
+- `/html-presentation` skill — owns the visual + information-design language for all HTML deliverables.
