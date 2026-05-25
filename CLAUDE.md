@@ -177,6 +177,8 @@ Rules: never `opus` for code writing; never `haiku` for coding or planning; alwa
 | `/brainstorm` | Divergent design exploration before `/plan` |
 | `/plan` | Interview → spec → task breakdown in `tasks/todo.md` |
 | `/build` | Autonomous TDD orchestrator with sub-agent delegation |
+| `/auto-push` | One approval gate at `/plan`, then `/build` + `/wrap-up-session` run autonomously through commit and push |
+| `/yolo` | Ralph-style full-auto loop: `/plan` (auto-confirmed) → `/build` → `/wrap-up-session`, iterating until backlog empty or circuit breaker |
 | `/debug` | Root cause analysis, bug register, loop verification |
 | `/tdd` | Manual TDD loop with user checkpoints |
 | `/verify` | Evidence-based verification gate (`--scope deployment|e2e`) |
