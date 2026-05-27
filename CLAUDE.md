@@ -126,6 +126,9 @@ Before marking any task complete, confirm:
 .claude/agents/            → Sub-agents (Claude Code only)
 .claude/skills/            → Backwards-compat copy (installed alongside .agents/)
 .claude/hooks/             → Lifecycle automation scripts (Claude Code only)
+.cursor/rules/             → Cursor rules (.mdc) — workflow + project-config
+.cursor/agents/            → Sub-agents (Cursor native)
+.cursor/hooks/             → Lifecycle automation scripts (Cursor native)
 specs/                     → Feature specifications
 tasks/todo.md              → Active task plan
 tasks/backlog.md           → Ordered work items (from /prd)
@@ -138,7 +141,7 @@ tasks/checkpoint.md        → Session snapshots
 
 ---
 
-## Agents — `.claude/agents/` (Claude Code only)
+## Agents — `.claude/agents/` (Claude Code) · `.cursor/agents/` (Cursor)
 
 | Agent | Model | Best For |
 |-------|-------|---------|

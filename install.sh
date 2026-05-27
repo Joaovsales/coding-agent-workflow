@@ -124,6 +124,13 @@ if [ -f "$PI_SETTINGS" ]; then
   fi
 fi
 
+# ── 7b. Cursor note ───────────────────────────────────────────────────────────
+step "Cursor configuration"
+echo "  Cursor uses project-level .cursor/ (rules, agents, hooks.json)."
+echo "  Skills are discovered from .agents/skills/ in each project (already installed globally)."
+echo "  No global ~/.cursor/ install needed — clone or /sync this repo into your project."
+ok "documented" "see README § Using with Cursor"
+
 # ── 8. Git template directory ─────────────────────────────────────────────────
 step "Setting up git template dir → $GIT_TEMPLATE_DIR"
 mkdir -p "$GIT_TEMPLATE_DIR/hooks"

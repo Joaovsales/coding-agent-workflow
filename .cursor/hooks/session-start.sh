@@ -1,5 +1,5 @@
 #!/bin/bash
-# Claude Code Session Start Hook
+# Cursor Session Start Hook
 # Orients the agent at the beginning of every session by surfacing memory,
 # active tasks, and recent lessons without requiring manual reads.
 
@@ -12,7 +12,7 @@ set -eo pipefail
 # Written here, removed by session-stop.sh. Cron jobs that source
 # cron-quiet-hours.sh use its presence to suppress human-readable reporting
 # during active sessions (failure-only path in observability discipline).
-SENTINEL="${CLAUDE_SESSION_SENTINEL:-/tmp/claude-code-session-active}"
+SENTINEL="${CURSOR_SESSION_SENTINEL:-/tmp/cursor-agent-session-active}"
 printf 'pid=%s\nstarted=%s\nrepo=%s\n' "$$" "$(date -u +%FT%TZ)" "$(pwd)" > "$SENTINEL" 2>/dev/null || true
 
 DIVIDER="════════════════════════════════════════"
@@ -129,7 +129,7 @@ fi
 
 # ── Workflow Template Drift Check ────────────────────────────────────────────
 # Notifies if the coding-agent-workflow template has new commits affecting
-# syncable paths (.claude/skills, .claude/agents, .claude/hooks, settings.json).
+# syncable paths (.agents/skills, .claude/*, .cursor/*, CLAUDE.md).
 # Silent when in sync (observability discipline: loud only on actionable state).
 #
 # Preconditions:

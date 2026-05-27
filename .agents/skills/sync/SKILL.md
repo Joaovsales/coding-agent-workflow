@@ -21,6 +21,17 @@ Config is split across layers so `/sync` can overwrite template-managed files sa
 
 Both Claude Code and Pi read `CLAUDE.md` natively at session start. All shared workflow rules and coding principles live there inline — no `@` import required for shared content.
 
+### Cursor additional layer
+
+| Path | Scope | Committed? | Touched by /sync? |
+|---|---|---|---|
+| `.cursor/rules/` | Always-on and conditional rules (`.mdc`) | Yes | **Yes** |
+| `.cursor/agents/` | Subagent definitions (Cursor native) | Yes | **Yes** |
+| `.cursor/hooks/` + `.cursor/hooks.json` | Lifecycle hooks (Cursor native; required for cloud agents) | Yes | **Yes** |
+| `.claude/project.md` | Project-specific rules (canonical for Claude Code) | Yes | **Never** — mirrored by `.cursor/rules/project-config.mdc` |
+
+Cursor also reads `CLAUDE.md`, `.agents/skills/`, and `.claude/agents/` via third-party compat. Native `.cursor/` paths take precedence in Cursor.
+
 ### Claude Code additional layer
 
 | File | Scope | Committed? | Touched by /sync? |
@@ -85,6 +96,10 @@ CLAUDE.md             → Shared rules: workflow, principles, skills index (both
 .claude/agents/       → Subagent definitions (Claude Code only)
 .claude/hooks/        → Lifecycle hooks (Claude Code only)
 .claude/settings.json → Hook configuration (Claude Code only)
+.cursor/rules/        → Cursor rules (.mdc) — workflow + project-config mirror
+.cursor/agents/       → Subagent definitions (Cursor native)
+.cursor/hooks/        → Lifecycle hook scripts (Cursor native)
+.cursor/hooks.json    → Hook configuration (Cursor native; required for cloud agents)
 ```
 
 **Never sync** (project-specific state):
@@ -235,12 +250,12 @@ Compare the syncable paths between the current project and the template source.
 # Show changed files in syncable paths only
 # Note: use two-dot diff (not three-dot) — template and project have unrelated histories,
 # so HEAD...workflow/$WORKFLOW_BRANCH fails with "no merge base"
-git diff workflow/$WORKFLOW_BRANCH --stat -- .agents/skills/ .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json CLAUDE.md
+git diff workflow/$WORKFLOW_BRANCH --stat -- .agents/skills/ .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json .cursor/rules/ .cursor/agents/ .cursor/hooks/ .cursor/hooks.json CLAUDE.md
 ```
 
 Then show the full diff:
 ```bash
-git diff workflow/$WORKFLOW_BRANCH -- .agents/skills/ .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json CLAUDE.md
+git diff workflow/$WORKFLOW_BRANCH -- .agents/skills/ .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json .cursor/rules/ .cursor/agents/ .cursor/hooks/ .cursor/hooks.json CLAUDE.md
 ```
 
 **If manual diff mode:**

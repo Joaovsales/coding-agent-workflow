@@ -1,6 +1,18 @@
 # Coding Agent Workflow
 
-A reusable, project-agnostic configuration system that enforces **spec-driven, TDD-first development** across all your projects — with persistent memory, specialized agents, and a structured session lifecycle. Works with Claude Code, Cursor, and other AI coding tools.
+A reusable, project-agnostic configuration system that enforces **spec-driven, TDD-first development** across all your projects — with persistent memory, specialized agents, and a structured session lifecycle. Works with **Claude Code**, **Cursor**, and **Pi**.
+
+---
+
+## Quick Start by Harness
+
+| Harness | Setup | Session start |
+|---------|-------|---------------|
+| **Claude Code** | `bash install.sh` (once) → global `~/.claude/` | SessionStart hook orients automatically |
+| **Cursor** | Clone repo or `/sync` into your project — `.cursor/` is project-level | `sessionStart` hook via `.cursor/hooks.json` |
+| **Pi** | `bash install.sh` (once) if Pi installed | Reads `CLAUDE.md` + `AGENTS.md` |
+
+Skills live in `.agents/skills/` and work across all harnesses. Invoke with `/skill-name`.
 
 ---
 
@@ -9,10 +21,11 @@ A reusable, project-agnostic configuration system that enforces **spec-driven, T
 | Layer | What it does |
 |-------|-------------|
 | **CLAUDE.md** | Core rules: Spec → Plan → TDD workflow, Clean Code, SOLID, quality gate |
-| **Skills** (`.claude/skills/`) | 16 skills: `/brainstorm`, `/plan`, `/build`, `/tdd`, `/debug`, `/verify`, `/simplify`, `/receive-review`, `/learn`, `/checkpoint`, `/security-scan`, `/start-qa`, `/wrap-up-session`, `/writing-skills`, `/sync`, `/folder-context-optimization` |
-| **Agents** (`.claude/agents/`) | 8 specialized subagents for planning, coding, review, debugging, security |
-| **Hooks** (`.claude/hooks/`) | Session start orientation + auto test runner on file save |
-| **Memory** (`.claude/memory.md`) | Persistent patterns and session history, updated via `/learn` |
+| **Skills** (`.agents/skills/`) | 25+ skills: `/brainstorm`, `/plan`, `/build`, `/tdd`, `/debug`, `/verify`, `/quality-gate`, `/wrap-up-session`, … |
+| **Agents** | `.claude/agents/` (Claude Code) · `.cursor/agents/` (Cursor) — 10 specialized subagents |
+| **Hooks** | `.claude/hooks/` + `settings.json` (Claude Code) · `.cursor/hooks/` + `hooks.json` (Cursor) |
+| **Rules** | `.cursor/rules/*.mdc` (Cursor) — workflow + project-config mirror |
+| **Memory** (`tasks/memory.md`) | Persistent patterns and session history, updated via `/learn` |
 
 ---
 
@@ -121,6 +134,44 @@ mkdir -p specs
 ```
 
 Then edit `CLAUDE.md` to fill in your project's stack and test commands.
+
+---
+
+## Using with Cursor
+
+Cursor loads this workflow from the project repo — no global install required.
+
+### Option A — Add to an existing project
+
+```bash
+git remote add workflow https://github.com/Joaovsales/coding-agent-workflow.git
+git fetch workflow master
+git checkout workflow/master -- .agents/skills .cursor .claude/agents .claude/hooks .claude/settings.json CLAUDE.md
+mkdir -p tasks specs
+cp project-template/tasks/*.md tasks/ 2>/dev/null || true
+```
+
+Or run `/sync` after adding the `workflow` remote.
+
+### Option B — Clone this repo as your project base
+
+```bash
+git clone https://github.com/Joaovsales/coding-agent-workflow.git my-app
+cd my-app
+# Open in Cursor — .cursor/hooks.json runs sessionStart automatically
+```
+
+### What Cursor reads
+
+| Path | Purpose |
+|------|---------|
+| `CLAUDE.md` | Always-on shared workflow rules |
+| `.cursor/rules/*.mdc` | Native rules (workflow + `@.claude/project.md` mirror) |
+| `.agents/skills/` | Canonical skills — `/plan`, `/build`, etc. |
+| `.cursor/agents/` | Subagents for the Task tool |
+| `.cursor/hooks.json` | `sessionStart` / `stop` hooks (required for cloud agents) |
+
+Optional: enable **Settings → Features → Third-party skills** to also load `.claude/settings.json` hooks as a fallback.
 
 ---
 
@@ -277,6 +328,11 @@ Claude delegates to these automatically (or you can invoke them via the Agent to
 │       ├── todo.md
 │       ├── bugs.md
 │       └── lessons.md
+├── .cursor/                         ← Cursor native config (rules, agents, hooks)
+│   ├── rules/                       ← .mdc rules (workflow + project-config)
+│   ├── agents/                      ← 10 subagents (Cursor Task tool)
+│   ├── hooks/                       ← session-start.sh, session-stop.sh
+│   └── hooks.json                   ← sessionStart / stop registration
 ├── .claude/
 │   ├── AGENTS.md                    ← Agent reference documentation
 │   ├── memory.md                    ← Persistent project memory (updated via /learn)
