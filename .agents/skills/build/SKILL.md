@@ -150,6 +150,34 @@ If ANY AC is classified `user-facing`, invoke `/verify --scope e2e` before decla
    - **Different failures** → record in `previous_failures`, add tasks, loop to Phase 1
 6. **After round 3 with remaining `❌`**: HALT with full status report, escalate to user
 
+## Phase 4.5 — Ambiguity Batch Review
+
+Per `.claude/project.md` § *Ambiguity Protocol*, sub-agents emit a single line
+when they hit a question whose answer changes the implementation:
+
+```
+[AMBIGUITY] <description> | options: A) ... B) ... | picked: <letter> | reason: ...
+```
+
+After Phase 4 passes:
+
+1. **Grep every agent output captured this build** for lines starting with `[AMBIGUITY]`.
+2. If zero hits: skip this phase silently.
+3. If one or more hits: surface them to the user as a single batch in this format:
+
+   ```
+   ⚠ Ambiguities resolved during build (please confirm):
+
+   1. <description>
+      Picked: <letter> (<reason>)
+      Alternatives: <other options>
+      Touched: <file paths>
+   2. ...
+   ```
+
+4. **Do not block** on user response — proceed to Phase 5. The batch is informational;
+   the user can request changes in a follow-up turn if a pick was wrong.
+
 ## Phase 5 — Backlog Update
 
 If `tasks/backlog.md` exists:
