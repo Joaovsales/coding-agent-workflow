@@ -1,6 +1,6 @@
 ---
 name: quality-gate
-description: 3-phase post-build quality review: structural quality (simplify), AI anti-patterns (deslop), APOSD design review. Run after all build tasks complete.
+description: "3-phase post-build quality review: structural quality (simplify), AI anti-patterns (deslop), APOSD design review. Run after all build tasks complete."
 argument-hint: "[--scope <path>]"
 ---
 
