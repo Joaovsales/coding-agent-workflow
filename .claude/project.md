@@ -52,4 +52,47 @@ shown below — not active in this template):
 > Examples: tech-stack conventions, architectural constraints, domain glossary,
 > external service credentials policy.
 
-_None yet._
+### Surgical Changes
+
+Tightens `CLAUDE.md` § *Minimal Impact* with three operational tests. Apply to every
+code-modifying turn (main thread and sub-agents).
+
+1. **Trace test** — every changed line must trace directly to the current task or
+   user request. If you cannot point to the sentence in the spec / todo / user
+   message that motivates a hunk, revert it.
+2. **Style match** — match the surrounding file's existing style (naming,
+   formatting, error handling, comment density) even if you would write it
+   differently in a greenfield. Style drift is a separate PR.
+3. **Orphan rule** — remove only the imports, variables, and functions that
+   *your* changes made unused. Do not delete pre-existing dead code; if you
+   notice it, mention it in the turn summary and move on.
+
+These rules do **not** override explicit refactor or cleanup tasks. They apply
+when the task is a feature, fix, or targeted change.
+
+### Ambiguity Protocol
+
+When a sub-agent (or the main thread during `/build`) encounters **genuine
+semantic ambiguity** — not a stylistic choice, not a missing import, but a
+question whose answer changes the implementation — it must surface the
+question rather than silently picking.
+
+**Emission format** (single line, parseable by the orchestrator):
+
+```
+[AMBIGUITY] <one-sentence description> | options: A) <option> B) <option> [C) ...] | picked: <letter> | reason: <one sentence>
+```
+
+Rules:
+- The agent **picks one option and proceeds** (don't block on a question).
+- The orchestrator collects every `[AMBIGUITY]` line emitted during the run
+  and surfaces them as a single batch to the user at the end of `/build`,
+  before `/quality-gate` runs.
+- Use sparingly. Stylistic preferences, naming bikesheds, and questions
+  answered by reading one more file do **not** qualify. Examples that do:
+  - "Spec says 'export users' — entire table or only active users?"
+  - "Validation failure: throw vs. return `Result<Err>`? Codebase has both."
+  - "AC mentions retry — exponential backoff or fixed interval?"
+
+If unsure whether something qualifies, default to **not** emitting and noting
+the assumption in the turn summary instead.
