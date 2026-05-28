@@ -6,13 +6,22 @@ A reusable, project-agnostic configuration system that enforces **spec-driven, T
 
 ## Quick Start by Harness
 
-| Harness | Setup | Session start |
-|---------|-------|---------------|
-| **Claude Code** | `bash install.sh` (once) → global `~/.claude/` | SessionStart hook orients automatically |
-| **Cursor** | Clone repo or `/sync` into your project — `.cursor/` is project-level | `sessionStart` hook via `.cursor/hooks.json` |
-| **Pi** | `bash install.sh` (once) if Pi installed | Reads `CLAUDE.md` + `AGENTS.md` |
+| Harness | One-time setup | Works in every project? |
+|---------|----------------|-------------------------|
+| **Cursor** | `bash install.sh` | **Yes** — skills, subagents, hooks global; rules via `CLAUDE.md` scaffold |
+| **Claude Code** | `bash install.sh` | **Yes** — `~/.claude/` global install |
+| **Pi** | `bash install.sh` (if Pi installed) | **Yes** — reads `CLAUDE.md` + `AGENTS.md` per project |
 
-Skills live in `.agents/skills/` and work across all harnesses. Invoke with `/skill-name`.
+### One-time install (all harnesses)
+
+```bash
+git clone https://github.com/Joaovsales/coding-agent-workflow.git ~/coding-agent-workflow
+cd ~/coding-agent-workflow
+bash install.sh
+# Add the printed newproject() function to ~/.bashrc or ~/.zshrc
+```
+
+Then open **any** project in Cursor — no need to open the template repo itself.
 
 ---
 
@@ -137,41 +146,48 @@ Then edit `CLAUDE.md` to fill in your project's stack and test commands.
 
 ---
 
-## Using with Cursor
+## Using with Cursor (all projects)
 
-Cursor loads this workflow from the project repo — no global install required.
+You do **not** need to open this repo in Cursor. Run `install.sh` once, then use any project.
 
-### Option A — Add to an existing project
+### What install.sh puts globally
 
-```bash
-git remote add workflow https://github.com/Joaovsales/coding-agent-workflow.git
-git fetch workflow master
-git checkout workflow/master -- .agents/skills .cursor .claude/agents .claude/hooks .claude/settings.json CLAUDE.md
-mkdir -p tasks specs
-cp project-template/tasks/*.md tasks/ 2>/dev/null || true
+| Component | Global path | Applies everywhere? |
+|-----------|-------------|---------------------|
+| **Skills** | `~/.agents/skills/` + `~/.cursor/skills/` | Yes — `/plan`, `/build`, etc. in any project |
+| **Subagents** | `~/.cursor/agents/` | Yes — planner, code-reviewer, etc. |
+| **Hooks** | `~/.cursor/hooks.json` | Yes — sessionStart/stop in any project (resolves workspace automatically) |
+| **Rules** | Per-project `CLAUDE.md` + `.cursor/rules/` | Scaffolded automatically (see below) |
+
+Cursor does not support global `.mdc` rules files (`~/.cursor/rules/` is ignored). Rules come from each project's `CLAUDE.md` (always-on) plus `.cursor/rules/*.mdc`.
+
+### New projects
+
+`newproject my-app` runs `git init`, which triggers the git template hook and bootstraps:
+
+```
+CLAUDE.md              ← workflow rules (always-on in Cursor)
+.cursor/rules/         ← project-config mirror
+.cursor/hooks.json     ← project hooks (required for cloud agents)
+tasks/                 ← todo, bugs, lessons
+specs/
 ```
 
-Or run `/sync` after adding the `workflow` remote.
-
-### Option B — Clone this repo as your project base
+### Existing projects
 
 ```bash
-git clone https://github.com/Joaovsales/coding-agent-workflow.git my-app
-cd my-app
-# Open in Cursor — .cursor/hooks.json runs sessionStart automatically
+bash ~/coding-agent-workflow/scripts/bootstrap-cursor.sh
+# Or from inside the project:
+bash ~/coding-agent-workflow/scripts/bootstrap-cursor.sh /path/to/your-project
 ```
 
-### What Cursor reads
+### Keeping global config updated
 
-| Path | Purpose |
-|------|---------|
-| `CLAUDE.md` | Always-on shared workflow rules |
-| `.cursor/rules/*.mdc` | Native rules (workflow + `@.claude/project.md` mirror) |
-| `.agents/skills/` | Canonical skills — `/plan`, `/build`, etc. |
-| `.cursor/agents/` | Subagents for the Task tool |
-| `.cursor/hooks.json` | `sessionStart` / `stop` hooks (required for cloud agents) |
+```bash
+cd ~/coding-agent-workflow && git pull && bash install.sh
+```
 
-Optional: enable **Settings → Features → Third-party skills** to also load `.claude/settings.json` hooks as a fallback.
+Per-project workflow files update via `/sync` (add `workflow` remote) or re-run `bootstrap-cursor.sh --force`.
 
 ---
 

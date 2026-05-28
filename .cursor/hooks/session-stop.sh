@@ -7,6 +7,13 @@
 # Kill switch: SKIP_SESSION_STOP=1
 
 set -uo pipefail
+
+# Global hooks run with cwd ~/.cursor/ — resolve project root from stdin.
+# shellcheck source=/dev/null
+source "$(dirname "${BASH_SOURCE[0]}")/lib/resolve-workspace.sh"
+resolve_workspace_from_hook_stdin
+
+# Kill switch: SKIP_SESSION_STOP=1
 [ "${SKIP_SESSION_STOP:-0}" = "1" ] && exit 0
 
 SENTINEL="${CURSOR_SESSION_SENTINEL:-/tmp/cursor-agent-session-active}"

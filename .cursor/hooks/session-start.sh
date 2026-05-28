@@ -5,6 +5,12 @@
 
 set -eo pipefail
 
+# Global hooks (from ~/.cursor/hooks.json) run with cwd ~/.cursor/, not the
+# project root. Resolve workspace from hook stdin when needed.
+# shellcheck source=/dev/null
+source "$(dirname "${BASH_SOURCE[0]}")/lib/resolve-workspace.sh"
+resolve_workspace_from_hook_stdin
+
 # Kill switch: skip hook if SKIP_SESSION_START=1
 [ "${SKIP_SESSION_START:-0}" = "1" ] && exit 0
 

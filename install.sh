@@ -3,12 +3,13 @@
 #
 # What this does:
 #   1. Copies skills and agents into ~/.claude/ (global Claude Code config)
-#   2. Copies .agents/ into ~/.agents/ (harness-neutral skills)
-#   3. Installs a global SessionStart hook that orients Claude in any project
-#   4. Sets up a git template dir so `git init` auto-installs a post-init hook
-#   5. Configures ~/.claude/settings.json with skills path
-#   6. Configures Pi (~/.pi/agent/settings.json) if installed
-#   7. Prints a `newproject` shell function to add to your .bashrc / .zshrc
+#   2. Copies .agents/ into ~/.agents/ (harness-neutral skills — all harnesses)
+#   3. Installs global Cursor config into ~/.cursor/ (agents, skills, hooks)
+#   4. Installs a global SessionStart hook that orients Claude in any project
+#   5. Sets up a git template dir so `git init` auto-bootstraps workflow scaffold
+#   6. Configures ~/.claude/settings.json with skills path
+#   7. Configures Pi (~/.pi/agent/settings.json) if installed
+#   8. Prints a `newproject` shell function to add to your .bashrc / .zshrc
 #
 # Usage:
 #   git clone <this-repo> ~/coding-agent-workflow
@@ -18,6 +19,7 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLAUDE_HOME="$HOME/.claude"
+CURSOR_HOME="$HOME/.cursor"
 GIT_TEMPLATE_DIR="$HOME/.git-templates"
 
 GREEN='\033[0;32m'
@@ -124,12 +126,71 @@ if [ -f "$PI_SETTINGS" ]; then
   fi
 fi
 
-# ── 7b. Cursor note ───────────────────────────────────────────────────────────
-step "Cursor configuration"
-echo "  Cursor uses project-level .cursor/ (rules, agents, hooks.json)."
-echo "  Skills are discovered from .agents/skills/ in each project (already installed globally)."
-echo "  No global ~/.cursor/ install needed — clone or /sync this repo into your project."
-ok "documented" "see README § Using with Cursor"
+# ── 7b. Global Cursor configuration ───────────────────────────────────────────
+step "Installing global Cursor config → ~/.cursor/"
+mkdir -p "$CURSOR_HOME/agents" "$CURSOR_HOME/hooks/lib" "$CURSOR_HOME/skills"
+
+# Remember repo path for bootstrap script and updates
+echo "$REPO_DIR" > "$CURSOR_HOME/.workflow-repo"
+
+# Subagents — available in every project
+cp "$REPO_DIR/.cursor/agents/"*.md "$CURSOR_HOME/agents/"
+ok "copied" "$(ls "$CURSOR_HOME/agents/"*.md | wc -l | tr -d ' ') agents → ~/.cursor/agents/"
+
+# Skills — symlink from canonical ~/.agents/skills/
+for skill_dir in "$HOME/.agents/skills/"*/; do
+  [ -d "$skill_dir" ] || continue
+  skill_name="$(basename "$skill_dir")"
+  ln -sfn "$skill_dir" "$CURSOR_HOME/skills/$skill_name"
+done
+ok "linked" "$(find "$CURSOR_HOME/skills" -maxdepth 1 -type l 2>/dev/null | wc -l | tr -d ' ') skills → ~/.cursor/skills/"
+
+# Hooks — workspace-aware scripts (resolve project root from hook stdin)
+cp -r "$REPO_DIR/.cursor/hooks/"* "$CURSOR_HOME/hooks/"
+chmod +x "$CURSOR_HOME/hooks/"*.sh 2>/dev/null || true
+chmod +x "$CURSOR_HOME/hooks/lib/"*.sh 2>/dev/null || true
+ok "copied" "~/.cursor/hooks/ (session-start, session-stop, resolve-workspace)"
+
+# hooks.json — create or note manual merge
+CURSOR_HOOKS_FILE="$CURSOR_HOME/hooks.json"
+CURSOR_SESSION_CMD="bash $CURSOR_HOME/hooks/session-start.sh"
+CURSOR_STOP_CMD="bash $CURSOR_HOME/hooks/session-stop.sh"
+
+if [ ! -f "$CURSOR_HOOKS_FILE" ]; then
+  cat > "$CURSOR_HOOKS_FILE" <<EOF
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [{ "command": "$CURSOR_SESSION_CMD" }],
+    "stop": [{ "command": "$CURSOR_STOP_CMD" }]
+  }
+}
+EOF
+  ok "created" "~/.cursor/hooks.json"
+elif command -v jq > /dev/null 2>&1; then
+  if jq -e '.hooks.sessionStart[]? | select(.command | test("session-start"))' "$CURSOR_HOOKS_FILE" > /dev/null 2>&1; then
+    ok "already present" "sessionStart hook in ~/.cursor/hooks.json"
+  else
+    jq --arg start "$CURSOR_SESSION_CMD" --arg stop "$CURSOR_STOP_CMD" \
+      '.hooks.sessionStart = ((.hooks.sessionStart // []) + [{command: $start}]) |
+       .hooks.stop = ((.hooks.stop // []) + [{command: $stop}])' \
+      "$CURSOR_HOOKS_FILE" > /tmp/cursor_hooks_tmp.json \
+      && mv /tmp/cursor_hooks_tmp.json "$CURSOR_HOOKS_FILE"
+    ok "merged" "sessionStart/stop into ~/.cursor/hooks.json"
+  fi
+else
+  echo "  NOTE: ~/.cursor/hooks.json exists — merge sessionStart/stop manually:"
+  echo "    sessionStart: $CURSOR_SESSION_CMD"
+  echo "    stop: $CURSOR_STOP_CMD"
+fi
+
+echo ""
+echo "  Cursor global install:"
+echo "    Skills     → ~/.agents/skills/ + ~/.cursor/skills/ (symlinks)"
+echo "    Subagents  → ~/.cursor/agents/"
+echo "    Hooks      → ~/.cursor/hooks.json (all projects; resolves workspace from stdin)"
+echo "    Rules      → per-project via git init scaffold OR: bash $REPO_DIR/scripts/bootstrap-cursor.sh"
+echo "  Optional: Settings → Rules → User Rules — paste session checklist from CLAUDE.md for extra always-on guidance."
 
 # ── 8. Git template directory ─────────────────────────────────────────────────
 step "Setting up git template dir → $GIT_TEMPLATE_DIR"
@@ -140,40 +201,23 @@ cp "$REPO_DIR/.agents/git-hooks/pre-push" "$GIT_TEMPLATE_DIR/hooks/pre-push"
 chmod +x "$GIT_TEMPLATE_DIR/hooks/pre-push"
 ok "installed" "pre-push hook (typecheck + lint before every git push)"
 
-# post-init hook: copies Claude project scaffold into newly init'd repos
-cat > "$GIT_TEMPLATE_DIR/hooks/post-init" <<'HOOK'
+# post-init hook: bootstraps workflow scaffold into newly init'd repos
+cat > "$GIT_TEMPLATE_DIR/hooks/post-init" <<HOOK
 #!/usr/bin/env bash
 # Auto-installed by coding-agent-workflow/install.sh
-# Copies minimal Claude project scaffold after every `git init`.
-# Safe: only runs if the files don't already exist.
+# Bootstraps Cursor/Claude workflow scaffold after every \`git init\`.
+# Safe: skips files that already exist (use bootstrap-cursor.sh --force to overwrite).
 
-PROJECT_TEMPLATE="$HOME/coding-agent-workflow/project-template"
-
-if [ ! -d "$PROJECT_TEMPLATE" ]; then
-  exit 0  # template not found — skip silently
+WORKFLOW_REPO="\${HOME}/coding-agent-workflow"
+if [ -f "\${HOME}/.cursor/.workflow-repo" ]; then
+  WORKFLOW_REPO="\$(cat "\${HOME}/.cursor/.workflow-repo")"
 fi
 
-REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-
-copy_if_missing() {
-  local src="$PROJECT_TEMPLATE/$1"
-  local dst="$REPO_ROOT/$1"
-  if [ -f "$src" ] && [ ! -f "$dst" ]; then
-    mkdir -p "$(dirname "$dst")"
-    cp "$src" "$dst"
-    echo "  [claude] created $1"
-  fi
-}
-
-copy_if_missing "CLAUDE.md"
-copy_if_missing "tasks/todo.md"
-copy_if_missing "tasks/bugs.md"
-copy_if_missing "tasks/lessons.md"
-
-if [ ! -d "$REPO_ROOT/specs" ]; then
-  mkdir -p "$REPO_ROOT/specs"
-  echo "  [claude] created specs/"
+if [ ! -f "\${WORKFLOW_REPO}/scripts/bootstrap-cursor.sh" ]; then
+  exit 0
 fi
+
+bash "\${WORKFLOW_REPO}/scripts/bootstrap-cursor.sh" "\$(git rev-parse --show-toplevel 2>/dev/null || pwd)" 2>/dev/null || true
 HOOK
 chmod +x "$GIT_TEMPLATE_DIR/hooks/post-init"
 
@@ -189,11 +233,11 @@ cat <<'SHELLCONFIG'
 newproject() {
   local name="${1:?Usage: newproject <project-name>}"
   mkdir -p "$name" && cd "$name"
-  git init                        # triggers post-init hook → copies Claude scaffold
+  git init                        # triggers post-init hook → bootstraps workflow scaffold
   echo "# $name" > README.md
-  git add . && git commit -m "chore: init project with Claude workflow scaffold"
+  git add . && git commit -m "chore: init project with coding-agent-workflow scaffold"
   echo ""
-  echo "Project '$name' ready. Open with: claude"
+  echo "Project '$name' ready. Open in Cursor or run: claude"
 }
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -204,8 +248,9 @@ echo -e "${BOLD}Done.${RESET}"
 echo ""
 echo "  Reload your shell:  source ~/.bashrc  (or ~/.zshrc)"
 echo "  Start a new project: newproject my-app"
-echo "  Or in an existing repo: copy project-template/ files in manually."
+echo "  Existing repo: bash $REPO_DIR/scripts/bootstrap-cursor.sh"
 echo ""
-echo "  Claude will now orient itself at session start in every project"
-echo "  (memory, active tasks, lessons, git branch) via the global SessionStart hook."
+echo "  Claude Code: orients at session start via ~/.claude/hooks/session-start.sh"
+echo "  Cursor: skills + subagents global; hooks global; rules via CLAUDE.md per project"
+echo "  Re-run install.sh after git pull to update global config."
 echo ""
