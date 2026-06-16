@@ -75,6 +75,31 @@ fi
 
 install_file "$REPO_DIR/AGENTS.md" "$ROOT/AGENTS.md"
 
+# Skills — project-level install so slash commands work even without global install.sh
+# Cursor discovers .agents/skills/ and .cursor/skills/ in the project root.
+install_project_skills() {
+  local agents_dst="$ROOT/.agents/skills"
+  local cursor_dst="$ROOT/.cursor/skills"
+  local src="$REPO_DIR/.agents/skills"
+
+  if [ -e "$agents_dst" ] && [ "$FORCE" != "1" ]; then
+    echo "  [workflow] skip (exists): .agents/skills"
+  elif ln -sfn "$src" "$agents_dst" 2>/dev/null; then
+    echo "  [workflow] linked .agents/skills → $src"
+  else
+    install_tree "$src" "$agents_dst"
+  fi
+
+  if [ -e "$cursor_dst" ] && [ "$FORCE" != "1" ]; then
+    echo "  [workflow] skip (exists): .cursor/skills"
+  elif ln -sfn "$src" "$cursor_dst" 2>/dev/null; then
+    echo "  [workflow] linked .cursor/skills → $src"
+  else
+    install_tree "$src" "$cursor_dst"
+  fi
+}
+install_project_skills
+
 if git rev-parse --is-inside-work-tree &>/dev/null; then
   if ! git remote get-url workflow &>/dev/null 2>&1; then
     echo ""
@@ -84,5 +109,6 @@ if git rev-parse --is-inside-work-tree &>/dev/null; then
 fi
 
 echo ""
-echo "Done. Skills and subagents load globally (run install.sh once)."
-echo "Project rules/hooks installed in .cursor/ and CLAUDE.md."
+echo "Done. Project skills installed in .agents/skills + .cursor/skills."
+echo "Global install (optional): cd $REPO_DIR && bash install.sh"
+echo "Restart Cursor, then try /build in a new agent chat."

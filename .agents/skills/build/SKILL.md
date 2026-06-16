@@ -1,7 +1,6 @@
 ---
 name: build
 description: Execute the task plan from tasks/todo.md autonomously using TDD with sub-agent delegation. Use after /plan is confirmed.
-argument-hint: ""
 disable-model-invocation: false
 ---
 
