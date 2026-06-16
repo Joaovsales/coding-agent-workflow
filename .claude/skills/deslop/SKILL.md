@@ -1,6 +1,7 @@
 ---
 name: deslop
 description: Detect and remove AI-generated anti-patterns (hedge words, over-abstraction, filler code). Use after /simplify or standalone on changed files.
+disable-model-invocation: false
 ---
 
 # /deslop — AI Slop Cleaner

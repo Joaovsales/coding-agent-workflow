@@ -3,6 +3,7 @@ name: yolo
 description: Fully autonomous loop. User describes an idea; the agent runs /plan, /build, and /wrap-up-session in a Ralph-style loop until the backlog is empty or a circuit breaker trips. No user prompts between phases.
 argument-hint: "[short idea description]"
 harness: universal
+disable-model-invocation: false
 ---
 
 # /yolo — Fully Autonomous Plan → Build → Wrap-Up Loop

@@ -2,6 +2,7 @@
 name: sync
 description: Pull latest skills, hooks, agents, and config from the coding-agent-workflow template repo.
 harness: universal
+disable-model-invocation: false
 ---
 
 # /sync — Sync Workflow Updates from Template Repo
@@ -296,9 +297,26 @@ For each applied file, briefly note what changed.
 ### Step 6 — Post-Sync
 
 1. Run `git diff --stat` to confirm what was updated
-2. Ask the user if they want to commit the sync:
+2. **Refresh global Cursor/Claude install** (required for skills/subagents/hooks in all projects):
+   ```bash
+   bash install.sh
+   ```
+   Run from the template repo root (`~/coding-agent-workflow` or wherever you cloned it).
+   Re-running is safe — overwrites `~/.agents/skills/`, `~/.cursor/agents/`, `~/.cursor/skills/`, and hooks.
+3. **Restart Cursor** (or start a new agent session) so it rescans global skills
+4. Ask the user if they want to commit the sync:
    - Suggested message: `chore: sync workflow updates from coding-agent-workflow`
-3. Remind the user to review `CLAUDE.md` if it was updated — they may need to merge project-specific customizations back in
+5. Remind the user to review `CLAUDE.md` if it was updated — they may need to merge project-specific customizations back in
+
+### Step 6.1 — Skill discoverability (Cursor)
+
+Every `SKILL.md` must include in frontmatter:
+
+```yaml
+disable-model-invocation: false
+```
+
+Without this field, Cursor may not expose the skill in `/skill-name` or the Skill tool (including `/build`, `/sync`, `/quality-gate`). After adding or syncing skills, always run `bash install.sh` and restart Cursor.
 
 ## Edge Cases
 

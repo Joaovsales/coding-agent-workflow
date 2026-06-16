@@ -137,13 +137,23 @@ echo "$REPO_DIR" > "$CURSOR_HOME/.workflow-repo"
 cp "$REPO_DIR/.cursor/agents/"*.md "$CURSOR_HOME/agents/"
 ok "copied" "$(ls "$CURSOR_HOME/agents/"*.md | wc -l | tr -d ' ') agents → ~/.cursor/agents/"
 
-# Skills — symlink from canonical ~/.agents/skills/
+# Skills — symlink canonical ~/.agents/skills/ plus Claude-only extras
 for skill_dir in "$HOME/.agents/skills/"*/; do
   [ -d "$skill_dir" ] || continue
   skill_name="$(basename "$skill_dir")"
   ln -sfn "$skill_dir" "$CURSOR_HOME/skills/$skill_name"
 done
-ok "linked" "$(find "$CURSOR_HOME/skills" -maxdepth 1 -type l 2>/dev/null | wc -l | tr -d ' ') skills → ~/.cursor/skills/"
+# Claude-only skills (deslop, simplify, setup-deployment, verify-*) not in .agents
+if [ -d "$REPO_DIR/.claude/skills" ]; then
+  for skill_dir in "$REPO_DIR/.claude/skills/"*/; do
+    [ -d "$skill_dir" ] || continue
+    skill_name="$(basename "$skill_dir")"
+    [ "$skill_name" = "README.md" ] && continue
+    [ -e "$CURSOR_HOME/skills/$skill_name" ] && continue
+    ln -sfn "$skill_dir" "$CURSOR_HOME/skills/$skill_name"
+  done
+fi
+ok "linked" "$(find "$CURSOR_HOME/skills" -maxdepth 1 \( -type l -o -type d \) ! -name skills | wc -l | tr -d ' ') skills → ~/.cursor/skills/"
 
 # Hooks — workspace-aware scripts (resolve project root from hook stdin)
 cp -r "$REPO_DIR/.cursor/hooks/"* "$CURSOR_HOME/hooks/"

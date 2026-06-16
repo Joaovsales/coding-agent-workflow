@@ -1,20 +1,14 @@
 ---
 name: build
 description: Execute the task plan from tasks/todo.md autonomously using TDD with sub-agent delegation. Use after /plan is confirmed.
+argument-hint: ""
 disable-model-invocation: false
 ---
 
 # /build — Autonomous Build Orchestrator
 
-Execute the full plan from `tasks/todo.md` autonomously using TDD with sub-agent delegation.
+Execute the full plan from `tasks/todo.md` autonomously using TDD.
 Bridges the gap between `/plan` (design) and `/wrap-up-session` (close).
-
-## Model Routing
-
-**This command MUST use `model: sonnet` for all sub-agent delegations.**
-- All coding agents (`backend-developer`, `frontend-developer`, `code-debugger`, `code-reviewer`) MUST be invoked with `model: "sonnet"`
-- For codebase searches and file exploration, use `model: "haiku"` via the Explore agent
-- Never use `opus` during build — it is reserved for planning and architecture
 
 ## Pre-Flight Checks
 
@@ -22,140 +16,89 @@ Bridges the gap between `/plan` (design) and `/wrap-up-session` (close).
    - If empty or missing: **STOP** — run `/plan` first
 2. Read the spec from `specs/` that matches the current plan
    - If no spec found: **STOP** — run `/plan` first
-3. Load `tasks/lessons.md` and `.claude/memory.md` for context
-4. **Load `tasks/project-context.md`** if it exists — this provides architecture, protection list, non-functional requirements, and conventions for sub-agent delegation
-5. Identify the project's test runner and build tooling (check `package.json`, `Makefile`, `pyproject.toml`, etc.)
+3. Load `tasks/lessons.md` and `tasks/memory.md` for context
+4. Load `tasks/project-context.md` if it exists (architecture, protection list, conventions)
+5. Identify the project's test runner (check `package.json`, `Makefile`, `pyproject.toml`, etc.)
 6. Run the full test suite once to establish a **green baseline**
    - If tests fail before you start: fix or flag to user before proceeding
-7. **Classify acceptance criteria** — for each AC in the spec, tag as `logic | integration | user-facing`. Store the classification in the build log so Phase 4 knows which need e2e evidence.
-
+7. **Classify acceptance criteria** — for each AC in the spec, tag as `logic | integration | user-facing`:
    | AC type | Signals |
-   |---|---|
+   |---------|---------|
    | `logic` | Pure functions, validators, transforms, utilities — no I/O |
    | `integration` | API endpoints, DB queries, service-to-service calls, background jobs |
    | `user-facing` | Auth flows, form submissions, navigation, UI state, anything a user sees or clicks |
-
-   When an AC mixes types, classify by the highest tier present (`user-facing` > `integration` > `logic`).
+   When an AC mixes types, classify by the highest tier (`user-facing` > `integration` > `logic`).
 
 ## Phase 1 — Task Execution (TDD Loop)
 
-Process every `[ ]` task in `tasks/todo.md` **without pausing for user confirmation between tasks**.
-
-For each `[ ] TDD: [Test Name] -> [Impl Detail]`:
+Process every `[ ]` task in `tasks/todo.md` without pausing for user confirmation between tasks.
 
 ### Parallel Dispatch Assessment
 
-Before processing tasks sequentially, assess if any can run in parallel:
+Before processing tasks sequentially, assess if any can run in parallel.
 
-**Identify independent tasks:** Tasks are independent when:
+**Tasks are independent when**:
 - They modify different files/modules
 - They have no data dependencies on each other
-- Fixing one doesn't affect the other
 - They don't share state or resources
 
-**If 2+ independent tasks found:**
-1. Group tasks by independence (tasks that touch different subsystems)
-2. Dispatch one sub-agent per independent group using the Agent tool
-3. Each agent gets a focused, self-contained prompt with:
-   - Specific scope: exact task(s) and files
-   - Clear goal: what tests to write and pass
-   - Constraints: "Do NOT modify files outside your scope"
-   - Expected output: summary of changes and test results
-4. Wait for all agents to return
-5. Review results for conflicts (agents editing same files)
-6. Run full test suite to verify all changes integrate cleanly
-7. If conflicts: resolve manually, then re-run tests
+**If 2+ independent tasks found**:
+1. Group tasks by independence
+2. Dispatch one sub-agent per independent group
+3. Wait for all to return; check for file conflicts
+4. Run full test suite to verify all changes integrate cleanly
 
-**If tasks are sequential/dependent:** Process one at a time (Steps 1-4 below).
+**If tasks are sequential/dependent**: process one at a time (Steps 1–4 below).
 
-**Decision guide:**
-| Situation | Approach |
-|-----------|----------|
-| Tasks touch different files/modules | Parallel dispatch |
-| Tasks depend on each other's output | Sequential (Steps 1-4) |
-| Shared state between tasks | Sequential (Steps 1-4) |
-| Unclear dependencies | Sequential (safer) |
+### Step 1 — Implement the Task
 
-### Step 1 — Delegate to Sub-Agent
-
-Choose the appropriate sub-agent based on the task:
+Choose the agent or approach based on task type:
 
 | Task Type | Agent |
 |-----------|-------|
 | API, database, auth, business logic | `backend-developer` |
 | UI components, styling, client state | `frontend-developer` |
-| Cross-cutting or unclear | Use main context directly |
+| Cross-cutting or unclear | Main context directly |
 
-**Delegation prompt must include:**
+**Delegation prompt must include**:
 - The exact task description from `tasks/todo.md`
-- The relevant section of the spec from `specs/`
+- The relevant spec section from `specs/`
 - Paths to related source files
 - Instruction: "Follow TDD — write failing test first, then minimal implementation, then refactor"
 
 **Role-based context injection from `tasks/project-context.md`** (if it exists):
 
-| Agent Type | Sections to Include |
-|---|---|
-| `backend-developer` | `[ARCHITECTURE]` + `[PROTECTION]` + relevant functional requirements from spec |
-| `frontend-developer` | `[ARCHITECTURE]` + `[PROTECTION]` + `[CONVENTIONS]` + relevant functional requirements from spec |
-| `code-reviewer` | Feature spec + coding standards only — no project-context needed |
-| `code-debugger` | Failing test + relevant code only — no project-context needed |
-| `security-reviewer` | `[ARCHITECTURE]` + `[NON-FUNCTIONAL]` |
-| `software-design-expert-review` | Git diff only — read-only, no project-context needed |
+| Agent | Sections to include |
+|-------|---------------------|
+| `backend-developer` | `[ARCHITECTURE]` + `[PROTECTION]` + relevant functional requirements |
+| `frontend-developer` | `[ARCHITECTURE]` + `[PROTECTION]` + `[CONVENTIONS]` + relevant requirements |
+| `code-debugger` | Failing test + relevant code only |
 
-Do NOT pass the full project-context to every agent. Extract only the relevant sections to keep agent context focused.
+Do not pass the full project-context to every agent — extract only relevant sections.
 
-### Step 2 — Two-Stage Review
+### Step 2 — Per-Task Spec Compliance Check (inline, no agent)
 
-After the sub-agent returns, run two sequential reviews before proceeding:
+After implementation, run this check inline in the main context:
 
-#### Stage 1: Spec Compliance Review
+1. Re-read the task's acceptance criteria from `specs/`
+2. Run `git diff --cached` (or `git diff HEAD`) to see the actual changes
+3. Report:
+   - **PASS** if the change addresses the acceptance criteria
+   - **MISMATCHES** — list each specific gap between spec and implementation
 
-Dispatch a `code-reviewer` agent (`model: "sonnet"`) with:
-- The original task description from `tasks/todo.md`
-- The relevant acceptance criteria from `specs/`
-- The git diff of changes made by the sub-agent
+If mismatches found: send feedback to the implementing agent for fixes, then re-check.
 
-**Review prompt:**
-> "Review this implementation against the spec. Check:
-> 1. Does it implement exactly what was specified? Nothing added, nothing missing.
-> 2. Are all acceptance criteria addressed?
-> 3. Are there deviations from the spec? If so, are they justified improvements or problematic departures?
-> Report: APPROVED or CHANGES NEEDED with specific items."
+### Step 3 — Run Tests
 
-**If CHANGES NEEDED:** Send feedback back to the original sub-agent for fixes, then re-review.
-
-#### Stage 2: Code Quality Review
-
-Dispatch a second `code-reviewer` agent (`model: "sonnet"`) with:
-- The git diff of changes
-- The project's coding standards from CLAUDE.md
-
-**Review prompt:**
-> "Review this implementation for code quality:
-> 1. Clean Code: functions ≤20 LOC, ≤3 params, meaningful names, single abstraction level
-> 2. SOLID principles adherence
-> 3. Test quality: real assertions, no mock-testing, edge cases covered
-> 4. Security: no injection vectors, proper input validation at boundaries
-> 5. Performance: no N+1 patterns, unnecessary allocations, or redundant computations
-> Report: APPROVED or CHANGES NEEDED with categorized issues (Critical / Important / Suggestion)."
-
-**If Critical or Important issues found:** Fix before proceeding.
-**If only Suggestions:** Note them and proceed.
-
-#### Verification Gate
-
-After both reviews pass:
 1. Run the new test — confirm it **passes**
 2. Run the **full test suite** — confirm no regressions
-3. If failures: delegate to `code-debugger` agent with failure output and context
+3. If failures: fix with `code-debugger` agent and full failure context
 4. Repeat until green
 
-### Step 3 — Mark Complete
+### Step 4 — Mark Complete and Continue
+
 - Change `[ ]` to `[x]` in `tasks/todo.md`
 - Log: `✓ [Test Name] — [one-line summary]`
-
-### Step 4 — Continue
 - Move to the next `[ ]` task immediately (no user prompt)
 - If a task is blocked by a previous failure, note it and skip to the next unblocked task
 
@@ -166,65 +109,19 @@ After all tasks are `[x]`:
 1. Run the **complete test suite**
 2. Run linter / type checker if configured
 3. Confirm all tests pass and no errors
-4. If anything fails: delegate to `code-debugger` to fix, then re-run
+4. If anything fails: fix with `code-debugger`, then re-run
 
-## Phase 3 — Simplify & Deslop
+## Phase 3 — Quality Gate
 
-Run `/simplify` then `/deslop` on all changed files:
+Invoke `/quality-gate` on all files changed during this build:
 
-1. Identify changed files via `git diff --name-only` (against the baseline before build started)
-2. **Simplify pass** — invoke `/simplify` to review for:
-   - Code reuse opportunities
-   - Clean Code violations (functions >20 LOC, >3 params, poor naming)
-   - SOLID principle violations
-   - Unnecessary complexity or dead code
-3. Apply suggested improvements
-4. **Deslop pass** — invoke `/deslop` on the same changed files to remove:
-   - Hedge words in comments ("should", "might", "probably")
-   - Restating-the-code comments
-   - Over-documented simple functions
-   - Obvious type annotations
-   - Impossible-case error handling on internal functions
-   - Filler abstractions and verbose logging
-5. Re-run full test suite to confirm neither pass broke anything
-
-## Phase 3.5 — APOSD Design Quality Gate
-
-After the code is functionally correct and simplified, run a structural design review using the `/software-design-expert-review` skill. This gate catches APOSD red flags (information leakage, shallow modules, temporal decomposition, unknown unknowns, errors not defined away) that accrue technical debt even when tests pass.
-
-### Gate Invocation
-
-1. Collect changed files: `git diff --name-only <base>..HEAD` (against the build baseline)
-2. Dispatch the `software-design-expert-review` agent (`model: sonnet`) — one call if ≤5 files, chunked by subsystem if more
-3. Parse findings and reconcile severities (deduplicate, keep highest)
-
-### Severity Classification
-
-| Tag | Source APOSD Severity | Examples |
-|-----|----------------------|----------|
-| `MUST-FIX` | CRITICAL / HIGH | R8 Unknown Unknowns (hidden side effects), R10 Conjoined Methods (unsafe ordering), R5 Temporal Decomposition, R6 Change Amplification, R9 Shallow Module |
-| `SHOULD-FIX` | MEDIUM | R1 Repetition ≥3×, R7 High Cognitive Load (caller must know internals) |
-| `NITPICK` | LOW | R2 Pass-Through Methods, R4 Vague Names on local variables |
-
-### Gate Behavior
-
-| Condition | Action |
-|-----------|--------|
-| Zero MUST-FIX and zero SHOULD-FIX | 🟢 **PASS** — proceed to Phase 4 |
-| Zero MUST-FIX and ≤3 SHOULD-FIX | 🟡 **HOLD** — note findings as design debt in the Build Report and proceed |
-| Any MUST-FIX found, or >3 SHOULD-FIX found | 🔴 **STOP** — halt build. Present findings and ask user: _"Build halted: [N] MUST-FIX APOSD findings. Fix now and retry, or acknowledge and proceed? (fix/acknowledge)"_ |
-
-**On `fix`:** Convert findings into `[ ]` tasks appended to `tasks/todo.md`. Re-run **only this Phase 3.5** after fixes (not Phases 1–3). Full test suite must still pass after the fix.
-
-**On `acknowledge`:** Log all findings in `tasks/design-debt.md` (create if absent) with date + commit short-sha. Downgrade to HOLD and proceed.
-
-**Agent failure:** If the `software-design-expert-review` agent errors out, mark review status `degraded`, log the error, and proceed with a warning in the Build Report. Do not block the build on agent infrastructure failure.
-
----
+1. Identify changed files via `git diff --name-only` (against baseline before build started)
+2. Run `/quality-gate` — this executes all 3 phases (structural, AI anti-patterns, APOSD design)
+3. Re-run full test suite after quality gate completes to confirm no regressions
 
 ## Phase 4 — Spec Validation (Persistence Loop)
 
-Compare what was built against the original spec. This phase loops up to 3 rounds to catch and fix gaps.
+Compare what was built against the original spec. Loops up to 3 rounds.
 
 ```
 max_rounds: 3
@@ -233,50 +130,26 @@ previous_failures: []
 
 ### Evidence Required by AC Type
 
-Use the classification from Pre-Flight Step 7 to determine what evidence each AC needs:
-
 | AC type | Evidence required |
-|---|---|
+|---------|-------------------|
 | `logic` | Unit test passes (covers the function in isolation) |
 | `integration` | Integration test passes (real API/DB/service interaction) |
-| `user-facing` | **E2E walkthrough via `/verify-e2e`** — entry exists in `tasks/e2e-log.md` for the current commit short-sha |
+| `user-facing` | E2E walkthrough via `/verify --scope e2e` — entry in `tasks/e2e-log.md` for current commit short-sha |
 
-If ANY AC is classified `user-facing`, you MUST invoke `/verify-e2e` before declaring Phase 4 complete. Unit coverage alone is insufficient for user-facing ACs — `/verify-e2e` runs a real browser through the real flow and writes evidence to `tasks/e2e-log.md`.
+If ANY AC is classified `user-facing`, invoke `/verify --scope e2e` before declaring Phase 4 complete.
 
-**Non-skippable**: The Build Report is blocked until every user-facing AC shows a `✅✅` mark referencing a `tasks/e2e-log.md` entry whose commit short-sha matches the current HEAD. "Form renders in jsdom" / "unit test passes" / "spot-checked manually" are NOT substitutes. If `/verify-e2e` cannot run (no browser available, auth missing), HALT and escalate — do not fall back to unit evidence for a user-facing AC.
-
-Status marks distinguish evidence strength:
-
-- ✅ [criterion] — covered by unit or integration test `<name>`
-- ✅✅ [criterion] — covered by e2e walkthrough (see `tasks/e2e-log.md` entry for `<feature-name>` at `<short-sha>`)
-- ❌ [criterion] — [what's missing]
-
-**For each round:**
+**For each round**:
 
 1. Re-read `specs/[feature-name].md`
-2. For every AC classified `user-facing`, invoke `/verify-e2e` (skip if already invoked this round and e2e log shows a PASS entry for the current commit)
-3. Walk through each **Acceptance Criterion**:
-   - For each criterion: identify the evidence that proves it (test name OR e2e log entry)
-   - Mark using the status marks above
-4. **If all criteria are `✅` or `✅✅`**: break → proceed to Phase 5
-4. **If any criterion is `❌`**:
-   a. Compare current failures against `previous_failures`
-   b. **If SAME criteria failed as last round** → **HALT** (circular fix detected):
-      ```
-      ⛔ HALTED — Circular fix detected in Phase 4
-      Round [N]: Same criteria failing as round [N-1]:
-        ❌ [criterion] — failed in both rounds
-      Escalating to user. The spec or architecture may need revision.
-      ```
-   c. **If DIFFERENT failures** → record current failures in `previous_failures`, create new `[ ]` tasks in `tasks/todo.md`, loop back to **Phase 1** for those tasks only
-5. **After round 3 with remaining `❌`**: **HALT** with full status report:
-   ```
-   ⛔ HALTED — Max validation rounds (3) reached
-   Criteria still failing:
-     ❌ [criterion 1] — [what's missing]
-     ❌ [criterion 2] — [what's missing]
-   Escalating to user.
-   ```
+2. For every `user-facing` AC, invoke `/verify --scope e2e` (skip if already run this round with PASS entry for current commit)
+3. Walk through each AC:
+   - Mark: `✅` (unit/integration test), `✅✅` (e2e walkthrough), `❌` (missing)
+4. **If all criteria are `✅` or `✅✅`**: proceed to Phase 5
+5. **If any criterion is `❌`**:
+   - Compare against `previous_failures`
+   - **Same failures as last round** → HALT with circular-fix message, escalate to user
+   - **Different failures** → record in `previous_failures`, add tasks, loop to Phase 1
+6. **After round 3 with remaining `❌`**: HALT with full status report, escalate to user
 
 ## Phase 4.5 — Ambiguity Batch Review
 
@@ -309,69 +182,60 @@ After Phase 4 passes:
 ## Phase 5 — Backlog Update
 
 If `tasks/backlog.md` exists:
-1. Identify which backlog item this build corresponds to (from the spec reference)
+1. Identify which backlog item this build corresponds to
 2. Mark the item as `[x]` in `tasks/backlog.md`
-3. Update `tasks/project-context.md` `[CURRENT-PHASE]` section if the phase is now complete (all items `[x]`)
+3. Update `tasks/project-context.md` `[CURRENT-PHASE]` if the phase is now complete
 
-## Phase 6 — Build Report (MUST include persistence echo)
+## Phase 6 — Build Report
 
-The build is not "done" until you have proven what is on disk. End your turn with
-the report below, populated from **real command output**, not recollection.
+End your turn with this report populated from **real command output**:
 
 ### Required persistence proofs (run these, paste their output)
 
-1. `git status --short`            — shows uncommitted changes (if any)
-2. `git log --oneline <base>..HEAD` — shows commits created this build
-3. `ls specs/ | grep <feature>`    — confirms spec is on disk
+1. `git status --short`
+2. `git log --oneline <base>..HEAD`
+3. `ls specs/ | grep <feature>`
 4. `grep -c '^\[x\]' tasks/todo.md` vs `grep -c '^\[ \]' tasks/todo.md`
-
-Then output:
 
 ```
 ══════════════════════════════════════
   BUILD COMPLETE — [Feature Name]
 ══════════════════════════════════════
 
-📋 Tasks: [X] completed, [Y] added during build
-🧪 Tests: [N] total, [N] passing, [0] failing
-📐 Spec Validation: [all criteria met / N gaps remain]
-🏛️ Design Gate: [PASS / HOLD / STOP] — [N MUST-FIX, N SHOULD-FIX, N NITPICK]
-🧹 Simplify: [N improvements applied]
+Tasks: [X] completed, [Y] added during build
+Tests: [N] total, [N] passing, [0] failing
+Spec Validation: [all criteria met / N gaps remain]
+Quality Gate: [N improvements applied]
 
 Files on disk (persistence proof):
-  ✓ Spec: /absolute/path/to/specs/<feature-name>.md
-  ✓ Plan: /absolute/path/to/tasks/todo.md
-  ✓ Source changes: [git diff --stat summary — paste actual output]
+  Spec: /absolute/path/to/specs/<feature-name>.md
+  Plan: /absolute/path/to/tasks/todo.md
+  Source changes: [git diff --stat summary]
 
 Git state:
   Branch: <branch>
-  Commits this build: [N]  (paste `git log --oneline <base>..HEAD` output)
-  Uncommitted changes: [Y/N — paste `git status --short` if non-empty]
+  Commits this build: [N]
+  Uncommitted changes: [Y/N]
   Pushed: [NOT YET — /build does not push. /wrap-up-session handles push.]
 
 Acceptance Criteria:
-  ✅✅ [user-facing criterion — e2e log entry: tasks/e2e-log.md @ <short-sha>]
+  ✅✅ [user-facing criterion — e2e log entry @ <short-sha>]
   ✅   [logic/integration criterion — test: <test-name>]
-  ...
 
-Next: /wrap-up-session (runs reviews, tests, commits, pushes).
+Next: /wrap-up-session
 ══════════════════════════════════════
 ```
 
 ### Forbidden completion patterns
 
-- Claiming "build complete" without the persistence proof block above
+- Claiming "build complete" without the persistence proof block
 - Stating a file was "created" or "updated" without showing its absolute path
-- Omitting the `Pushed:` line (even to say "NOT YET" — it must be explicit)
-- Using past-tense verbs ("I wrote", "I saved") with no corresponding command output
-
-If any required proof command fails or returns empty, STOP and investigate.
-Do not emit the Build Report.
+- Omitting the `Pushed:` line
 
 ## Error Handling
 
-- **Sub-agent failure**: Retry once with additional context. If still failing, surface the error to user and pause.
-- **Test regression**: Delegate to `code-debugger` with full failure output. Max 3 fix attempts per regression (see Architectural Circuit Breaker below).
+- **Implementation failure**: Retry once with additional context. If still failing, surface to user and pause.
+- **Test regression**: Fix with `code-debugger`. Max 3 fix attempts per regression (see circuit breaker).
 - **Spec gap found late**: Add tasks dynamically and loop back. Do not silently skip criteria.
 - **Build tool missing**: Ask user for the correct command rather than guessing.
 
@@ -379,21 +243,17 @@ Do not emit the Build Report.
 
 When `code-debugger` fails **3 times on the same regression**:
 
-1. **STOP** fixing symptoms. The design may be the problem.
-2. Spawn a `planner` agent (`model: "opus"`) with:
+1. **STOP** fixing symptoms.
+2. **HALT and escalate to user** with:
    - The failing test output (all 3 attempts)
    - The files changed across all attempts
    - The original spec and task description
-   - Prompt: "Three fix attempts have failed on this regression. Analyze whether the implementation approach or spec is flawed. Return either: (a) a revised approach to try, or (b) 'ARCHITECTURE PROBLEM' with diagnosis of what's fundamentally wrong."
-3. **If planner returns a revised approach**: apply it, re-run tests (counts as attempt 4 — final chance)
-4. **If planner returns ARCHITECTURE PROBLEM**: halt and escalate to user with the full diagnosis
-5. **If attempt 4 also fails**: halt and escalate to user
+3. Do NOT attempt fix #4 without explicit user direction.
 
 ```
 ⛔ HALTED — Architectural circuit breaker triggered
 Regression: [test name]
-3 fix attempts failed + planner analysis indicates: [diagnosis]
-User input required before proceeding.
+3 fix attempts failed. User input required before proceeding.
 ```
 
 ## Key Principles
@@ -401,4 +261,16 @@ User input required before proceeding.
 - **Autonomous**: No user prompts between tasks. Run to completion or until blocked.
 - **Observable**: Log every task completion so progress is visible.
 - **Safe**: Full test suite after every task. Never let regressions accumulate.
-- **Spec-faithful**: The spec is the contract. Build is not done until every acceptance criterion has a passing test.
+- **Spec-faithful**: The spec is the contract. Build is not done until every AC has evidence.
+
+## Claude Code Enhancements
+
+### Task Dispatch
+Dispatch sub-agents (`backend-developer` or `frontend-developer`, model: sonnet) for each task in Phase 1.
+For 2+ independent tasks: dispatch in parallel (multiple Agent tool calls in a single message).
+
+### Per-Task Review
+Phase 1 Step 2 remains inline (no agent). Spec compliance check is a read + compare, not a coding task.
+
+### Quality Gate
+In Phase 3, invoke `/quality-gate` normally. The quality-gate skill dispatches `software-design-expert-review` for Phase 3 on Claude Code.

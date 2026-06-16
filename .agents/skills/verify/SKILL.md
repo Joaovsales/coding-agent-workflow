@@ -3,6 +3,7 @@ name: verify
 description: Enforce evidence-based verification before any completion claims. Supports --scope deployment and --scope e2e. Use before committing, creating PRs, marking tasks done, or claiming success.
 argument-hint: "[--scope deployment|e2e]"
 harness: universal
+disable-model-invocation: false
 ---
 
 # /verify — Verification Before Completion

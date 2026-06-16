@@ -2,6 +2,7 @@
 name: auto-push
 description: Semi-autonomous pipeline. User describes an idea; agent runs /plan and PAUSES for explicit approval. After approval, /build and /wrap-up-session run autonomously through commit and push.
 argument-hint: "[short feature description]"
+harness: universal
 disable-model-invocation: false
 ---
 
@@ -13,16 +14,6 @@ The single approval gate is the whole point. After it, you don't ask again.
 
 ---
 
-## Model Routing
-
-**This command MUST follow the standard model routing.**
-- `/plan` phase: delegate to `planner` agent with `model: "opus"` (architecture work).
-- `/build` phase: all coding agents (`backend-developer`, `frontend-developer`, `code-debugger`, `code-reviewer`) MUST be invoked with `model: "sonnet"`.
-- Codebase searches: `model: "haiku"` via the `Explore` agent.
-- Never use `opus` during build — it is reserved for planning.
-
----
-
 ## The Iron Law
 
 ```
@@ -31,7 +22,7 @@ NO USER PROMPTS BETWEEN BUILD AND PUSH.
 NO PUSH WITHOUT THE APPROVAL.
 ```
 
-If you find yourself about to call `AskUserQuestion` a second time after the user approved the plan — you are violating auto-push mode. The "y" was the only decision they signed up to make.
+If you find yourself about to ask the user a second question after they approved the plan — you are violating auto-push mode. The "y" was the only decision they signed up to make.
 
 ---
 
@@ -62,7 +53,7 @@ If any pre-flight check fails, STOP. Do not proceed past unresolved guards.
 
 ### Phase A — Plan (with the approval gate)
 
-Run `/plan` **as-is**. Delegate Steps 1–3 to the `planner` agent with `model: "opus"`. Do not override anything else. The user's interview, spec, and confirmation gate all run normally.
+Run `/plan` **as-is**. Do not override anything. The user's interview, spec, and confirmation gate all run normally.
 
 The plan phase ends with `/plan` asking:
 
@@ -83,7 +74,7 @@ Once `y` is received, **stop asking questions**. The rest is on you.
 
 ### Phase B — Build (autonomous)
 
-Invoke `/build`. It is already autonomous and uses sonnet for all sub-agent dispatches. Run it to completion.
+Invoke `/build`. It is already autonomous — no overrides needed for build itself. Run it to completion.
 
 - All TDD, quality gate, spec validation, backlog update phases run as normal.
 - If `/build`'s Phase 4 spec validation HALTS after 3 rounds: stop the auto-push pipeline. Do NOT proceed to wrap-up. Report the HALT to the user with the validation failures.
@@ -97,11 +88,10 @@ Invoke `/wrap-up-session` with these overrides:
 
 | `/wrap-up-session` step | Auto-push override |
 |---|---|
-| Step 4 — Code review (4 parallel agents) | Run normally — launch all 4 review agents in parallel with `model: "sonnet"`. |
 | Step 6.3 — E2E coverage gate | If a user-facing AC lacks an e2e walkthrough, **do not prompt the user**. Run `/verify --scope e2e` automatically. The approval covered "ship it"; e2e verification is part of shipping. |
 | Step 7 — Commit gate (MUST-FIX skipped → STOP) | If a MUST-FIX cannot be auto-fixed, STOP and report. Do NOT push partial work. The approval did not cover skipping safety gates. |
 | Step 7 — Push | Run normally. Push to the feature branch. |
-| Step 8 — Deployment verification | Run normally if `## Deployment Targets` configured in `.claude/project.md`. |
+| Step 8 — Deployment verification | Run normally if configured. |
 
 Everything else runs as `/wrap-up-session` defines it: code review (4 parallel passes), security scan, tests, learnings capture.
 
@@ -141,7 +131,7 @@ In every stop case, leave the working tree in a recoverable state. The user can 
 
 ## Red Flags — STOP
 
-- About to call `AskUserQuestion` between approval and push → STOP, that's a second gate.
+- About to ask the user anything between approval and push → STOP, that's a second gate.
 - About to push without an explicit approval recorded → STOP, no approval = no push.
 - About to push to `main`/`master` → STOP, wrong branch.
 - About to skip `/wrap-up-session`'s test suite to "save time" → STOP, tests gate push.

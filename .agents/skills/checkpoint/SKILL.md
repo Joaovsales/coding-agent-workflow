@@ -2,6 +2,7 @@
 name: checkpoint
 description: Snapshot current session progress to tasks/checkpoint.md for handoff or pause.
 harness: universal
+disable-model-invocation: false
 ---
 
 # /checkpoint — Session Checkpoint

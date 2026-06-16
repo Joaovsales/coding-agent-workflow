@@ -3,6 +3,7 @@ name: auto-push
 description: Semi-autonomous pipeline. User describes an idea; agent runs /plan and PAUSES for explicit approval. After approval, /build and /wrap-up-session run autonomously through commit and push.
 argument-hint: "[short feature description]"
 harness: universal
+disable-model-invocation: false
 ---
 
 # /auto-push — Approve-Once, Ship-Hands-Free

@@ -3,6 +3,7 @@ name: learn
 description: Extract durable patterns from the current session and persist to memory.md and lessons.md.
 argument-hint: "[--cleanup]"
 harness: universal
+disable-model-invocation: false
 ---
 
 # /learn — Capture Session Learnings
