@@ -2,6 +2,7 @@
 name: sync
 description: Pull latest skills, hooks, agents, and config from the coding-agent-workflow template repo.
 harness: universal
+disable-model-invocation: false
 ---
 
 # /sync — Sync Workflow Updates from Template Repo
@@ -20,6 +21,17 @@ Config is split across layers so `/sync` can overwrite template-managed files sa
 | `.agents/skills/` | Canonical skills — readable by any harness | Yes | **Yes** |
 
 Both Claude Code and Pi read `CLAUDE.md` natively at session start. All shared workflow rules and coding principles live there inline — no `@` import required for shared content.
+
+### Cursor additional layer
+
+| Path | Scope | Committed? | Touched by /sync? |
+|---|---|---|---|
+| `.cursor/rules/` | Always-on and conditional rules (`.mdc`) | Yes | **Yes** |
+| `.cursor/agents/` | Subagent definitions (Cursor native) | Yes | **Yes** |
+| `.cursor/hooks/` + `.cursor/hooks.json` | Lifecycle hooks (Cursor native; required for cloud agents) | Yes | **Yes** |
+| `.claude/project.md` | Project-specific rules (canonical for Claude Code) | Yes | **Never** — mirrored by `.cursor/rules/project-config.mdc` |
+
+Cursor also reads `CLAUDE.md`, `.agents/skills/`, and `.claude/agents/` via third-party compat. Native `.cursor/` paths take precedence in Cursor.
 
 ### Claude Code additional layer
 
@@ -85,6 +97,10 @@ CLAUDE.md             → Shared rules: workflow, principles, skills index (both
 .claude/agents/       → Subagent definitions (Claude Code only)
 .claude/hooks/        → Lifecycle hooks (Claude Code only)
 .claude/settings.json → Hook configuration (Claude Code only)
+.cursor/rules/        → Cursor rules (.mdc) — workflow + project-config mirror
+.cursor/agents/       → Subagent definitions (Cursor native)
+.cursor/hooks/        → Lifecycle hook scripts (Cursor native)
+.cursor/hooks.json    → Hook configuration (Cursor native; required for cloud agents)
 ```
 
 **Never sync** (project-specific state):
@@ -235,12 +251,12 @@ Compare the syncable paths between the current project and the template source.
 # Show changed files in syncable paths only
 # Note: use two-dot diff (not three-dot) — template and project have unrelated histories,
 # so HEAD...workflow/$WORKFLOW_BRANCH fails with "no merge base"
-git diff workflow/$WORKFLOW_BRANCH --stat -- .agents/skills/ .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json CLAUDE.md
+git diff workflow/$WORKFLOW_BRANCH --stat -- .agents/skills/ .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json .cursor/rules/ .cursor/agents/ .cursor/hooks/ .cursor/hooks.json CLAUDE.md
 ```
 
 Then show the full diff:
 ```bash
-git diff workflow/$WORKFLOW_BRANCH -- .agents/skills/ .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json CLAUDE.md
+git diff workflow/$WORKFLOW_BRANCH -- .agents/skills/ .claude/skills/ .claude/agents/ .claude/hooks/ .claude/settings.json .cursor/rules/ .cursor/agents/ .cursor/hooks/ .cursor/hooks.json CLAUDE.md
 ```
 
 **If manual diff mode:**
@@ -281,9 +297,26 @@ For each applied file, briefly note what changed.
 ### Step 6 — Post-Sync
 
 1. Run `git diff --stat` to confirm what was updated
-2. Ask the user if they want to commit the sync:
+2. **Refresh global Cursor/Claude install** (required for skills/subagents/hooks in all projects):
+   ```bash
+   bash install.sh
+   ```
+   Run from the template repo root (`~/coding-agent-workflow` or wherever you cloned it).
+   Re-running is safe — overwrites `~/.agents/skills/`, `~/.cursor/agents/`, `~/.cursor/skills/`, and hooks.
+3. **Restart Cursor** (or start a new agent session) so it rescans global skills
+4. Ask the user if they want to commit the sync:
    - Suggested message: `chore: sync workflow updates from coding-agent-workflow`
-3. Remind the user to review `CLAUDE.md` if it was updated — they may need to merge project-specific customizations back in
+5. Remind the user to review `CLAUDE.md` if it was updated — they may need to merge project-specific customizations back in
+
+### Step 6.1 — Skill discoverability (Cursor)
+
+Every `SKILL.md` must include in frontmatter:
+
+```yaml
+disable-model-invocation: false
+```
+
+Without this field, Cursor may not expose the skill in `/skill-name` or the Skill tool (including `/build`, `/sync`, `/quality-gate`). After adding or syncing skills, always run `bash install.sh` and restart Cursor.
 
 ## Edge Cases
 

@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "bash .cursor/hooks/session-start.sh"
+      }
+    ],
+    "stop": [
+      {
+        "command": "bash .cursor/hooks/session-stop.sh"
+      }
+    ]
+  }
+}

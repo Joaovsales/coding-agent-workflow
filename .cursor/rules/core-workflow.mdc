@@ -1,0 +1,28 @@
+---
+description: Core coding agent workflow — spec-driven TDD, quality gates, and session checklist. Template-managed; overwritten by /sync.
+alwaysApply: true
+---
+
+# Coding Agent Workflow
+
+Follow the shared workflow rules in @CLAUDE.md. This rule ensures Cursor loads project-specific config and the session checklist even when Claude `@` imports are unavailable.
+
+## Session Start Checklist
+
+1. Read `tasks/memory.md` for persistent patterns and lessons
+2. Check `tasks/todo.md` for in-progress work
+3. Check `tasks/lessons.md` for self-improvement notes
+4. Run `/memory-maintain` (self-gates — only does work every 5 sessions or when overdue)
+
+## Harness Notes (Cursor)
+
+- **Skills**: `.agents/skills/` (canonical) — invoke with `/skill-name`
+- **Subagents**: `.cursor/agents/` — delegate via the Task tool
+- **Hooks**: `.cursor/hooks.json` — sessionStart/stop orientation
+- **Project rules**: see @.cursor/rules/project-config.mdc (content from `.claude/project.md`)
+
+## Workflow Summary
+
+PRD (greenfield) → `/plan` (spec + tasks) → user confirms → `/build` (autonomous TDD) → `/quality-gate` → `/wrap-up-session`
+
+Hard gate: no source code changes without a plan in `tasks/todo.md` and user confirmation.

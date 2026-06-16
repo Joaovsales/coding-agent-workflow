@@ -1,7 +1,8 @@
 # Pi Project-Specific Rules
 
 > **Pi harness only.** Claude Code uses `.claude/project.md` for project-specific rules.
-> `CLAUDE.md` (shared rules, workflow, principles) is loaded automatically by both harnesses — this file adds on top of it.
+> **Cursor** mirrors project rules via `.cursor/rules/project-config.mdc` (which references `.claude/project.md`).
+> `CLAUDE.md` (shared rules, workflow, principles) is loaded automatically by all harnesses — this file adds on top of it for Pi.
 > Safe to edit — `/sync` never touches this file.
 
 ---

@@ -2,6 +2,7 @@
 name: tdd
 description: Execute TDD loop for tasks in tasks/todo.md with user checkpoints between steps.
 harness: universal
+disable-model-invocation: false
 ---
 
 # /tdd — TDD Workflow

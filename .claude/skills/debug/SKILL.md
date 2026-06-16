@@ -7,7 +7,7 @@ disable-model-invocation: false
 
 # /debug — Bug Investigation & Fix
 
-Systematically investigate and fix bugs using root cause analysis, the `code-debugger` agent, project memory, and the bug register. Iterates with `/loop` to run tests until all regressions are resolved.
+Systematically investigate and fix bugs using root cause analysis and the bug register. Iterates with `/loop` to run tests until all regressions are resolved.
 
 ## The Iron Law
 
@@ -17,37 +17,31 @@ NO FIXES WITHOUT THE ROOT-CAUSE PRELUDE (Phase 0.5) AND REPRODUCTION (Phase 1)
 
 You cannot propose fixes until:
 1. The **Root-Cause Prelude** (Phase 0.5) has listed 3 candidates and picked one based on disconfirming evidence, AND
-2. Phase 1 (Reproduce & Isolate) has produced a minimal failing reproduction.
-
-Symptom fixes are failure. Single-hypothesis tunnel vision is failure.
+2. Phase 1 has produced a minimal failing reproduction.
 
 ## Pre-Flight — Load Context
 
 1. **Read memory and lessons**:
-   - Read `.claude/memory.md` for known patterns and architectural context
+   - Read `tasks/memory.md` for known patterns and architectural context
    - Read `tasks/lessons.md` for past debugging patterns and gotchas
    - Check if the current bug matches any known pattern — apply the known fix first
 
 2. **Read bug register**:
-   - Read `tasks/bugs.md` (create from [template](templates/bug-register-template.md) if missing)
-   - Check if this bug was previously reported or is related to an existing entry
-   - If a match exists, reference the prior investigation to avoid duplicate work
+   - Read `tasks/bugs.md` (create from template if missing)
+   - Check if this bug was previously reported or related to an existing entry
 
 3. **Identify the bug**:
    - If `$ARGUMENTS` provided: use as the bug description
-   - If no arguments: ask the user to describe the bug, provide error output, or point to the failing test
+   - If no arguments: ask the user to describe the bug or point to the failing test
 
 ## Phase 0.5 — Root-Cause Prelude (MANDATORY before any Edit)
 
-Before touching a single file, post this block to the user and wait for confirmation
-OR explicitly pick a branch and name the disconfirming evidence. This exists because
-the #1 debugging failure mode is committing to hypothesis #1 and editing the wrong
-component (see the WhatsApp UserMenu/Banner and dual-SIM sagas in memory).
+Before touching a single file, post this block:
 
 ### Required output — "Top-3 Candidates"
 
 ```
-🔎 Root-Cause Prelude — [bug summary]
+Root-Cause Prelude — [bug summary]
 
 Reproduction confirmed: [YES — <how> | NO — need <screenshot/logs/steps>]
 
@@ -70,89 +64,62 @@ Picked: #<N> because [disconfirming evidence for others is stronger than for thi
 
 ### Rules
 
-- **Do not skip this block** even for "obvious" bugs. Obvious bugs are where wrong-component detours happen.
-- **Do not collapse to 1 candidate** until disconfirming checks have been run on the other two. Listing one candidate = speculation.
-- **If reproduction is `NO`**: STOP and ask the user for a screenshot, log excerpt, or exact repro steps. Do not proceed to Phase 1.
-- **If the user redirects** ("look at X instead", "that's not the bug"): re-run this prelude with their new information. Do not continue with the old hypothesis.
-
-Only after the prelude passes do you delegate to Phase 1.
+- **Do not skip this block** even for "obvious" bugs.
+- **Do not collapse to 1 candidate** until disconfirming checks have been run on the others.
+- **If reproduction is `NO`**: STOP and ask the user for a screenshot, log excerpt, or exact repro steps.
+- **If the user redirects**: re-run this prelude with their new information.
 
 ---
 
 ## Phase 1 — Reproduce & Isolate
 
-Delegate to the `code-debugger` agent (`model: "sonnet"`):
+Read all relevant source files. Find or write a minimal failing test.
 
-```
-Prompt to code-debugger:
-─────────────────────────
-Bug report: [description from user or $ARGUMENTS]
-
-Known patterns from memory:
-[relevant entries from .claude/memory.md and tasks/lessons.md]
-
-Related bugs from register:
-[matching entries from tasks/bugs.md, if any]
-
-Your task:
+Steps:
 1. Reproduce the bug — find or write a minimal failing test
 2. Read all relevant source files before forming hypotheses
 3. Form 2-3 hypotheses ranked by likelihood
-4. Rank evidence using the Evidence Strength Hierarchy (see .claude/skills/debug/evidence-hierarchy.md):
-   - Level 1 (strongest): Controlled reproduction (test that isolates exact cause)
+4. Rank evidence using the Evidence Strength Hierarchy:
+   - Level 1 (strongest): Controlled reproduction
    - Level 2: Primary artifacts (timestamped logs, git history, metrics)
    - Level 3: Multiple independent sources converging on same explanation
-   - Level 4: Single code-path inference (plausible but not uniquely discriminating)
-   - Level 5: Circumstantial clues (naming, proximity, timing)
+   - Level 4: Single code-path inference
+   - Level 5: Circumstantial clues
    - Level 6 (weakest): Intuition or analogy
-   Label each piece of evidence with its level. Down-rank hypotheses supported only by Level 5-6 evidence.
 5. Use binary search / state inspection to isolate the root cause
 6. Document the root cause clearly
 
-Return:
-- Root cause (1-2 sentences)
-- Evidence level supporting the conclusion (Level 1-6)
-- Affected files and line numbers
-- Minimal reproduction (test or steps)
-- Recommended fix approach
-```
+**If cannot reproduce**: ask the user for more context (logs, steps, environment). Do not guess.
 
-**If the agent cannot reproduce**: ask the user for more context (logs, steps, environment). Do not guess.
+---
 
 ## Phase 2 — Fix
 
-Delegate the fix to the appropriate coding agent (`model: "sonnet"`):
+Apply the fix in the main context, focusing on the root cause:
 
-| Bug Location | Agent |
-|-------------|-------|
-| API, database, auth, business logic | `backend-developer` |
-| UI components, styling, client state | `frontend-developer` |
-| Cross-cutting or unclear | `code-debugger` |
+| Bug Location | Approach |
+|-------------|----------|
+| API, database, auth, business logic | Backend fix |
+| UI components, styling, client state | Frontend fix |
+| Cross-cutting or unclear | Direct fix in main context |
 
-**Fix delegation prompt must include:**
-- The root cause from Phase 1
-- The affected files and line numbers
-- The minimal reproduction test
-- Instruction: "Fix the root cause, not the symptom. Keep the change minimal."
-- Instruction: "Ensure the reproduction test now passes."
+**Fix principles**:
+- Fix the root cause, not the symptom
+- Keep the change minimal
+- Ensure the reproduction test passes after the fix
 
 ### Architecture Questioning — After 3 Failed Fixes
 
-**If 3+ fix attempts have failed, STOP and question the architecture:**
+If 3+ fix attempts have failed, STOP and question the architecture:
 
-Pattern indicating architectural problem:
-- Each fix reveals new shared state/coupling/problem in a different place
-- Fixes require "massive refactoring" to implement
+Patterns indicating architectural problem:
+- Each fix reveals new shared state/coupling in a different place
+- Fixes require massive refactoring
 - Each fix creates new symptoms elsewhere
 
-**STOP and question fundamentals:**
-- Is this pattern fundamentally sound?
-- Are we "sticking with it through sheer inertia"?
-- Should we refactor architecture vs. continue fixing symptoms?
+**STOP and discuss with the user before attempting more fixes.**
 
-**Discuss with the user before attempting more fixes.**
-
-This is NOT a failed hypothesis — this is a wrong architecture. Do NOT attempt fix #4 without the user's explicit direction.
+---
 
 ## Phase 3 — Verify with Loop
 
@@ -160,28 +127,20 @@ After the fix is applied, use `/loop` to run all relevant tests iteratively unti
 
 ```
 /loop 30s Run the test suite relevant to the bug fix.
-  Files changed: [list from git diff --name-only].
   1. Run the reproduction test — confirm it PASSES
   2. Run the full test suite — check for regressions
   3. If ALL tests pass: report SUCCESS and stop the loop
-  4. If any test FAILS: delegate to code-debugger agent (model: sonnet) with:
-     - The failing test output
-     - The files changed so far
-     - The original root cause context
-     Then re-run tests after the fix
+  4. If any test FAILS: fix with code-debugger context, then re-run
   Loop exits when: all tests pass OR 5 iterations reached
 ```
 
-**If 5 iterations pass without all tests green**: stop and escalate to the user with:
-- What was fixed
-- What still fails
-- Hypotheses for remaining failures
+**If 5 iterations pass without all tests green**: escalate to the user with what was fixed, what still fails, and hypotheses for remaining failures.
+
+---
 
 ## Phase 4 — Register & Learn
 
 ### Update Bug Register (`tasks/bugs.md`)
-
-Add or update the entry using the [bug report template](templates/bug-report-template.md):
 
 | Field | Value |
 |-------|-------|
@@ -207,32 +166,31 @@ If this bug reveals a new pattern, append to `tasks/lessons.md`:
 
 Skip if the bug was trivial (typo, missing import, etc.).
 
-## User Signals You're Doing It Wrong
+---
 
-Watch for these redirections from the user — they indicate your debugging approach has gone off track:
+## User Signals You're Doing It Wrong
 
 | User Signal | What It Means |
 |-------------|---------------|
 | "Is that not happening?" | You assumed without verifying |
-| "Will it show us...?" | You should have added evidence gathering |
 | "Stop guessing" | You're proposing fixes without understanding root cause |
-| "We're stuck?" (frustrated) | Your approach isn't working — change strategy |
-| "Try something different" | You're repeating failed approaches |
+| "We're stuck?" | Your approach isn't working — change strategy |
 | "Did you actually check?" | You claimed something without evidence |
 
-**When you see these signals:** STOP. Return to Phase 1 (Reproduce & Isolate). Re-read error messages. Gather fresh evidence.
+**When you see these signals**: STOP. Return to Phase 1. Re-read error messages. Gather fresh evidence.
+
+---
 
 ## Common Rationalizations
 
 | Excuse | Reality |
 |--------|---------|
-| "Issue is simple, don't need process" | Simple issues have root causes too. Process is fast for simple bugs. |
-| "Emergency, no time for process" | Systematic debugging is FASTER than guess-and-check thrashing. |
-| "Just try this first, then investigate" | First fix sets the pattern. Do it right from the start. |
-| "I see the problem, let me fix it" | Seeing symptoms ≠ understanding root cause. |
-| "One more fix attempt" (after 2+ failures) | 3+ failures = architectural problem. Question pattern, don't fix again. |
-| "I'll write test after confirming fix works" | Untested fixes don't stick. Test first proves it. |
-| "Multiple fixes at once saves time" | Can't isolate what worked. Causes new bugs. |
+| "Issue is simple" | Simple issues have root causes too. Process is fast for simple bugs. |
+| "Emergency" | Systematic debugging is faster than guess-and-check. |
+| "I see the problem" | Seeing symptoms is not understanding root cause. |
+| "One more fix attempt" (after 2+) | 3+ failures = architectural problem. Question pattern. |
+
+---
 
 ## Phase 5 — Report
 
@@ -241,18 +199,17 @@ Watch for these redirections from the user — they indicate your debugging appr
   DEBUG COMPLETE — [Bug Summary]
 ══════════════════════════════════════
 
-🔍 Root Cause: [1-2 sentence explanation]
-🛠️  Fix: [what was changed]
-📁 Files Changed:
-  [git diff --stat summary]
+Root Cause: [1-2 sentence explanation]
+Fix: [what was changed]
+Files Changed: [git diff --stat summary]
 
-🧪 Tests:
+Tests:
   - Reproduction test: [PASS]
   - Full suite: [N passing, 0 failing]
   - Loop iterations: [N]
 
-📋 Bug Register: [BUG-XXX added/updated in tasks/bugs.md]
-📝 Lesson: [captured / skipped — trivial bug]
+Bug Register: [BUG-XXX added/updated in tasks/bugs.md]
+Lesson: [captured / skipped — trivial bug]
 
 Ready for /wrap-up-session or continued work.
 ══════════════════════════════════════
@@ -261,14 +218,12 @@ Ready for /wrap-up-session or continued work.
 ## Error Handling
 
 - **Cannot reproduce**: Ask user for more context. Do not proceed without reproduction.
-- **Fix introduces new failures**: Revert and try alternative approach. Max 3 alternative approaches before escalating.
+- **Fix introduces new failures**: Revert and try alternative approach. Max 3 alternatives before escalating.
 - **Loop timeout (5 iterations)**: Escalate to user with full context of what was tried.
-- **Multiple root causes**: Fix one at a time. Each gets its own bug register entry and loop verification cycle.
+- **Multiple root causes**: Fix one at a time. Each gets its own bug register entry and loop verification.
 
-## Key Principles
+## Claude Code Enhancements
 
-- **Root cause, not symptoms**: Never patch around the bug. Find and fix the actual cause.
-- **Reproduce first**: No fix without a failing test that proves the bug exists.
-- **Memory-informed**: Always check lessons and memory before investigating from scratch.
-- **Register everything**: Every bug gets tracked. Every non-trivial fix generates a lesson.
-- **Loop until clean**: Use `/loop` to iterate on test runs — no manual re-running.
+Delegate Phase 1 (Reproduce & Isolate) to `code-debugger` agent (model: sonnet).
+Delegate Phase 2 (Fix) to the appropriate coding agent (`backend-developer` or `frontend-developer`, model: sonnet).
+Main context handles: Pre-Flight, Phase 0.5 Root-Cause Prelude, Phase 3 loop orchestration, Phase 4 register & learn, Phase 5 report.

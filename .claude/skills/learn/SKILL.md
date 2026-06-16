@@ -1,12 +1,14 @@
 ---
 name: learn
 description: Extract durable patterns from the current session and persist to memory.md and lessons.md.
+argument-hint: "[--cleanup]"
+harness: universal
 disable-model-invocation: false
 ---
 
 # /learn — Capture Session Learnings
 
-Extract durable patterns from this session and persist them into `.claude/memory.md` and `tasks/lessons.md`.
+Extract durable patterns from this session and persist them into `tasks/memory.md` and `tasks/lessons.md`.
 
 ## Steps
 
@@ -35,10 +37,10 @@ Skip trivial or one-off observations. Only persist patterns with reuse value.
 **Evidence**: What triggered this insight
 ```
 
-### 4. Append to `.claude/memory.md`
+### 4. Append to `tasks/memory.md`
 Under the "Patterns & Lessons" section, append each new learning.
 
-### 5. Append Session Summary to `.claude/memory.md`
+### 5. Append Session Summary to `tasks/memory.md`
 Under the "Session History" section:
 
 ```
@@ -51,4 +53,22 @@ Under the "Session History" section:
 Mirror the patterns into `tasks/lessons.md` if it exists (tactical, project-specific lessons).
 
 ### 7. Confirm
-Reply: "Learnings captured. `.claude/memory.md` and `tasks/lessons.md` updated."
+Reply: "Learnings captured. `tasks/memory.md` and `tasks/lessons.md` updated."
+
+---
+
+## Optional: `--cleanup`
+
+When invoked as `/learn --cleanup`, after completing Steps 1–7, run a folder sweep to surface legacy or unused files for archival.
+
+For each directory that has accumulated session artifacts:
+1. List all files and check creation dates via `git log --follow --oneline -- <file>`
+2. Flag files that:
+   - Were created more than 30 days ago and have never been read in recent sessions
+   - Are referenced by no current spec, task, or source file
+   - Appear to be one-off experiments (scratch files, test outputs, temporary logs)
+3. Propose archival:
+   > "These files appear unused: [list]. Archive to `archive/` or delete? (archive/delete/keep each)"
+4. Act on user response. Do not delete without confirmation.
+
+Skip: `tasks/`, `specs/`, `.claude/`, `.agents/` — these are always kept.

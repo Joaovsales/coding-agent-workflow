@@ -5,6 +5,7 @@ compatibility: >
   Requires a git repository. Works with any language. No external dependencies.
   When invoked manually: scopes to uncommitted / recently touched files by default.
   Supports --file and --scope flags for narrowing.
+disable-model-invocation: false
 ---
 
 # /software-design-expert-review — APOSD Design Quality Gate

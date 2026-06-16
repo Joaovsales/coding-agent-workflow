@@ -1,6 +1,7 @@
 ---
 name: receive-review
 description: Process incoming code review feedback with technical rigor. Use when receiving review comments on PRs, from users, or from automated review tools.
+harness: universal
 disable-model-invocation: false
 ---
 

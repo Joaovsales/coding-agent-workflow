@@ -2,6 +2,7 @@
 name: start-qa
 description: Discover project config, restart app, and launch browser for manual QA testing.
 harness: universal
+disable-model-invocation: false
 ---
 
 # /start-qa — Start QA Session

@@ -3,6 +3,7 @@ name: memory-maintain
 description: Consolidate, prune, and organize tasks/memory.md and tasks/lessons.md. Invoked at every session start and wrap-up; self-gates on session count.
 argument-hint: "[--force]"
 harness: universal
+disable-model-invocation: false
 ---
 
 # /memory-maintain — Memory Maintenance

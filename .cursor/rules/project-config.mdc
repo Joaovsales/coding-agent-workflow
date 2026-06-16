@@ -1,0 +1,11 @@
+---
+description: Project-specific rules, deployment targets, and team conventions. Safe to edit — /sync never touches this file.
+alwaysApply: true
+---
+
+# Project-Specific Configuration
+
+> Cursor equivalent of `.claude/project.md` (Claude Code) and `AGENTS.md` (Pi).
+> Edit `.claude/project.md` for the canonical source; this rule mirrors it for Cursor.
+
+@.claude/project.md

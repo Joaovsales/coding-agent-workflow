@@ -2,6 +2,7 @@
 name: debug
 description: Systematically investigate, diagnose, and fix bugs using root cause analysis. Use when debugging errors, test failures, runtime issues, or when the user reports a bug. Integrates with bug register, lessons learned, and memory.
 argument-hint: "[bug description or error message]"
+disable-model-invocation: false
 ---
 
 # /debug — Bug Investigation & Fix

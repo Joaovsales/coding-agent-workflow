@@ -1,6 +1,7 @@
 ---
 name: software-design-expert-learn
 description: "End-of-session code review and design tutorial based on 'A Philosophy of Software Design' by John Ousterhout. Use when the user wants to review all code written in the current session, understand design trade-offs, learn software design principles, or improve code review skills. Triggers on: 'review my code', 'explain the design', 'why did we do it this way', 'session review', 'code critique', 'design critique', or explicit /skill:software-design-expert-learn invocation."
+disable-model-invocation: false
 ---
 
 # /software-design-expert-learn — Session Design Review

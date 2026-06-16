@@ -1,6 +1,27 @@
 # Coding Agent Workflow
 
-A reusable, project-agnostic configuration system that enforces **spec-driven, TDD-first development** across all your projects — with persistent memory, specialized agents, and a structured session lifecycle. Works with Claude Code, Cursor, and other AI coding tools.
+A reusable, project-agnostic configuration system that enforces **spec-driven, TDD-first development** across all your projects — with persistent memory, specialized agents, and a structured session lifecycle. Works with **Claude Code**, **Cursor**, and **Pi**.
+
+---
+
+## Quick Start by Harness
+
+| Harness | One-time setup | Works in every project? |
+|---------|----------------|-------------------------|
+| **Cursor** | `bash install.sh` | **Yes** — skills, subagents, hooks global; rules via `CLAUDE.md` scaffold |
+| **Claude Code** | `bash install.sh` | **Yes** — `~/.claude/` global install |
+| **Pi** | `bash install.sh` (if Pi installed) | **Yes** — reads `CLAUDE.md` + `AGENTS.md` per project |
+
+### One-time install (all harnesses)
+
+```bash
+git clone https://github.com/Joaovsales/coding-agent-workflow.git ~/coding-agent-workflow
+cd ~/coding-agent-workflow
+bash install.sh
+# Add the printed newproject() function to ~/.bashrc or ~/.zshrc
+```
+
+Then open **any** project in Cursor — no need to open the template repo itself.
 
 ---
 
@@ -9,10 +30,11 @@ A reusable, project-agnostic configuration system that enforces **spec-driven, T
 | Layer | What it does |
 |-------|-------------|
 | **CLAUDE.md** | Core rules: Spec → Plan → TDD workflow, Clean Code, SOLID, quality gate |
-| **Skills** (`.claude/skills/`) | 16 skills: `/brainstorm`, `/plan`, `/build`, `/tdd`, `/debug`, `/verify`, `/simplify`, `/receive-review`, `/learn`, `/checkpoint`, `/security-scan`, `/start-qa`, `/wrap-up-session`, `/writing-skills`, `/sync`, `/folder-context-optimization` |
-| **Agents** (`.claude/agents/`) | 8 specialized subagents for planning, coding, review, debugging, security |
-| **Hooks** (`.claude/hooks/`) | Session start orientation + auto test runner on file save |
-| **Memory** (`.claude/memory.md`) | Persistent patterns and session history, updated via `/learn` |
+| **Skills** (`.agents/skills/`) | 25+ skills: `/brainstorm`, `/plan`, `/build`, `/tdd`, `/debug`, `/verify`, `/quality-gate`, `/wrap-up-session`, … |
+| **Agents** | `.claude/agents/` (Claude Code) · `.cursor/agents/` (Cursor) — 10 specialized subagents |
+| **Hooks** | `.claude/hooks/` + `settings.json` (Claude Code) · `.cursor/hooks/` + `hooks.json` (Cursor) |
+| **Rules** | `.cursor/rules/*.mdc` (Cursor) — workflow + project-config mirror |
+| **Memory** (`tasks/memory.md`) | Persistent patterns and session history, updated via `/learn` |
 
 ---
 
@@ -121,6 +143,51 @@ mkdir -p specs
 ```
 
 Then edit `CLAUDE.md` to fill in your project's stack and test commands.
+
+---
+
+## Using with Cursor (all projects)
+
+You do **not** need to open this repo in Cursor. Run `install.sh` once, then use any project.
+
+### What install.sh puts globally
+
+| Component | Global path | Applies everywhere? |
+|-----------|-------------|---------------------|
+| **Skills** | `~/.agents/skills/` + `~/.cursor/skills/` | Yes — `/plan`, `/build`, etc. in any project |
+| **Subagents** | `~/.cursor/agents/` | Yes — planner, code-reviewer, etc. |
+| **Hooks** | `~/.cursor/hooks.json` | Yes — sessionStart/stop in any project (resolves workspace automatically) |
+| **Rules** | Per-project `CLAUDE.md` + `.cursor/rules/` | Scaffolded automatically (see below) |
+
+Cursor does not support global `.mdc` rules files (`~/.cursor/rules/` is ignored). Rules come from each project's `CLAUDE.md` (always-on) plus `.cursor/rules/*.mdc`.
+
+### New projects
+
+`newproject my-app` runs `git init`, which triggers the git template hook and bootstraps:
+
+```
+CLAUDE.md              ← workflow rules (always-on in Cursor)
+.cursor/rules/         ← project-config mirror
+.cursor/hooks.json     ← project hooks (required for cloud agents)
+tasks/                 ← todo, bugs, lessons
+specs/
+```
+
+### Existing projects
+
+```bash
+bash ~/coding-agent-workflow/scripts/bootstrap-cursor.sh
+# Or from inside the project:
+bash ~/coding-agent-workflow/scripts/bootstrap-cursor.sh /path/to/your-project
+```
+
+### Keeping global config updated
+
+```bash
+cd ~/coding-agent-workflow && git pull && bash install.sh
+```
+
+Per-project workflow files update via `/sync` (add `workflow` remote) or re-run `bootstrap-cursor.sh --force`.
 
 ---
 
@@ -277,6 +344,11 @@ Claude delegates to these automatically (or you can invoke them via the Agent to
 │       ├── todo.md
 │       ├── bugs.md
 │       └── lessons.md
+├── .cursor/                         ← Cursor native config (rules, agents, hooks)
+│   ├── rules/                       ← .mdc rules (workflow + project-config)
+│   ├── agents/                      ← 10 subagents (Cursor Task tool)
+│   ├── hooks/                       ← session-start.sh, session-stop.sh
+│   └── hooks.json                   ← sessionStart / stop registration
 ├── .claude/
 │   ├── AGENTS.md                    ← Agent reference documentation
 │   ├── memory.md                    ← Persistent project memory (updated via /learn)
