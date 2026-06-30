@@ -125,3 +125,20 @@ Rules:
 
 If unsure whether something qualifies, default to **not** emitting and noting
 the assumption in the turn summary instead.
+
+
+### Large-Artifact Handoff
+
+When handing a large artifact (build/deploy logs, command output, generated
+files, long diffs) to a sub-agent or the next context, **truncate with a
+pointer** instead of inlining the whole thing:
+
+1. Persist the full artifact to a file (e.g. `tasks/<name>-<sha>.log`, gitignored
+   if transient).
+2. Pass only the **last N lines** (default 500) plus the file path in the prompt.
+3. State the truncation explicitly so the reader knows more exists on disk.
+
+This is the prevention-side counterpart to context compaction: bound what enters
+a context window at the source rather than compressing it after the fact. Skills
+that move bulk text (`/verify-deployment`, `/build` delegation) reference this
+convention rather than restating an ad-hoc line limit.

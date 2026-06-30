@@ -17,6 +17,39 @@ printf 'pid=%s\nstarted=%s\nrepo=%s\n' "$$" "$(date -u +%FT%TZ)" "$(pwd)" > "$SE
 
 DIVIDER="════════════════════════════════════════"
 
+# ── Compaction-aware restore ─────────────────────────────────────────────────
+# Claude Code passes a `source` field (startup|resume|compact|clear) as JSON on
+# stdin. After a compaction we skip the heavy first-run banner and instead point
+# the agent at the state flushed to disk by the PreCompact hook. Older CLIs (or
+# missing jq) leave source=startup, preserving the full banner — no regression.
+HOOK_SOURCE="startup"
+if command -v jq >/dev/null 2>&1; then
+  HOOK_INPUT=$(cat 2>/dev/null || true)
+  HOOK_SOURCE=$(printf '%s' "$HOOK_INPUT" | jq -r '.source // "startup"' 2>/dev/null || echo startup)
+fi
+
+if [ "$HOOK_SOURCE" = "compact" ]; then
+  echo ""
+  echo "$DIVIDER"
+  echo "  RESUMING AFTER COMPACTION"
+  echo "$DIVIDER"
+  echo ""
+  echo "Context was just compacted. Re-orient from disk before continuing:"
+  if [ -f "tasks/checkpoint.md" ]; then
+    echo "  • tasks/checkpoint.md (state flushed by PreCompact hook):"
+    head -1 tasks/checkpoint.md | sed 's/^/      /'
+  fi
+  if [ -f "tasks/todo.md" ]; then
+    ACTIVE=$(grep -E '^[[:space:]]*\[~\]' tasks/todo.md 2>/dev/null | head -1 || true)
+    [ -z "$ACTIVE" ] && ACTIVE=$(grep -E '^[[:space:]]*\[ \]' tasks/todo.md 2>/dev/null | head -1 || true)
+    echo "  • Active task: ${ACTIVE:-<none pending>}"
+  fi
+  echo "  • tasks/memory.md for project patterns and decisions"
+  echo ""
+  echo "$DIVIDER"
+  exit 0
+fi
+
 echo ""
 echo "$DIVIDER"
 echo "  SESSION START — Coding Agent Workflow"
@@ -204,6 +237,7 @@ echo "  /security-scan   — OWASP audit on changed files"
 echo "  /learn       — Extract patterns to memory.md"
 echo "  /memory-maintain — Consolidate, prune, and organize project memory"
 echo "  /checkpoint  — Snapshot progress for handoff"
+echo "  /refresh     — Context reset: snapshot to disk, rebuild clean context"
 echo "  /wrap-up-session — Close session: review, test, push"
 echo "  /writing-skills  — Author new skills"
 echo "  /sync        — Pull latest from template repo"

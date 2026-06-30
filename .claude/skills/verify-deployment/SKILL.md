@@ -157,7 +157,7 @@ Determine the source:
 - **github-checks** without `log_fetch_command`: fetch the check run's `details_url` (the build's web page) — this is best-effort; many services don't expose plain-text logs at that URL
 - **cli**: run `log_fetch_command` with `{deployment_id}` from the prior status response
 
-Truncate logs to the last 500 lines if larger to fit the debugger's context window. Keep the original full log saved at `tasks/deploy-logs-<service>-<sha>.log` (gitignored via the same pattern as `deploy-state.json`).
+Follow the **Large-Artifact Handoff** convention (`.claude/project.md`): truncate logs to the last 500 lines if larger to fit the debugger's context window, and keep the original full log saved at `tasks/deploy-logs-<service>-<sha>.log` (gitignored via the same pattern as `deploy-state.json`).
 
 #### D.2 — Match failure patterns
 
