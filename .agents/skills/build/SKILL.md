@@ -73,7 +73,7 @@ Choose the agent or approach based on task type:
 | `frontend-developer` | `[ARCHITECTURE]` + `[PROTECTION]` + `[CONVENTIONS]` + relevant requirements |
 | `code-debugger` | Failing test + relevant code only |
 
-Do not pass the full project-context to every agent — extract only relevant sections.
+Do not pass the full project-context to every agent — extract only relevant sections. For bulk artifacts (logs, long command output), follow the **Large-Artifact Handoff** convention in `.claude/project.md` — truncate-with-pointer, never inline.
 
 ### Step 2 — Per-Task Spec Compliance Check (inline, no agent)
 
@@ -98,6 +98,7 @@ If mismatches found: send feedback to the implementing agent for fixes, then re-
 
 - Change `[ ]` to `[x]` in `tasks/todo.md`
 - Log: `✓ [Test Name] — [one-line summary]`
+- **Task-boundary checkpoint**: silently refresh `tasks/checkpoint.md` via the shared flush (`bash .claude/hooks/pre-compact.sh </dev/null`) — no prompt, no commit. This keeps on-disk state current at each semantic (task) boundary, so a context compaction or `/refresh` loses at most one task of work.
 - Move to the next `[ ]` task immediately (no user prompt)
 - If a task is blocked by a previous failure, note it and skip to the next unblocked task
 
@@ -241,6 +242,8 @@ Next: /wrap-up-session
 ### Architectural Circuit Breaker
 
 When `code-debugger` fails **3 times on the same regression**:
+
+> **Backstop first:** run `/refresh` to snapshot working state to `tasks/checkpoint.md` before the steps below, so escalation — and any context reset — resumes from a clean, durable record rather than a context that is already saturated with failed attempts.
 
 1. **STOP** fixing symptoms.
 2. **HALT and escalate to user** with:

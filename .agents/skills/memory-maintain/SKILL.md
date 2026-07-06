@@ -13,10 +13,29 @@ Invoked at every session start (CLAUDE.md Session Start Checklist step 4) and by
 
 ## When to run
 
+This skill runs two passes at different cadences (a Reflector-style split): a
+cheap lessons pass every session, and the heavy consolidation only every 5.
+
+### Lessons pass — every session (cheap, continuous decay)
+
+Runs on **every** invocation (session start + wrap-up). Operates only on
+`tasks/lessons.md`:
+- Deduplicate near-identical lessons (>70% overlap) — keep the more specific.
+- Decay: drop lessons explicitly marked resolved/superseded, and demote ones
+  older than 30 days that never recurred.
+
+This mirrors a Reflector: continuously merge duplicates and shed low-value
+detail so tactical memory stays dense between heavy passes.
+
+**If `tasks/lessons.md` is absent or empty: silent no-op (exit 0, no output).**
+
+### Heavy pass — every 5 sessions (gated)
+
 Check tasks/memory.md Session History entry count:
 - Count lines matching `^### \d{4}-\d{2}-\d{2}`
-- Run full maintenance if count is a multiple of 5 (5, 10, 15, …) OR --force flag passed
-- If neither condition met: exit immediately and silently (no output)
+- Run the full consolidation below (Phases 1–5) if count is a multiple of 5
+  (5, 10, 15, …) OR --force flag passed
+- If neither condition met: skip the heavy pass (the lessons pass above still ran)
 
 ## Phase 1 — Deduplicate Patterns & Lessons
 

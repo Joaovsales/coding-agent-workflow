@@ -183,3 +183,60 @@
 ### Task 10 — End-to-end consistency review (AC: all spec criteria satisfied, no regressions)
 
 [x] VERIFY: Walked all 13 acceptance criteria from `specs/separate-project-config.md` and confirmed each is satisfied by a Task 1-9 deliverable. Ran `.claude/hooks/session-start.sh` end-to-end and confirmed it exits 0 with no Deployment Targets nudge. Ran `grep -E '^## Deployment Targets[[:space:]]*$' CLAUDE.md .claude/project.md` and confirmed ZERO matches in either file (template repo stays inactive). Ran `git grep -l "CLAUDE.md" .claude/skills/setup-deployment/ .claude/skills/verify-deployment/ .claude/hooks/session-start.sh` to confirm only fallback / deprecation references remain in code paths (all primary read/write targets now point to project.md). Confirmed no skills outside the migration scope (build/, tdd/, wrap-up-session/, plan/, code-reviewer.md) were modified -> Document the verification in this task's checkbox before marking complete.
+
+---
+
+## Plan: Context & Memory Management Hardening (P1–P5)
+> Spec: specs/context-memory-management.md
+> Branch: claude/memory-context-management-e5f3ns
+> Status: Pending user confirmation
+
+### Task 1 — Zero-dependency test harness (foundation)
+
+[x] TDD: `tests/run.sh` discovers and runs every `tests/test-*.sh`, prints per-file PASS/FAIL and a summary, exits non-zero if any fail — verify by running `bash tests/run.sh` against one trivial passing + one trivial failing fixture, then delete the failing fixture -> Write `tests/run.sh` (no external deps; provide `assert_contains`/`assert_file_contains`/`assert_exit` helpers in `tests/lib.sh`)
+
+### Task 2 — P1: PreCompact flush hook
+
+[x] TDD: `tests/test-pre-compact.sh` pipes mock PreCompact JSON (`{"trigger":"auto"}`) to `pre-compact.sh` in a temp repo with a seeded `tasks/todo.md`, asserts `tasks/checkpoint.md` now contains the git branch, a timestamp, and the seeded `[~]`/`[ ]` items, and that exit code is 0 -> Write `.claude/hooks/pre-compact.sh` following the `pre-push-guard.sh` stdin/jq pattern; factor the flush body so P2 can reuse it
+
+[x] TDD: `tests/test-pre-compact.sh` second case — run with NO `tasks/todo.md` present; assert exit 0 and `tasks/checkpoint.md` written with git-only state (no crash) -> Add the missing-file guard to `pre-compact.sh`
+
+[x] TDD: `tests/test-settings-json.sh` asserts `.claude/settings.json` parses as JSON (`jq .`) AND contains a `PreCompact` hook whose command is `bash .claude/hooks/pre-compact.sh` -> Add the `PreCompact` block to `.claude/settings.json`
+
+### Task 3 — P1: compaction-aware SessionStart restore
+
+[x] TDD: `tests/test-session-start.sh` pipes `{"source":"compact"}` and asserts output contains "RESUMING AFTER COMPACTION" and does NOT contain "SKILLS AVAILABLE"; pipes `{"source":"startup"}` (and empty stdin) and asserts the full banner ("SKILLS AVAILABLE") IS present -> Add a `source`-detection branch near the top of `session-start.sh` (jq with raw fallback → default `startup`); short-circuit to a compact restore block that points at checkpoint.md, the `[~]` task, and tasks/memory.md
+
+### Task 4 — Fix stale memory paths + shared flush format
+
+[x] TDD: `grep -F ".claude/memory.md" .claude/skills/checkpoint/SKILL.md .agents/skills/checkpoint/SKILL.md .claude/skills/build/SKILL.md .agents/skills/build/SKILL.md` returns ZERO matches; `grep -F "tasks/memory.md"` returns matches in the same files -> Correct the stale `.claude/memory.md` references to `tasks/memory.md` in both checkpoint copies (How-to-Resume) and both build copies (Pre-Flight step 3)
+
+### Task 5 — P2: task-boundary checkpointing in /build
+
+[x] TDD: `grep -A3 "Mark Complete" .claude/skills/build/SKILL.md` mentions a silent checkpoint write reusing the PreCompact flush; identical text present in `.agents/skills/build/SKILL.md` -> Edit both build copies: after Step 3 marks a task `[x]`, write `tasks/checkpoint.md` (no prompt, no commit), referencing the shared flush routine
+
+### Task 6 — P3: /refresh skill
+
+[x] TDD: `tests/test-refresh-skill.sh` asserts `SKILL.md` exists in BOTH `.agents/skills/refresh/` and `.claude/skills/refresh/`, each with valid frontmatter (`name: refresh`) and a snapshot→handoff→resume-instruction structure; assert the two copies are byte-identical -> Write `refresh/SKILL.md` in both locations (snapshot via checkpoint flush, then emit a minimal resume instruction for a fresh context)
+
+[x] TDD: `grep -F "/refresh" CLAUDE.md` returns a Skills-table row AND `grep -F "/refresh" .claude/hooks/session-start.sh` returns a banner line -> Add `/refresh` to the CLAUDE.md skills table and the session-start SKILLS AVAILABLE banner
+
+### Task 7 — P3: /build circuit-breaker auto-invokes /refresh
+
+[x] TDD: `grep -B5 -A5 "circuit breaker" .claude/skills/build/SKILL.md` shows `/refresh` invoked before escalation; identical in `.agents/` copy -> Edit both build copies' Architectural Circuit Breaker to run `/refresh` (snapshot + reset) as a backstop before halting/escalating
+
+### Task 8 — P4: Reflector-lite continuous memory decay
+
+[x] TDD: `tests/test-memory-maintain-doc.sh` asserts `memory-maintain/SKILL.md` (both copies) documents a per-session lessons dedup/decay pass distinct from the every-5-sessions heavy pass, AND states the lessons pass is a silent no-op when `tasks/lessons.md` is absent; assert both copies byte-identical -> Edit both memory-maintain copies: add the "When to run" split (lessons pass every session; archive/promote gated at %5)
+
+### Task 9 — P5: Large-Artifact Handoff convention
+
+[x] TDD: `grep -F "Large-Artifact Handoff" .claude/project.md` returns 1 match documenting truncate-with-pointer (last-N lines + full copy on disk) -> Add the convention section to `.claude/project.md`
+
+[x] TDD: `grep -F "Large-Artifact Handoff" .claude/skills/build/SKILL.md .agents/skills/build/SKILL.md .claude/skills/verify-deployment/SKILL.md` returns matches in all three (verify-deployment references the shared convention instead of restating 500-line rule inline) -> Reference the convention from both build copies' delegation section and from verify-deployment
+
+### Task 10 — Sync parity + full consistency review
+
+[x] TDD: `tests/test-skill-parity.sh` asserts, for every skill touched/created (build, checkpoint, memory-maintain, refresh), that `.agents/skills/<name>/SKILL.md` and `.claude/skills/<name>/SKILL.md` are byte-identical (`diff -q`) -> Reconcile any drift so both trees match
+
+[x] TDD: `bash tests/run.sh` exits 0 (all suites green) AND walk every acceptance criterion in `specs/context-memory-management.md`, marking each ✅ with its evidence -> Final consistency pass; fix any gap and re-run

@@ -189,6 +189,7 @@ Rules: never `opus` for code writing; never `haiku` for coding or planning; alwa
 | `/learn` | Extract session patterns → `memory.md` + `lessons.md` |
 | `/memory-maintain` | Consolidate, prune, and organize project memory every 5 sessions |
 | `/checkpoint` | Snapshot progress to `tasks/checkpoint.md` |
+| `/refresh` | Context reset — snapshot state to disk, then rebuild from a clean context (backstop for long tasks) |
 | `/security-scan` | OWASP-focused audit on recently changed files |
 | `/start-qa` | Restart app + health check + browser with log monitoring |
 | `/wrap-up-session` | Learnings, tests, reviews, commit, push |

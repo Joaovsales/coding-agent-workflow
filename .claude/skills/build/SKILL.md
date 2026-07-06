@@ -22,7 +22,7 @@ Bridges the gap between `/plan` (design) and `/wrap-up-session` (close).
    - If empty or missing: **STOP** — run `/plan` first
 2. Read the spec from `specs/` that matches the current plan
    - If no spec found: **STOP** — run `/plan` first
-3. Load `tasks/lessons.md` and `.claude/memory.md` for context
+3. Load `tasks/lessons.md` and `tasks/memory.md` for context
 4. **Load `tasks/project-context.md`** if it exists — this provides architecture, protection list, non-functional requirements, and conventions for sub-agent delegation
 5. Identify the project's test runner and build tooling (check `package.json`, `Makefile`, `pyproject.toml`, etc.)
 6. Run the full test suite once to establish a **green baseline**
@@ -103,7 +103,7 @@ Choose the appropriate sub-agent based on the task:
 | `security-reviewer` | `[ARCHITECTURE]` + `[NON-FUNCTIONAL]` |
 | `software-design-expert-review` | Git diff only — read-only, no project-context needed |
 
-Do NOT pass the full project-context to every agent. Extract only the relevant sections to keep agent context focused.
+Do NOT pass the full project-context to every agent. Extract only the relevant sections to keep agent context focused. For bulk artifacts (logs, long command output), follow the **Large-Artifact Handoff** convention in `.claude/project.md` — truncate-with-pointer, never inline.
 
 ### Step 2 — Two-Stage Review
 
@@ -154,6 +154,7 @@ After both reviews pass:
 ### Step 3 — Mark Complete
 - Change `[ ]` to `[x]` in `tasks/todo.md`
 - Log: `✓ [Test Name] — [one-line summary]`
+- **Task-boundary checkpoint**: silently refresh `tasks/checkpoint.md` via the shared flush (`bash .claude/hooks/pre-compact.sh </dev/null`) — no prompt, no commit. This keeps on-disk state current at each semantic (task) boundary, so a context compaction or `/refresh` loses at most one task of work.
 
 ### Step 4 — Continue
 - Move to the next `[ ]` task immediately (no user prompt)
@@ -378,6 +379,8 @@ Do not emit the Build Report.
 ### Architectural Circuit Breaker
 
 When `code-debugger` fails **3 times on the same regression**:
+
+> **Backstop first:** run `/refresh` to snapshot working state to `tasks/checkpoint.md` before the steps below, so escalation — and any context reset — resumes from a clean, durable record rather than a context that is already saturated with failed attempts.
 
 1. **STOP** fixing symptoms. The design may be the problem.
 2. Spawn a `planner` agent (`model: "opus"`) with:
