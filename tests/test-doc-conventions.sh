@@ -38,4 +38,24 @@ for f in .claude/skills/build/SKILL.md .agents/skills/build/SKILL.md .claude/ski
   assert_file_contains "$f" "Large-Artifact Handoff" "Task9: $f references the convention"
 done
 
+# --- visual-recap: documentation contract present in both tree copies ---
+for f in .claude/skills/visual-recap/SKILL.md .agents/skills/visual-recap/SKILL.md; do
+  for token in "name: visual-recap" "argument-hint:" "Skip when trivial" \
+               "true by construction" "git diff" "--name-status" "--stat" \
+               "data-model" "api-endpoint" "file-tree" "keychange-" \
+               "scripts/visual-render.py" "tasks/recaps/"; do
+    assert_file_contains "$f" "$token" "visual-recap: $f contains '$token'"
+  done
+done
+
+# --- visual-plan: documentation contract present in both tree copies ---
+for f in .claude/skills/visual-plan/SKILL.md .agents/skills/visual-plan/SKILL.md; do
+  for token in "name: visual-plan" "argument-hint:" "Skip when trivial" \
+               "read-only" "specs/" ".plan.html" \
+               "../visual-recap/scripts/visual-render.py" "file map" \
+               "open questions" "wireframe" "NEW"; do
+    assert_file_contains "$f" "$token" "visual-plan: $f contains '$token'"
+  done
+done
+
 finish

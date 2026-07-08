@@ -9,3 +9,6 @@ tasks/deploy-state.json
 # Imported by CLAUDE.md alongside .claude/project.md (committed, team-shared).
 # Use this file for personal shortcuts, local paths, and experimental preferences.
 CLAUDE.local.md
+
+# Visual recap output — transient, regenerated per branch.
+tasks/recaps/

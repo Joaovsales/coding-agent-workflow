@@ -12,10 +12,14 @@ REPO="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO"
 
 # Files we own end-to-end → must be byte-identical across trees.
-for s in refresh memory-maintain; do
+for s in refresh memory-maintain visual-plan visual-recap; do
   assert_files_identical ".agents/skills/$s/SKILL.md" ".claude/skills/$s/SKILL.md" \
     "Parity: $s identical across .agents/ and .claude/"
 done
+
+assert_files_identical ".agents/skills/visual-recap/scripts/visual-render.py" \
+  ".claude/skills/visual-recap/scripts/visual-render.py" \
+  "Parity: visual-recap/scripts/visual-render.py identical across .agents/ and .claude/"
 
 # Pre-divergent files → our additions must exist in BOTH copies.
 for marker in "Task-boundary checkpoint" "Backstop first" "Large-Artifact Handoff" "tasks/memory.md"; do
