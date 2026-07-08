@@ -240,3 +240,60 @@
 [x] TDD: `tests/test-skill-parity.sh` asserts, for every skill touched/created (build, checkpoint, memory-maintain, refresh), that `.agents/skills/<name>/SKILL.md` and `.claude/skills/<name>/SKILL.md` are byte-identical (`diff -q`) -> Reconcile any drift so both trees match
 
 [x] TDD: `bash tests/run.sh` exits 0 (all suites green) AND walk every acceptance criterion in `specs/context-memory-management.md`, marking each ✅ with its evidence -> Final consistency pass; fix any gap and re-run
+
+---
+
+## Plan: Visual Plan & Recap Skills
+
+> Spec: specs/visual-plan-recap.md
+> Status: Pending user approval
+> Decision (spec §3 open item): `visual-render.py` is owned by `visual-recap`
+> at `.claude/skills/visual-recap/scripts/visual-render.py` (+ byte-identical
+> `.agents/` twin). `visual-plan` calls it by relative path
+> `../visual-recap/scripts/visual-render.py`. One copy per tree = DRY + green parity.
+
+### A — Post-processor `visual-render.py` (foundation; both skills call it)
+
+[ ] TDD: `tests/test-visual-render.sh` — running `visual-render.py` on a fixture content-model JSON writes an HTML file whose `<head>` contains BOTH the base `generate-presentation.py` CSS and an injected `<style>`/`<script>` block spliced before `</head>` (proves it wraps, never replaces, the generator) -> implement `visual-render.py` (~50-60 LOC): read model JSON, subprocess-call the unmodified `generate-presentation.py --input <tmp> -o <tmp>`, read base HTML, splice one inline `<style>`+`<script>` block immediately before `</head>`, write output; place at `.claude/skills/visual-recap/scripts/visual-render.py`
+
+[ ] TDD: `tests/test-visual-render.sh` — a section whose `body_md` has a fenced ```diff``` block yields output containing injected `.diff-add`/`.diff-del` CSS (green `+` / red `−`) AND the JS that per-line-wraps `<code class="lang-diff">`; both color classes present (AC5) -> add diff-coloring: inline CSS keyed to existing `--accent-2`/`--warn` theme vars (works light+dark) plus a small JS pass that splits `code.lang-diff` text into per-line spans tagged by leading `+`/`−`
+
+[ ] TDD: `tests/test-visual-render.sh` — sections whose `id` matches the `keychange-*` sentinel are grouped into a single `.tabset` with clickable `.tab` buttons; output contains tabset markup + the client-side switch JS (AC4) -> add tab grouping to the post-processor: collect `keychange-*` sections, wrap in a `.tabset`, emit tab buttons + inline `.tab`/`.tabset` CSS and vanilla-JS switching (no external assets)
+
+[ ] TDD: `tests/test-visual-render.sh` — rendered output `<head>` has no `http://`/`https://` asset reference and no `src=`/external `href=` (only inline `<style>`/`<script>`) (AC6) -> keep every injected asset inline; add the no-CDN grep assertion over the output head
+
+### B — `visual-recap` skill (heavier consumer; owns the post-processor)
+
+[ ] TDD: `tests/test-skill-parity.sh` (extended) — `visual-recap/SKILL.md` exists in BOTH `.agents/skills/` and `.claude/skills/`, byte-identical, with valid frontmatter (`name: visual-recap`, `description`, `argument-hint`) -> author `visual-recap/SKILL.md` in both trees, byte-identical
+
+[ ] TDD: `tests/test-doc-conventions.sh` (extended) — both `visual-recap/SKILL.md` copies document the skip-gate (tiny single-file diff → emit one-line reason, stop, no file) AND the "true by construction" iron law (structured blocks derived from real diff lines, never inferred) -> add gate section + iron-law callout to both copies
+
+[ ] TDD: `tests/test-doc-conventions.sh` — both `visual-recap/SKILL.md` copies document mechanical content-model construction: file-tree from `git diff <base>...HEAD --name-status`/`--stat`, conditional data-model/api-endpoint blocks quoted from the diff, and 3–8 `keychange-*` sections (AC3, AC7) -> write the content-model steps in both copies
+
+[ ] TDD: `tests/test-doc-conventions.sh` — both `visual-recap/SKILL.md` copies reference `scripts/visual-render.py` and write output to `tasks/recaps/<branch-slug>.recap.html` -> document the render call + output path in both copies
+
+### C — `visual-plan` skill (calls recap's post-processor by relative path)
+
+[ ] TDD: `tests/test-skill-parity.sh` — `visual-plan/SKILL.md` exists in BOTH trees, byte-identical, with valid frontmatter (`name: visual-plan`, `argument-hint: <spec-path>`) -> author `visual-plan/SKILL.md` in both trees, byte-identical
+
+[ ] TDD: `tests/test-doc-conventions.sh` — both `visual-plan/SKILL.md` copies document the skip-gate (typo/config/one-line/single-well-specified-fn → emit reason, stop, produce no file) and the read-only rule (no source edits) (AC2) -> add gate + read-only grounding to both copies
+
+[ ] TDD: `tests/test-doc-conventions.sh` — both `visual-plan/SKILL.md` copies document the ordered content-model blocks (narrative, annotated file-map with NEW markers, ASCII architecture/data-flow, open-questions, optional wireframe), output to `specs/<feature>.plan.html`, rendered via `../visual-recap/scripts/visual-render.py` (AC1) -> write content-model steps + the cross-skill relative-path render call in both copies
+
+### D — Test-suite / parity / gitignore wiring
+
+[ ] TDD: `tests/test-skill-parity.sh` — `visual-recap/scripts/visual-render.py` is byte-identical across `.agents/` and `.claude/` trees -> add `assert_files_identical` for the post-processor; ensure both trees carry the same copy
+
+[ ] TDD: `tests/test-skill-parity.sh` — the owned-file parity loop asserts presence + byte-identity of `visual-plan` and `visual-recap` SKILL.md in both trees -> extend the parity loop's skill list with the two new names
+
+[ ] TDD: `grep -F "tasks/recaps/" .gitignore` matches -> add `tasks/recaps/` to `.gitignore` (transient recaps, gitignored by default per spec §5)
+
+### E — Acceptance-criteria smoke tests (render fixtures through the real script)
+
+[ ] TDD: `tests/test-visual-render.sh` — a `visual-plan`-shaped fixture model renders to a self-contained file containing the narrative, annotated file-map, and open-questions sections and carrying both light+dark theme CSS from the base generator (AC1) -> add plan fixture + assertions
+
+[ ] TDD: `tests/test-visual-render.sh` — a `visual-recap`-shaped fixture whose file-tree entries are built from a known `--name-status` list renders HTML whose file-tree block entries match that list exactly, and contains no field/route absent from the fixture diff (AC3, AC7) -> add recap fixture + exact-match assertions
+
+[ ] TDD: `tests/test-visual-render.sh` — after a full render run, `generate-presentation.py` in both trees is unchanged (checksum before == after) and no file under `html-presentation/` was written (AC6) -> capture the generator checksum around a render and assert equality
+
+[ ] TDD: `bash tests/run.sh` exits 0 (all suites green) and every AC1–AC7 in `specs/visual-plan-recap.md` is walked with its asserting test as evidence -> final consistency pass; map each AC to its test, close any gap, re-run
