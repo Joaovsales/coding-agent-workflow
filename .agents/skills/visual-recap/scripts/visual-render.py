@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 INJECTED_STYLE = """
@@ -128,6 +129,7 @@ function wrapGroupInTabset(group) {
 
 def find_generator() -> Path:
     """Locate generate-presentation.py relative to this script's skills tree."""
+    # .../skills/visual-recap/scripts/visual-render.py -> parents[2] == skills/
     skills_dir = Path(__file__).resolve().parents[2]
     generator = skills_dir / "html-presentation" / "scripts" / "generate-presentation.py"
     if not generator.is_file():
@@ -137,15 +139,12 @@ def find_generator() -> Path:
     return generator
 
 
-def run_generator(
-    generator: Path, model_path: str, mode: str, out_path: Path,
-    title: str | None, subtitle: str | None,
-) -> None:
-    cmd = [sys.executable, str(generator), "--input", model_path, "--mode", mode, "-o", str(out_path)]
-    if title:
-        cmd += ["--title", title]
-    if subtitle:
-        cmd += ["--subtitle", subtitle]
+def run_generator(generator: Path, args: argparse.Namespace, out_path: Path) -> None:
+    cmd = [sys.executable, str(generator), "--input", args.input, "--mode", args.mode, "-o", str(out_path)]
+    if args.title:
+        cmd += ["--title", args.title]
+    if args.subtitle:
+        cmd += ["--subtitle", args.subtitle]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(
@@ -173,12 +172,11 @@ def main() -> None:
 
     generator = find_generator()
     output_path = Path(args.output).resolve()
-    tmp_html = output_path.with_suffix(output_path.suffix + ".base.tmp")
 
-    run_generator(generator, args.input, args.mode, tmp_html, args.title, args.subtitle)
-
-    base_html = tmp_html.read_text(encoding="utf-8")
-    tmp_html.unlink()
+    with tempfile.TemporaryDirectory() as td:
+        tmp_html = Path(td) / "base.html"
+        run_generator(generator, args, tmp_html)
+        base_html = tmp_html.read_text(encoding="utf-8")
 
     final_html = splice_injected_block(base_html)
     output_path.write_text(final_html, encoding="utf-8")

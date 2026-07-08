@@ -175,4 +175,9 @@ CKSUM_AGENTS_AFTER="$(cksum "$GEN_AGENTS")"
 assert_eq "$CKSUM_CLAUDE_BEFORE" "$CKSUM_CLAUDE_AFTER" "(AC6) .claude generate-presentation.py untouched by render"
 assert_eq "$CKSUM_AGENTS_BEFORE" "$CKSUM_AGENTS_AFTER" "(AC6) .agents generate-presentation.py untouched by render"
 
+# Regression: pin the base generator's </head> contract that the splice relies on.
+python3 "$REPO_ROOT/.claude/skills/html-presentation/scripts/generate-presentation.py" \
+  --input "$FIXTURE" -o "$TMP/base_only.html" >"$TMP/base-only.log" 2>&1
+assert_file_contains "$TMP/base_only.html" "</head>" "base generator still emits </head> (splice contract)"
+
 finish
