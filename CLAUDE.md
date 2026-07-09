@@ -179,6 +179,7 @@ Rules: never `opus` for code writing; never `haiku` for coding or planning; alwa
 | `/build` | Autonomous TDD orchestrator with sub-agent delegation |
 | `/auto-push` | One approval gate at `/plan`, then `/build` + `/wrap-up-session` run autonomously through commit and push |
 | `/yolo` | Ralph-style full-auto loop: `/plan` (auto-confirmed) → `/build` → `/wrap-up-session`, iterating until backlog empty or circuit breaker |
+| `/auto-improve` | Unattended discover→fix loop: survey backlog/tech-debt/tests/perf/design, ship one high-value improvement as a PR. Built for daily cloud runs |
 | `/debug` | Root cause analysis, bug register, loop verification |
 | `/tdd` | Manual TDD loop with user checkpoints |
 | `/verify` | Evidence-based verification gate (`--scope deployment|e2e`) |
