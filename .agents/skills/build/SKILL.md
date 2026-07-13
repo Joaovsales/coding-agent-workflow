@@ -9,6 +9,27 @@ argument-hint: ""
 Execute the full plan from `tasks/todo.md` autonomously using TDD.
 Bridges the gap between `/plan` (design) and `/wrap-up-session` (close).
 
+## Model Routing
+
+Sub-agent model assignment for build orchestration. Edit this table to match your provider setup.
+
+| Role | Model ID (OpenRouter) | Claude Code built-in |
+|------|----------------------|---------------------|
+| Coding agents | `~anthropic/claude-sonnet-latest` | `sonnet` |
+| Code reviewer | `~anthropic/claude-sonnet-latest` | `sonnet` |
+| Debugger (attempts 1-2) | `~anthropic/claude-sonnet-latest` | `sonnet` |
+| Debugger (attempts 3-4, escalation) | `~anthropic/claude-sonnet-latest` | `sonnet` |
+| Search / explore | `~anthropic/claude-haiku-latest` | `haiku` |
+| Circuit breaker planner | `~anthropic/claude-opus-latest` | `opus` |
+| Design quality gate | `~anthropic/claude-sonnet-latest` | `sonnet` |
+
+**Escalation ladder for test regressions:**
+1. 2 attempts with coding/debug model (worker tier)
+2. 2 attempts with escalated model (reasoning tier)
+3. Circuit breaker — halt and escalate to user
+
+> **For Pi + OpenRouter users:** Override these in `~/.pi/agent/presets.json` with your preferred cost tier (e.g., `deepseek/deepseek-v4-flash` for cheap workers). See `PI_SETUP.md`.
+
 ## Pre-Flight Checks
 
 1. Verify `tasks/todo.md` exists and has pending `[ ]` tasks
@@ -239,23 +260,26 @@ Next: /wrap-up-session
 - **Spec gap found late**: Add tasks dynamically and loop back. Do not silently skip criteria.
 - **Build tool missing**: Ask user for the correct command rather than guessing.
 
-### Architectural Circuit Breaker
+### Architectural Circuit Breaker (Graduated Escalation)
 
-When `code-debugger` fails **3 times on the same regression**:
+When `code-debugger` fails on the same regression, escalate through two tiers before halting:
+
+**Tier 1 — Worker (2 attempts):** Standard debugging with the default coding model.
+**Tier 2 — Escalation (2 attempts):** Upgrade to the reasoning/review model for deeper analysis.
 
 > **Backstop first:** run `/refresh` to snapshot working state to `tasks/checkpoint.md` before the steps below, so escalation — and any context reset — resumes from a clean, durable record rather than a context that is already saturated with failed attempts.
 
 1. **STOP** fixing symptoms.
 2. **HALT and escalate to user** with:
-   - The failing test output (all 3 attempts)
+   - The failing test output (all 4 attempts — 2 worker + 2 escalated)
    - The files changed across all attempts
    - The original spec and task description
-3. Do NOT attempt fix #4 without explicit user direction.
+3. Do NOT attempt fix #5 without explicit user direction.
 
 ```
 ⛔ HALTED — Architectural circuit breaker triggered
 Regression: [test name]
-3 fix attempts failed. User input required before proceeding.
+2 worker + 2 escalated attempts failed. User input required before proceeding.
 ```
 
 ## Key Principles
@@ -268,8 +292,11 @@ Regression: [test name]
 ## Claude Code Enhancements
 
 ### Task Dispatch
-Dispatch sub-agents (`backend-developer` or `frontend-developer`, model: sonnet) for each task in Phase 1.
+Dispatch sub-agents (`backend-developer` or `frontend-developer`, model as configured in Model Routing table) for each task in Phase 1.
 For 2+ independent tasks: dispatch in parallel (multiple Agent tool calls in a single message).
+
+On Claude Code, these resolve via built-in model name resolution (`sonnet`, `haiku`, `opus`).
+On Pi + OpenRouter, explicit model IDs from the Model Routing table are used.
 
 ### Per-Task Review
 Phase 1 Step 2 remains inline (no agent). Spec compliance check is a read + compare, not a coding task.
