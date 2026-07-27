@@ -66,7 +66,7 @@ Define presets for each role in the routing hierarchy. Switch with `/preset <nam
 
   "plan": {
     "provider": "openrouter",
-    "model": "deepseek/deepseek-v4-pro",
+    "model": "moonshotai/kimi-k3",
     "thinkingLevel": "high",
     "tools": ["read", "grep", "find", "ls"],
     "instructions": "You are in PLANNING / ARCHITECTURE mode... [read-only]"
@@ -74,7 +74,7 @@ Define presets for each role in the routing hierarchy. Switch with `/preset <nam
 
   "code": {
     "provider": "openrouter",
-    "model": "deepseek/deepseek-v4-flash",
+    "model": "qwen/qwen3-coder-next",
     "thinkingLevel": "medium",
     "tools": ["read", "bash", "edit", "write", "grep", "find", "ls"],
     "instructions": "You are in CODING / IMPLEMENTATION mode..."
@@ -82,7 +82,7 @@ Define presets for each role in the routing hierarchy. Switch with `/preset <nam
 
   "search": {
     "provider": "openrouter",
-    "model": "openai/gpt-5-nano",
+    "model": "deepseek/deepseek-v4-flash",
     "thinkingLevel": "off",
     "tools": ["read", "grep", "find", "ls"],
     "instructions": "You are in SEARCH / EXPLORATION mode... [read-only]"
@@ -90,7 +90,7 @@ Define presets for each role in the routing hierarchy. Switch with `/preset <nam
 
   "worker": {
     "provider": "openrouter",
-    "model": "deepseek/deepseek-v4-flash",
+    "model": "qwen/qwen3-coder-next",
     "thinkingLevel": "low",
     "tools": ["read", "bash", "edit", "write", "grep", "find", "ls"],
     "instructions": "You are a WORKER agent. Complete focused sub-tasks precisely."
@@ -98,8 +98,8 @@ Define presets for each role in the routing hierarchy. Switch with `/preset <nam
 
   "deep-think": {
     "provider": "openrouter",
-    "model": "anthropic/claude-opus-4.8",
-    "thinkingLevel": "xhigh",
+    "model": "moonshotai/kimi-k3",
+    "thinkingLevel": "max",
     "tools": ["read", "grep", "find", "ls"],
     "instructions": "Reserved for the hardest problems. Do NOT edit files."
   }
@@ -110,9 +110,9 @@ Define presets for each role in the routing hierarchy. Switch with `/preset <nam
 
 | Tier | Role | Recommended | Cost/M in | Alternative |
 |------|------|-------------|-----------|-------------|
-| Orchestrator | Planning, dispatch | `deepseek/deepseek-v4-pro` | $0.44 | `~anthropic/claude-sonnet-latest` ($2) |
-| Worker | Implementation | `deepseek/deepseek-v4-flash` | $0.08 | `~anthropic/claude-sonnet-latest` ($2) |
-| Explorer | Search, file reads | `openai/gpt-5-nano` | $0.05 | `~anthropic/claude-haiku-latest` ($1) |
+| Orchestrator | Planning, dispatch | `moonshotai/kimi-k3` | $0.60 | `deepseek/deepseek-v4-pro` ($0.44) |
+| Worker | Implementation | `qwen/qwen3-coder-next` | $0.11 | `z-ai/glm-4.7` ($0.40) |
+| Explorer | Search, file reads | `deepseek/deepseek-v4-flash` | $0.14 | `openai/gpt-5-nano` ($0.05) |
 | Deep-think | Circuit breaker | `anthropic/claude-opus-4.8` | $5.00 | `~anthropic/claude-opus-latest` ($5) |
 
 ### 4. Global Agent Rules
@@ -164,45 +164,83 @@ Presets route the *parent session*. Routing *sub-agents* requires the [`pi-subag
 pi install npm:pi-subagents
 ```
 
-Then add a `subagents` block to `~/.pi/agent/settings.json` (role → model, with `fallbackModels` for provider failures and hard caps against runaway fan-out):
+### Agents: workflow personas + builtin gap-fillers
+
+The workflow's own agents live in `.agents/agents/` (canonical, model-agnostic) and are auto-discovered per project: `planner`, `backend-developer`, `frontend-developer`, `code-reviewer`, `code-debugger`, `security-reviewer`, `critic`, `frontend-design-validator`, `context-document-optimizer`, `software-design-expert-review`.
+
+The extension's builtins fill roles the workflow does not define — keep these enabled:
+
+| Builtin | Role it fills |
+|---------|---------------|
+| `scout` | Fast codebase recon (Claude Code's built-in Explore equivalent) |
+| `oracle` | Advisory second opinion before risky decisions |
+| `researcher` | Web/docs research (needs `pi install npm:pi-web-access`) |
+| `context-builder` | Heavy context-gathering pass before planning |
+
+Disable the overlapping builtins so the fleet stays unambiguous: `worker` (≈ backend/frontend-developer), `reviewer` (≈ code-reviewer), `delegate`, `advisor`.
+
+### Settings
+
+Add a `subagents` block to `~/.pi/agent/settings.json` (agent name → model, with `fallbackModels` for provider failures and hard caps against runaway fan-out):
 
 ```json
 "subagents": {
-  "defaultModel": "deepseek/deepseek-v4-flash",
-  "defaultThinking": "medium",
+  "defaultModel": "qwen/qwen3-coder-next",
   "globalConcurrencyLimit": 6,
   "maxSubagentDepth": 2,
   "maxSubagentSpawnsPerSession": 30,
   "agentOverrides": {
-    "worker":   { "model": "deepseek/deepseek-v4-flash", "fallbackModels": ["deepseek/deepseek-v4-pro"] },
-    "reviewer": { "model": "deepseek/deepseek-v4-pro", "thinking": "high" },
-    "scout":    { "model": "openai/gpt-5-nano", "thinking": "off" },
-    "planner":  { "model": "deepseek/deepseek-v4-pro", "thinking": "high" },
-    "oracle":   { "model": "anthropic/claude-opus-4.8", "thinking": "high" }
+    "planner":            { "model": "moonshotai/kimi-k3", "thinking": "high" },
+    "oracle":             { "model": "moonshotai/kimi-k3", "thinking": "high" },
+    "backend-developer":  { "model": "qwen/qwen3-coder-next", "fallbackModels": ["z-ai/glm-4.7"] },
+    "frontend-developer": { "model": "qwen/qwen3-coder-next", "fallbackModels": ["z-ai/glm-4.7"] },
+    "code-debugger":      { "model": "qwen/qwen3-coder-next", "fallbackModels": ["z-ai/glm-4.7"] },
+    "code-reviewer":      { "model": "z-ai/glm-4.7" },
+    "security-reviewer":  { "model": "z-ai/glm-4.7" },
+    "software-design-expert-review": { "model": "z-ai/glm-4.7" },
+    "critic":             { "model": "z-ai/glm-4.7" },
+    "scout":              { "model": "deepseek/deepseek-v4-flash", "thinking": "off" },
+    "context-builder":    { "model": "deepseek/deepseek-v4-flash" },
+    "context-document-optimizer": { "model": "deepseek/deepseek-v4-flash" },
+    "researcher":         { "model": "deepseek/deepseek-v4-flash" },
+    "worker":   { "disabled": true },
+    "reviewer": { "disabled": true },
+    "delegate": { "disabled": true },
+    "advisor":  { "disabled": true }
   }
 }
 ```
 
-Dispatch is natural language ("Have worker implement this task") or the `subagent` tool. Do NOT pass per-call model params — `agentOverrides` resolves the role's model automatically, and `fallbackModels` absorbs provider errors/rate-limits.
+Dispatch is natural language ("Have backend-developer implement this task") or the `subagent` tool. Do NOT pass per-call model params — `agentOverrides` resolves each agent's model automatically, and `fallbackModels` absorbs provider errors/rate-limits.
 
-Builtin roles: `scout` (recon), `researcher` (web/docs), `planner`, `worker`, `reviewer`, `oracle` (second opinion), `context-builder`, `delegate`.
+### Tier rationale
+
+| Tier | Model | $/M in | Why |
+|------|-------|--------|-----|
+| Plan / oracle / circuit breaker | `moonshotai/kimi-k3` | $0.60 | 1M context, strong reasoning, thinking levels low/high/max |
+| Build / debug | `qwen/qwen3-coder-next` | $0.11 | Purpose-built for coding agents, cheapest of the strong coder tier |
+| Review / escalation | `z-ai/glm-4.7` | $0.40 | Flagship reasoning + programming; different model family than the builder — catches builder blind spots |
+| Scout / context / docs | `deepseek/deepseek-v4-flash` | $0.14 | 1M context, very cheap, fast |
+
+Budget alternative for the build tier: `z-ai/glm-4.7-flash` ($0.06/M in) if cost pressure beats quality headroom.
 
 ## How Build Skill Sub-Agent Routing Works
 
 The `/build` skill's Model Routing table assigns explicit model IDs to each sub-agent role:
 
-| Role | OpenRouter Model ID | Cost/M in |
-|------|--------------------|-----------|
-| Coding agents | `deepseek/deepseek-v4-flash` | $0.08 |
-| Code reviewer | `deepseek/deepseek-v4-pro` | $0.44 |
-| Debugger (1-2) | `deepseek/deepseek-v4-flash` | $0.08 |
-| Debugger (3-4) | `deepseek/deepseek-v4-pro` | $0.44 |
-| Search | `openai/gpt-5-nano` | $0.05 |
-| Circuit breaker | `anthropic/claude-opus-4.8` | $5.00 |
+| Role | Agent | OpenRouter Model ID | Cost/M in |
+|------|-------|--------------------|-----------|
+| Planning / circuit breaker | `planner` | `moonshotai/kimi-k3` | $0.60 |
+| Second opinion | `oracle` | `moonshotai/kimi-k3` | $0.60 |
+| Coding agents | `backend-developer`, `frontend-developer` | `qwen/qwen3-coder-next` | $0.11 |
+| Debugger (1-2) | `code-debugger` | `qwen/qwen3-coder-next` | $0.11 |
+| Debugger (3-4) | `code-debugger` | `z-ai/glm-4.7` | $0.40 |
+| Reviews | `code-reviewer`, `security-reviewer`, `software-design-expert-review`, `critic` | `z-ai/glm-4.7` | $0.40 |
+| Search / recon | `scout` | `deepseek/deepseek-v4-flash` | $0.14 |
 
 On Claude Code, these are passed to the Agent tool when dispatching sub-agents. On Pi, they are resolved from `subagents.agentOverrides` (see previous section). Each sub-agent runs independently with its own model and context.
 
-**Escalation:** If a debugger fails 2 times with V4 Flash, it escalates to V4 Pro for 2 more attempts. If all 4 fail, the circuit breaker trips and the user is asked to intervene.
+**Escalation:** If a debugger fails 2 times with the build-tier model (`qwen3-coder-next`), it escalates to the review-tier model (`glm-4.7`) for 2 more attempts. If all 4 fail, the circuit breaker trips: `planner` on `kimi-k3` analyzes every attempt before the user is asked to intervene.
 
 ## Cost Estimate
 

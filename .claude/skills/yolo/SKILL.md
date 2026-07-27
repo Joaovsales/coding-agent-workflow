@@ -3,7 +3,9 @@ name: yolo
 description: Fully autonomous loop. User describes an idea; the agent runs /plan, /build, and /wrap-up-session in a Ralph-style loop until the backlog is empty or a circuit breaker trips. No user prompts between phases.
 argument-hint: "[short idea description]"
 disable-model-invocation: false
+harness: universal
 ---
+
 
 # /yolo — Fully Autonomous Plan → Build → Wrap-Up Loop
 
@@ -13,11 +15,10 @@ You-Only-Live-Once mode. The user gives you an idea; you take it from spec throu
 
 ## Model Routing
 
-**This command MUST follow the standard model routing.**
-- `/plan` phase: delegate to `planner` agent with `model: "opus"` (architecture work).
-- `/build` phase: all coding agents (`backend-developer`, `frontend-developer`, `code-debugger`, `code-reviewer`) MUST be invoked with `model: "sonnet"`.
-- Codebase searches: `model: "haiku"` via the `Explore` agent.
-- Never use `opus` during build — it is reserved for planning.
+Sub-agent delegations follow the Model Routing table in `/build` (planner tier for planning/architecture, build tier for coding agents, review tier for reviewers, scout tier for exploration).
+
+- **Claude Code** — pass `model` explicitly on every Agent tool call per that table.
+- **Pi** — no per-call model params; routing resolves from `subagents.agentOverrides` in `~/.pi/agent/settings.json` (requires the `pi-subagents` extension).
 
 ---
 
@@ -29,7 +30,7 @@ PLAN AUTO-CONFIRMS. BUILD RUNS TO COMPLETION. WRAP-UP COMMITS AND PUSHES.
 THE LOOP ONLY EXITS ON: BACKLOG EMPTY, CIRCUIT BREAKER, OR USER INTERRUPT.
 ```
 
-If you find yourself about to call `AskUserQuestion` between phases — you are violating yolo mode. The user already said yes by invoking `/yolo`.
+If you find yourself about to ask "should I proceed?" — you are violating yolo mode. The user already said yes by invoking `/yolo`.
 
 ---
 
@@ -48,7 +49,7 @@ If you find yourself about to call `AskUserQuestion` between phases — you are 
 
 Before entering the loop:
 
-1. **Branch safety**: Run `git rev-parse --abbrev-ref HEAD`. Confirm we are NOT on `main`, `master`, or `develop`. If we are: STOP and ask the user for a feature branch name (this is the ONE permitted user prompt — it's a safety guard, not a phase question).
+1. **Branch safety**: Confirm we are NOT on `main`, `master`, or `develop`. If we are: STOP and ask user for a feature branch name.
 2. **Clean tree**: Run `git status --short`. If uncommitted changes exist that aren't from this session, STOP and ask user how to handle them.
 3. **Test baseline**: Run the full test suite once. If red before we start, STOP — yolo mode cannot loop on a broken baseline.
 4. **Idea capture**: Write the user's idea verbatim to `tasks/yolo-idea.md` (overwrite any previous). This is the source-of-truth prompt that survives context resets.
@@ -107,38 +108,37 @@ Each iteration runs three phases. **No user prompts between them.** Log every ph
 
 ### Phase A — Plan (auto-confirmed)
 
-Invoke the `/plan` skill on the current work item. Delegate Steps 1–3 (interview, spec, plan) to the `planner` agent with `model: "opus"` and the following overrides in the delegation prompt:
+Invoke the `/plan` skill on the current work item, with the following overrides:
 
 | `/plan` step | Yolo override |
 |---|---|
-| Step 1 — Interview | **Do not interview the user.** The planner agent synthesizes a spec from the idea (or backlog item) and any context in `tasks/project-context.md`. If genuinely ambiguous: pick the most conservative interpretation and note the assumption in the spec's "Assumptions" section. |
+| Step 1 — Interview | **Do not interview the user.** Synthesize a spec from the idea (or backlog item) and any context in `tasks/project-context.md`. If genuinely ambiguous: pick the most conservative interpretation and note the assumption in the spec's "Assumptions" section. |
 | Step 2 — Write spec | Run normally. Spec file must be written to `specs/<feature-name>.md`. |
 | Step 3 — Write plan | Run normally. Tasks appended to `tasks/todo.md`. |
 | Step 4 — Present and confirm | **SKIPPED.** No user prompt. Proceed directly to Phase B. |
 | Step 5 — Divergence check | Run normally. If divergence found, log it to `tasks/yolo-log.md` and proceed — do NOT prompt user. |
 
-After Phase A: `specs/<feature>.md` and `tasks/todo.md` must exist on disk with the new plan block. Verify with `ls specs/` and `grep -c '## Plan:' tasks/todo.md` before proceeding.
+After Phase A: `specs/<feature>.md` and `tasks/todo.md` must exist on disk with the new plan block.
 
 ### Phase B — Build
 
-Invoke `/build`. It is already autonomous. Run it to completion using its sub-agent dispatch (sonnet for all coding agents).
+Invoke `/build`. It is already autonomous. Run it to completion.
 
 - Phases 1–5 run as normal (TDD, quality gate, spec validation, backlog update).
 - Phase 6 (build report) is required — paste it into `tasks/yolo-log.md`.
-- If `/build`'s Phase 4 spec validation HALTS after 3 rounds: this iteration is a FAIL. Increment `consecutive_failures` and continue the outer loop (don't escalate to user yet — the outer circuit breaker handles repeated failure).
+- If `/build`'s Phase 4 spec validation HALTS after 3 rounds: this iteration is a FAIL. Increment `consecutive_failures` and continue the outer loop (don't escalate to user yet).
 - If `/build`'s architectural circuit breaker trips: same — log as FAIL, continue.
 
 ### Phase C — Wrap Up
 
-Invoke `/wrap-up-session` with the following overrides:
+Invoke `/wrap-up-session` with one override:
 
 | `/wrap-up-session` step | Yolo override |
 |---|---|
-| Step 4 — Code review (4 parallel agents) | Run normally — launch all 4 review agents in parallel with `model: "sonnet"`. |
 | Step 6.3 — E2E coverage gate | If a user-facing AC lacks an e2e walkthrough, **do not prompt the user**. Run `/verify --scope e2e` automatically. If verify fails: log gap and continue. |
-| Step 7 — Commit gate (any MUST-FIX skipped → STOP) | If a MUST-FIX cannot be auto-fixed within the wrap-up loop, mark this iteration FAIL and **do not push**. The outer circuit breaker handles repeated failures. |
+| Step 7 — Commit gate (any MUST-FIX skipped → STOP) | If a MUST-FIX cannot be auto-fixed within the wrap-up loop, mark this iteration FAIL and **do not push**. The circuit breaker handles repeated failures. |
 | Step 7 — Push | Run normally. Push to the feature branch. |
-| Step 8 — Deployment verification | Run normally if `## Deployment Targets` configured in `.claude/project.md`. |
+| Step 8 — Deployment verification | Run normally if configured. |
 
 After Phase C: commits exist, push attempted (success or logged failure).
 
@@ -198,7 +198,7 @@ When halting, write a final entry to `tasks/yolo-log.md` titled `## HALT — <re
 
 ## Red Flags — STOP
 
-- About to call `AskUserQuestion` between phases → STOP, you're breaking yolo mode.
+- About to send an `AskUserQuestion` between phases → STOP, you're breaking yolo mode.
 - About to push to `main`/`master` → STOP, wrong branch.
 - About to start iteration N+1 while previous iteration's commits haven't been pushed → STOP, fix push first.
 - `tasks/yolo-log.md` missing an entry for the last iteration → STOP, log before continuing.

@@ -2,14 +2,25 @@
 name: auto-push
 description: Semi-autonomous pipeline. User describes an idea; agent runs /plan and PAUSES for explicit approval. After approval, /build and /wrap-up-session run autonomously through commit and push.
 argument-hint: "[short feature description]"
+disable-model-invocation: false
 harness: universal
 ---
+
 
 # /auto-push — Approve-Once, Ship-Hands-Free
 
 A supervised cousin of `/yolo`. The user describes a feature; you produce a spec and plan; you **wait for an explicit `y` approval**; then the rest of the pipeline (build → review → tests → commit → push → deploy) runs autonomously with no further prompts.
 
 The single approval gate is the whole point. After it, you don't ask again.
+
+---
+
+## Model Routing
+
+Sub-agent delegations follow the Model Routing table in `/build` (planner tier for planning/architecture, build tier for coding agents, review tier for reviewers, scout tier for exploration).
+
+- **Claude Code** — pass `model` explicitly on every Agent tool call per that table.
+- **Pi** — no per-call model params; routing resolves from `subagents.agentOverrides` in `~/.pi/agent/settings.json` (requires the `pi-subagents` extension).
 
 ---
 

@@ -1,33 +1,50 @@
-# tests/test-skill-parity.sh — .agents/ ↔ .claude/ parity for touched skills.
+# tests/test-skill-parity.sh — full-tree .agents/skills ↔ .claude/skills parity.
 #
-# Note: build/ and checkpoint/ were already divergent between the two trees
-# BEFORE this work (build: 278 vs 407 lines; checkpoint: a frontmatter style
-# line). Fully reconciling that historical drift is out of scope (a separate
-# cleanup). So we enforce:
-#   - byte-identity for files created/edited wholesale here (refresh, memory-maintain)
-#   - feature-marker parity for the pre-divergent files (our additions in BOTH)
+# Convention: .agents/skills/ is canonical; .claude/skills/ is a byte-identical
+# backwards-compat copy, EXCEPT an explicit allowlist of Claude-only extras.
+# Any drift fails this test. Edit skills in .agents/skills/ first, then copy.
 . "$(dirname "$0")/lib.sh"
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO"
 
-# Files we own end-to-end → must be byte-identical across trees.
-for s in refresh memory-maintain visual-plan visual-recap; do
-  assert_files_identical ".agents/skills/$s/SKILL.md" ".claude/skills/$s/SKILL.md" \
-    "Parity: $s identical across .agents/ and .claude/"
-done
+CANONICAL=".agents/skills"
+COMPAT=".claude/skills"
 
-assert_files_identical ".agents/skills/visual-recap/scripts/visual-render.py" \
-  ".claude/skills/visual-recap/scripts/visual-render.py" \
-  "Parity: visual-recap/scripts/visual-render.py identical across .agents/ and .claude/"
+# Entries allowed to exist only in .claude/skills (Claude Code-specific tooling
+# or human-facing notes). Everything else must be byte-identical across trees.
+ALLOWLIST="README.md setup-deployment verify-deployment"
 
-# Pre-divergent files → our additions must exist in BOTH copies.
-for marker in "Task-boundary checkpoint" "Backstop first" "Large-Artifact Handoff" "tasks/memory.md"; do
-  assert_file_contains ".agents/skills/build/SKILL.md" "$marker" "Parity: build .agents has '$marker'"
-  assert_file_contains ".claude/skills/build/SKILL.md" "$marker" "Parity: build .claude has '$marker'"
-done
-for f in .agents/skills/checkpoint/SKILL.md .claude/skills/checkpoint/SKILL.md; do
-  assert_file_contains "$f" "tasks/memory.md" "Parity: checkpoint $f uses tasks/memory.md"
+is_allowlisted() {
+  local rel="$1"
+  local entry
+  for entry in $ALLOWLIST; do
+    case "$rel" in
+      "$entry"|"$entry"/*) return 0 ;;
+    esac
+  done
+  return 1
+}
+
+# 1. Every canonical file must exist in compat, byte-identical
+while IFS= read -r -d '' f; do
+  rel="${f#"$CANONICAL"/}"
+  assert_files_identical "$f" "$COMPAT/$rel" "Parity: $rel identical across trees"
+done < <(find "$CANONICAL" -type f -print0 | sort -z)
+
+# 2. No non-allowlisted compat-only entries
+while IFS= read -r -d '' f; do
+  rel="${f#"$COMPAT"/}"
+  if [ ! -e "$CANONICAL/$rel" ] && ! is_allowlisted "$rel"; then
+    _TESTS=$((_TESTS + 1)); _FAILS=$((_FAILS + 1))
+    printf '  FAIL Parity: %s exists only in %s (port to canonical or add to allowlist)\n' "$rel" "$COMPAT"
+  fi
+done < <(find "$COMPAT" -type f -print0 | sort -z)
+
+# 3. Allowlisted entries still exist (guards against stale allowlist)
+for entry in $ALLOWLIST; do
+  assert_eq "present" "$([ -e "$COMPAT/$entry" ] && echo present || echo missing)" \
+    "Parity: allowlisted Claude-only entry $entry still present"
 done
 
 finish

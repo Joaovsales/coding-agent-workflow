@@ -2,6 +2,7 @@
 name: receive-review
 description: Process incoming code review feedback with technical rigor. Use when receiving review comments on PRs, from users, or from automated review tools.
 disable-model-invocation: false
+harness: universal
 ---
 
 # /receive-review — Processing Code Review Feedback

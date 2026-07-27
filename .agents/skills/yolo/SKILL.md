@@ -2,12 +2,23 @@
 name: yolo
 description: Fully autonomous loop. User describes an idea; the agent runs /plan, /build, and /wrap-up-session in a Ralph-style loop until the backlog is empty or a circuit breaker trips. No user prompts between phases.
 argument-hint: "[short idea description]"
+disable-model-invocation: false
 harness: universal
 ---
+
 
 # /yolo — Fully Autonomous Plan → Build → Wrap-Up Loop
 
 You-Only-Live-Once mode. The user gives you an idea; you take it from spec through merge with **no user prompts in between**. Modeled after the Ralph Loop pattern: a single prompt drives repeated `plan → build → wrap-up` iterations, with state persisted on disk (not in context) so each phase starts cold and finishes verifiable.
+
+---
+
+## Model Routing
+
+Sub-agent delegations follow the Model Routing table in `/build` (planner tier for planning/architecture, build tier for coding agents, review tier for reviewers, scout tier for exploration).
+
+- **Claude Code** — pass `model` explicitly on every Agent tool call per that table.
+- **Pi** — no per-call model params; routing resolves from `subagents.agentOverrides` in `~/.pi/agent/settings.json` (requires the `pi-subagents` extension).
 
 ---
 
