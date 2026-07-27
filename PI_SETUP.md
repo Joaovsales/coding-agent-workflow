@@ -156,6 +156,37 @@ pi --preset search -e "grep -r 'class.*Handler' src/ | head -3"
 pi --preset plan -e "read specs/*.md"
 ```
 
+## Sub-Agent Routing in Pi — pi-subagents Extension
+
+Presets route the *parent session*. Routing *sub-agents* requires the [`pi-subagents`](https://github.com/nicobailon/pi-subagents) extension:
+
+```bash
+pi install npm:pi-subagents
+```
+
+Then add a `subagents` block to `~/.pi/agent/settings.json` (role → model, with `fallbackModels` for provider failures and hard caps against runaway fan-out):
+
+```json
+"subagents": {
+  "defaultModel": "deepseek/deepseek-v4-flash",
+  "defaultThinking": "medium",
+  "globalConcurrencyLimit": 6,
+  "maxSubagentDepth": 2,
+  "maxSubagentSpawnsPerSession": 30,
+  "agentOverrides": {
+    "worker":   { "model": "deepseek/deepseek-v4-flash", "fallbackModels": ["deepseek/deepseek-v4-pro"] },
+    "reviewer": { "model": "deepseek/deepseek-v4-pro", "thinking": "high" },
+    "scout":    { "model": "openai/gpt-5-nano", "thinking": "off" },
+    "planner":  { "model": "deepseek/deepseek-v4-pro", "thinking": "high" },
+    "oracle":   { "model": "anthropic/claude-opus-4.8", "thinking": "high" }
+  }
+}
+```
+
+Dispatch is natural language ("Have worker implement this task") or the `subagent` tool. Do NOT pass per-call model params — `agentOverrides` resolves the role's model automatically, and `fallbackModels` absorbs provider errors/rate-limits.
+
+Builtin roles: `scout` (recon), `researcher` (web/docs), `planner`, `worker`, `reviewer`, `oracle` (second opinion), `context-builder`, `delegate`.
+
 ## How Build Skill Sub-Agent Routing Works
 
 The `/build` skill's Model Routing table assigns explicit model IDs to each sub-agent role:
@@ -169,7 +200,7 @@ The `/build` skill's Model Routing table assigns explicit model IDs to each sub-
 | Search | `openai/gpt-5-nano` | $0.05 |
 | Circuit breaker | `anthropic/claude-opus-4.8` | $5.00 |
 
-These are passed to the Agent tool when dispatching sub-agents. Each sub-agent runs independently with its own model and context.
+On Claude Code, these are passed to the Agent tool when dispatching sub-agents. On Pi, they are resolved from `subagents.agentOverrides` (see previous section). Each sub-agent runs independently with its own model and context.
 
 **Escalation:** If a debugger fails 2 times with V4 Flash, it escalates to V4 Pro for 2 more attempts. If all 4 fail, the circuit breaker trips and the user is asked to intervene.
 
