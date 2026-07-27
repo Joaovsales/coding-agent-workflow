@@ -3,6 +3,7 @@ name: plan
 description: Interview user, write a feature spec, and create a TDD task breakdown. Use for any non-trivial feature before coding.
 argument-hint: "[feature description]"
 disable-model-invocation: false
+harness: universal
 ---
 
 # /plan — Structured Spec + Plan Mode
@@ -11,9 +12,9 @@ Enter plan mode to define a spec and task breakdown **before any code is written
 
 ## Model Routing
 
-**This command MUST use `model: opus` for all agent delegations.**
-- When spawning the `planner` agent, pass `model: "opus"` to the Agent tool
-- When performing codebase exploration or searches, use `model: "haiku"` for the Explore agent
+Sub-agent delegations follow the Model Routing table in `/build` (planner tier for planning/architecture, scout tier for exploration).
+- **Claude Code** — pass `model` explicitly on every Agent tool call per that table.
+- **Pi** — no per-call model params; routing resolves from `subagents.agentOverrides` (requires the `pi-subagents` extension). Use `scout` for codebase exploration.
 - The planning phase requires the strongest reasoning model for architecture decisions
 
 ## Steps

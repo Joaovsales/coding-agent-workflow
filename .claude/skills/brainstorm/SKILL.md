@@ -3,6 +3,7 @@ name: brainstorm
 description: Explore a feature idea through divergent design thinking before committing to a spec. Use before /plan for non-trivial features requiring design decisions.
 argument-hint: "[feature idea or problem statement]"
 disable-model-invocation: false
+harness: universal
 ---
 
 # /brainstorm — Divergent Design Exploration
@@ -21,7 +22,7 @@ DO NOT invoke /plan, /build, /tdd, write any code, scaffold any project, or take
 ### Step 1 — Explore Context
 - Read existing codebase structure (package.json, directory layout, key files)
 - Check for related specs in specs/, prior plans in tasks/todo.md
-- Read .claude/memory.md for architectural context and past decisions
+- Read tasks/memory.md for architectural context and past decisions
 - Understand what already exists before proposing anything new
 
 ### Step 2 — Offer Visual Aids

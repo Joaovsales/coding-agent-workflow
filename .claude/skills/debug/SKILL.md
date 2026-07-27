@@ -3,6 +3,7 @@ name: debug
 description: Systematically investigate, diagnose, and fix bugs using root cause analysis. Use when debugging errors, test failures, runtime issues, or when the user reports a bug. Integrates with bug register, lessons learned, and memory.
 argument-hint: "[bug description or error message]"
 disable-model-invocation: false
+harness: universal
 ---
 
 # /debug — Bug Investigation & Fix
@@ -24,7 +25,7 @@ Symptom fixes are failure. Single-hypothesis tunnel vision is failure.
 ## Pre-Flight — Load Context
 
 1. **Read memory and lessons**:
-   - Read `.claude/memory.md` for known patterns and architectural context
+   - Read `tasks/memory.md` for known patterns and architectural context
    - Read `tasks/lessons.md` for past debugging patterns and gotchas
    - Check if the current bug matches any known pattern — apply the known fix first
 
@@ -81,7 +82,7 @@ Only after the prelude passes do you delegate to Phase 1.
 
 ## Phase 1 — Reproduce & Isolate
 
-Delegate to the `code-debugger` agent (`model: "sonnet"`):
+Delegate to the `code-debugger` agent (build tier — see Model Routing in `/build`; on Claude Code pass `model` explicitly, on Pi the `pi-subagents` extension resolves it from settings):
 
 ```
 Prompt to code-debugger:
@@ -89,7 +90,7 @@ Prompt to code-debugger:
 Bug report: [description from user or $ARGUMENTS]
 
 Known patterns from memory:
-[relevant entries from .claude/memory.md and tasks/lessons.md]
+[relevant entries from tasks/memory.md and tasks/lessons.md]
 
 Related bugs from register:
 [matching entries from tasks/bugs.md, if any]
@@ -98,7 +99,7 @@ Your task:
 1. Reproduce the bug — find or write a minimal failing test
 2. Read all relevant source files before forming hypotheses
 3. Form 2-3 hypotheses ranked by likelihood
-4. Rank evidence using the Evidence Strength Hierarchy (see .claude/skills/debug/evidence-hierarchy.md):
+4. Rank evidence using the Evidence Strength Hierarchy (see evidence-hierarchy.md):
    - Level 1 (strongest): Controlled reproduction (test that isolates exact cause)
    - Level 2: Primary artifacts (timestamped logs, git history, metrics)
    - Level 3: Multiple independent sources converging on same explanation
@@ -121,7 +122,7 @@ Return:
 
 ## Phase 2 — Fix
 
-Delegate the fix to the appropriate coding agent (`model: "sonnet"`):
+Delegate the fix to the appropriate coding agent (build tier per Model Routing in `/build`):
 
 | Bug Location | Agent |
 |-------------|-------|
@@ -164,7 +165,7 @@ After the fix is applied, use `/loop` to run all relevant tests iteratively unti
   1. Run the reproduction test — confirm it PASSES
   2. Run the full test suite — check for regressions
   3. If ALL tests pass: report SUCCESS and stop the loop
-  4. If any test FAILS: delegate to code-debugger agent (model: sonnet) with:
+  4. If any test FAILS: delegate to the `code-debugger` agent (escalation tier after 2 failed attempts) with:
      - The failing test output
      - The files changed so far
      - The original root cause context

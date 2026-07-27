@@ -123,8 +123,8 @@ Before marking any task complete, confirm:
 
 ```
 .agents/skills/            → Canonical skills (harness-neutral)
-.claude/agents/            → Sub-agents (Claude Code only)
-.claude/skills/            → Backwards-compat copy (installed alongside .agents/)
+.agents/agents/            → Sub-agent personas (canonical; .claude/agents/ = Claude Code copy)
+.claude/skills/            → Byte-identical backwards-compat copy (+ allowlisted Claude-only extras)
 .claude/hooks/             → Lifecycle automation scripts (Claude Code only)
 specs/                     → Feature specifications
 tasks/todo.md              → Active task plan
@@ -138,7 +138,11 @@ tasks/checkpoint.md        → Session snapshots
 
 ---
 
-## Agents — `.claude/agents/` (Claude Code only)
+## Agents — `.agents/agents/` (canonical) / `.claude/agents/` (Claude Code copy)
+
+Canonical persona definitions live in `.agents/agents/` (model-agnostic — never pin `model:` there).
+- **Claude Code** reads `.claude/agents/` (may pin built-in aliases like `sonnet`).
+- **Pi** discovers `.agents/agents/` automatically via the `pi-subagents` extension; routing comes from `subagents.agentOverrides` in `~/.pi/agent/settings.json`. Extension builtins `scout`, `oracle`, `researcher`, `context-builder` fill roles the workflow does not define; overlapping builtins are disabled in settings.
 
 | Agent | Model | Best For |
 |-------|-------|---------|
@@ -153,19 +157,22 @@ tasks/checkpoint.md        → Session snapshots
 | `context-document-optimizer` | `sonnet` | Compress large docs for token efficiency |
 | `software-design-expert-review` | `sonnet` | Read-only APOSD design audit — depth, leakage, error design (dispatched by `/quality-gate`) |
 
-**Rule**: One focused task per subagent. Pass `model` explicitly on every Agent tool call.
+**Rule**: One focused task per subagent. On Claude Code, pass `model` explicitly on every Agent tool call; on Pi, never pass per-call model params (agentOverrides resolves them).
 
 ---
 
-## Model Routing (Claude Code only)
+## Model Routing
 
-| Operation | Model |
-|-----------|-------|
-| `/plan` — spec writing, architecture | `opus` |
-| `/build`, coding, debugging, review | `sonnet` |
-| Codebase search, grep, file exploration | `haiku` |
+Canonical tiers (concrete model IDs per provider setup live in `/build`'s Model Routing table and `PI_SETUP.md`):
 
-Rules: never `opus` for code writing; never `haiku` for coding or planning; always pass `model` explicitly.
+| Tier | Used for | Claude Code | Pi + OpenRouter (recommended) |
+|------|----------|-------------|-------------------------------|
+| Planner | `/plan`, architecture, oracle, circuit breaker | `opus` | `moonshotai/kimi-k3` |
+| Builder | `/build` coding, debugging (attempts 1–2) | `sonnet` | `qwen/qwen3-coder-next` |
+| Reviewer | code/security/design review, debugging (3–4) | `sonnet` | `z-ai/glm-4.7` |
+| Scout | search, recon, context building | `haiku` | `deepseek/deepseek-v4-flash` |
+
+Rules: never use the planner tier for code writing; never use the scout tier for coding or planning. On Claude Code always pass `model` explicitly; on Pi never pass per-call model params (`subagents.agentOverrides` resolves them).
 
 ---
 
