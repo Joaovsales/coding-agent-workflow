@@ -13,22 +13,23 @@ Bridges the gap between `/plan` (design) and `/wrap-up-session` (close).
 
 Sub-agent model assignment for build orchestration. Edit this table to match your provider setup.
 
-| Role | Model ID (OpenRouter) | Claude Code built-in |
-|------|----------------------|---------------------|
-| Coding agents | `~anthropic/claude-sonnet-latest` | `sonnet` |
-| Code reviewer | `~anthropic/claude-sonnet-latest` | `sonnet` |
-| Debugger (attempts 1-2) | `~anthropic/claude-sonnet-latest` | `sonnet` |
-| Debugger (attempts 3-4, escalation) | `~anthropic/claude-sonnet-latest` | `sonnet` |
-| Search / explore | `~anthropic/claude-haiku-latest` | `haiku` |
-| Circuit breaker planner | `~anthropic/claude-opus-latest` | `opus` |
-| Design quality gate | `~anthropic/claude-sonnet-latest` | `sonnet` |
+| Role | Agent | Model ID (OpenRouter) | Claude Code built-in |
+|------|-------|----------------------|---------------------|
+| Planning / architecture / circuit breaker | `planner` | `moonshotai/kimi-k3` | `opus` |
+| Second opinion (advisory) | `oracle` (extension builtin) | `moonshotai/kimi-k3` | `opus` |
+| Coding agents | `backend-developer`, `frontend-developer` | `qwen/qwen3-coder-next` | `sonnet` |
+| Debugger (attempts 1-2) | `code-debugger` | `qwen/qwen3-coder-next` | `sonnet` |
+| Debugger (attempts 3-4, escalation) | `code-debugger` | `z-ai/glm-4.7` | `sonnet` |
+| Reviews (code, security, design, critic) | `code-reviewer`, `security-reviewer`, `software-design-expert-review`, `critic` | `z-ai/glm-4.7` | `sonnet` |
+| Search / recon | `scout` (extension builtin) | `deepseek/deepseek-v4-flash` | `haiku` |
+| Context / docs | `context-builder` (builtin), `context-document-optimizer` | `deepseek/deepseek-v4-flash` | `haiku` |
 
 **Escalation ladder for test regressions:**
-1. 2 attempts with coding/debug model (worker tier)
-2. 2 attempts with escalated model (reasoning tier)
-3. Circuit breaker — halt and escalate to user
+1. 2 attempts with coding/debug model (`qwen3-coder-next` / worker tier)
+2. 2 attempts with escalated model (`glm-4.7` / reasoning tier)
+3. Circuit breaker — `planner` on `kimi-k3` analyzes all 4 attempts; then halt and escalate to user
 
-> **For Pi + OpenRouter users:** Session-level routing goes in `~/.pi/agent/presets.json` (see `PI_SETUP.md`). **Sub-agent** routing requires the `pi-subagents` extension (`pi install npm:pi-subagents`) — set `subagents.agentOverrides` in `~/.pi/agent/settings.json` (role → model, plus `fallbackModels` for provider failures). See `PI_SETUP.md` § Sub-Agent Routing.
+> **For Pi + OpenRouter users:** Session-level routing goes in `~/.pi/agent/presets.json` (see `PI_SETUP.md`). **Sub-agent** routing requires the `pi-subagents` extension (`pi install npm:pi-subagents`) — set `subagents.agentOverrides` in `~/.pi/agent/settings.json` (agent name → model, plus `fallbackModels` for provider failures). Workflow agents live in `.agents/agents/` and are auto-discovered per project. See `PI_SETUP.md` § Sub-Agent Routing.
 
 ## Pre-Flight Checks
 
@@ -301,9 +302,10 @@ On Pi + OpenRouter, explicit model IDs from the Model Routing table are used.
 
 ### Pi Dispatch
 
-- Requires the `pi-subagents` extension (`pi install npm:pi-subagents`). Dispatch with natural language or the `subagent` tool — e.g. "Have worker implement this task" or `subagent({ agent: "worker", task: "..." })`.
+- Requires the `pi-subagents` extension (`pi install npm:pi-subagents`). Workflow agents come from `.agents/agents/` (auto-discovered per project); the extension adds `scout`, `oracle`, `researcher`, `context-builder` for roles the workflow does not define.
+- Dispatch with natural language or the `subagent` tool — e.g. "Have backend-developer implement this task" or `subagent({ agent: "backend-developer", task: "..." })`. Use `scout` for recon before planning, `oracle` for a second opinion on risky decisions.
 - Do NOT pass per-call model params on Pi — routing comes from `subagents.agentOverrides` in `~/.pi/agent/settings.json`; `fallbackModels` absorbs provider failures.
-- For 2+ independent tasks: ask for a parallel run ("run workers in parallel for tasks A and B") and respect `globalConcurrencyLimit`.
+- For 2+ independent tasks: ask for a parallel run ("run backend-developer and frontend-developer in parallel for tasks A and B") and respect `globalConcurrencyLimit`.
 - If the extension is not installed, run Phase 1 inline in the main context (single-agent).
 
 ### Per-Task Review
