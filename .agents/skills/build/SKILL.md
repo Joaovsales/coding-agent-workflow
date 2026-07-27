@@ -28,7 +28,7 @@ Sub-agent model assignment for build orchestration. Edit this table to match you
 2. 2 attempts with escalated model (reasoning tier)
 3. Circuit breaker — halt and escalate to user
 
-> **For Pi + OpenRouter users:** Override these in `~/.pi/agent/presets.json` with your preferred cost tier (e.g., `deepseek/deepseek-v4-flash` for cheap workers). See `PI_SETUP.md`.
+> **For Pi + OpenRouter users:** Session-level routing goes in `~/.pi/agent/presets.json` (see `PI_SETUP.md`). **Sub-agent** routing requires the `pi-subagents` extension (`pi install npm:pi-subagents`) — set `subagents.agentOverrides` in `~/.pi/agent/settings.json` (role → model, plus `fallbackModels` for provider failures). See `PI_SETUP.md` § Sub-Agent Routing.
 
 ## Pre-Flight Checks
 
@@ -267,20 +267,21 @@ When `code-debugger` fails on the same regression, escalate through two tiers be
 **Tier 1 — Worker (2 attempts):** Standard debugging with the default coding model.
 **Tier 2 — Escalation (2 attempts):** Upgrade to the reasoning/review model for deeper analysis.
 
-> **Backstop first:** run `/refresh` to snapshot working state to `tasks/checkpoint.md` before the steps below, so escalation — and any context reset — resumes from a clean, durable record rather than a context that is already saturated with failed attempts.
+**Tier 3 — Circuit breaker (premium model, e.g. `anthropic/claude-opus-4.8`):**
 
-1. **STOP** fixing symptoms.
-2. **HALT and escalate to user** with:
-   - The failing test output (all 4 attempts — 2 worker + 2 escalated)
-   - The files changed across all attempts
-   - The original spec and task description
-3. Do NOT attempt fix #5 without explicit user direction.
+1. **STOP** fixing symptoms — the design may be the problem.
+2. Spawn a `planner` with: the failing test output (all 4 attempts), the files changed across all attempts, the original spec and task description.
+   Prompt: "Four fix attempts failed across two model tiers. Analyze whether the implementation approach or spec is flawed. Return (a) a revised approach to try, or (b) 'ARCHITECTURE PROBLEM' with a diagnosis."
+3. Revised approach → apply once, re-run tests. `ARCHITECTURE PROBLEM` or another failure → halt and escalate to the user with the full diagnosis. Do NOT attempt further fixes without explicit user direction.
 
 ```
 ⛔ HALTED — Architectural circuit breaker triggered
 Regression: [test name]
-2 worker + 2 escalated attempts failed. User input required before proceeding.
+2 worker + 2 escalated attempts failed; planner analysis: [diagnosis]
+User input required before proceeding.
 ```
+
+> **Backstop first:** before invoking Tier 3, run `/refresh` to snapshot working state to `tasks/checkpoint.md`, so escalation — and any context reset — resumes from a clean, durable record rather than a context that is already saturated with failed attempts.
 
 ## Key Principles
 
@@ -297,6 +298,13 @@ For 2+ independent tasks: dispatch in parallel (multiple Agent tool calls in a s
 
 On Claude Code, these resolve via built-in model name resolution (`sonnet`, `haiku`, `opus`).
 On Pi + OpenRouter, explicit model IDs from the Model Routing table are used.
+
+### Pi Dispatch
+
+- Requires the `pi-subagents` extension (`pi install npm:pi-subagents`). Dispatch with natural language or the `subagent` tool — e.g. "Have worker implement this task" or `subagent({ agent: "worker", task: "..." })`.
+- Do NOT pass per-call model params on Pi — routing comes from `subagents.agentOverrides` in `~/.pi/agent/settings.json`; `fallbackModels` absorbs provider failures.
+- For 2+ independent tasks: ask for a parallel run ("run workers in parallel for tasks A and B") and respect `globalConcurrencyLimit`.
+- If the extension is not installed, run Phase 1 inline in the main context (single-agent).
 
 ### Per-Task Review
 Phase 1 Step 2 remains inline (no agent). Spec compliance check is a read + compare, not a coding task.
