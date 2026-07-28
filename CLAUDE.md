@@ -76,7 +76,9 @@ For codebase exploration, prefer the per-project code graph (`graphify-out/graph
 grep/read sweeps — `graphify query "<question>"` to explore, `explain "<symbol>"` for one node,
 `path "A" "B"` for how two things connect. Optional: if `graphify` or the graph is absent, fall back
 to normal search — that is not an error. A stale graph is worse than none, so keep it current with
-`graphify hook install` (re-indexes on commit/checkout).
+`graphify hook install` (re-indexes on commit/checkout). Scope: the graph covers *code* extensions
+only and skips dotted dirs — a shell/markdown repo (this one) has no code graph, so don't install
+the hook there or it reports "nothing to rebuild" on every commit.
 
 **Clean Code**
 - Functions ≤20 LOC, ≤3 parameters
