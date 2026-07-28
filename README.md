@@ -94,6 +94,23 @@ newproject() {
 
 Wraps `git init` (which triggers layer 2) and makes an initial commit. One command from zero to a fully scaffolded, Claude-ready project.
 
+### Optional — graphify code graph
+
+`graphify` builds a queryable code graph so the agent can traverse a repo instead of grepping it. It is entirely optional — everything above works without it.
+
+The split matters: **the CLI installs once per machine, the graph is per project and per clone.**
+
+```bash
+pip install graphify        # once per machine
+
+# inside each project (per clone — none of this is shared)
+graphify update .           # build/refresh graphify-out/graph.json
+graphify claude install     # CLAUDE.md section + PreToolUse hook
+graphify hook install       # re-index on commit/checkout
+```
+
+`install.sh` runs the per-project wiring for you when the `graphify` CLI is on your `PATH`, and skips it silently when it isn't.
+
 ---
 
 ## Keeping It Up to Date
@@ -292,6 +309,22 @@ Claude delegates to these automatically (or you can invoke them via the Agent to
 ├── specs/                           ← Feature specifications
 └── tests.md                         ← Project-specific test configuration
 ```
+
+---
+
+## Known Issues
+
+### Raw SessionStart JSON printed into the transcript (upstream — not fixable here)
+
+The **claude-mem** plugin (marketplace `thedotmack`) registers more than one `SessionStart` hook. Their stdout lands on a single stream and gets concatenated, so Claude Code receives two JSON objects back to back:
+
+```
+{"continue":true,"suppressOutput":true,"status":"ready"}{"continue":true,"suppressOutput":true}
+```
+
+That is not a single valid JSON object, so it can't be parsed as a hook response — Claude Code prints it into the transcript as raw text instead of suppressing it.
+
+Effect is cosmetic noise only. Nothing in this repo emits it, and no change here can suppress it; the fix belongs in claude-mem upstream. Don't go hunting for it in `.claude/hooks/`.
 
 ---
 

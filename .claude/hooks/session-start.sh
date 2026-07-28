@@ -28,6 +28,37 @@ if command -v jq >/dev/null 2>&1; then
   HOOK_SOURCE=$(printf '%s' "$HOOK_INPUT" | jq -r '.source // "startup"' 2>/dev/null || echo startup)
 fi
 
+# ── Double-invocation guard ──────────────────────────────────────────────────
+# This hook is registered TWICE: globally by install.sh (~/.claude/settings.json)
+# and per-project by .claude/settings.json, which /sync copies into every repo.
+# Both registrations fire for the same session, so the banner prints twice. The
+# first invocation drops a session-scoped sentinel; the second exits silently.
+# Escape hatch: CCW_SESSION_GUARD=0 (same convention as SKIP_SESSION_START).
+# Reuses HOOK_INPUT above — stdin can only be consumed once.
+if [ "${CCW_SESSION_GUARD:-1}" != "0" ]; then
+  GUARD_KEY=""
+  if [ -n "${HOOK_INPUT:-}" ] && command -v jq >/dev/null 2>&1; then
+    GUARD_KEY=$(printf '%s' "$HOOK_INPUT" | jq -r '.session_id // empty' 2>/dev/null || true)
+  fi
+  # Without jq (or without a session_id) both registrations still share a parent.
+  GUARD_KEY=${GUARD_KEY:-$PPID}
+  # Key on source as well. One session emits startup and, later, compact/resume/
+  # clear. Keying on session_id alone would let the startup sentinel swallow the
+  # compaction banner — the one moment re-orientation matters most.
+  GUARD_KEY="${GUARD_KEY}-${HOOK_SOURCE}"
+  GUARD_FILE="${TMPDIR:-/tmp}/.ccw-session-start-$(printf '%s' "$GUARD_KEY" | tr -c 'A-Za-z0-9_.-' '_')"
+  GUARD_MAX_AGE=300  # 5 minutes — a stale sentinel must never wedge the hook
+  if [ -f "$GUARD_FILE" ]; then
+    GUARD_MTIME=$(stat -c %Y "$GUARD_FILE" 2>/dev/null \
+                  || stat -f %m "$GUARD_FILE" 2>/dev/null \
+                  || echo 0)
+    if [ $(( $(date +%s) - GUARD_MTIME )) -lt "$GUARD_MAX_AGE" ]; then
+      exit 0
+    fi
+  fi
+  touch "$GUARD_FILE" 2>/dev/null || true
+fi
+
 if [ "$HOOK_SOURCE" = "compact" ]; then
   echo ""
   echo "$DIVIDER"
@@ -66,8 +97,34 @@ if [ -f "$MEMORY_FILE" ]; then
   echo ""
   awk '/^## Patterns & Lessons/,/^## Session History/' "$MEMORY_FILE" | head -30 || true
 else
+  # Bootstrap instead of nagging: write the skeleton /learn appends to and
+  # /memory-maintain reorganises. Headings must stay in sync with the section
+  # names those two skills read/write (see their SKILL.md).
+  MEMORY_INITIALISED=0
+  if mkdir -p "$(dirname "$MEMORY_FILE")" 2>/dev/null; then
+    cat > "$MEMORY_FILE" 2>/dev/null <<'MEMORY_SKELETON' || true
+# Project Memory
+
+> Maintained by /learn (appends) and /memory-maintain (consolidates).
+
+## Architecture Decisions
+
+## Patterns & Lessons
+
+## Session History
+
+## Archived
+MEMORY_SKELETON
+    if [ -f "$MEMORY_FILE" ]; then
+      MEMORY_INITIALISED=1
+    fi
+  fi
   echo ""
-  echo "📚  No tasks/memory.md found — consider running /learn to initialise it."
+  if [ "$MEMORY_INITIALISED" = "1" ]; then
+    echo "📚  Initialised tasks/memory.md — /learn will append patterns and session history."
+  else
+    echo "📚  No tasks/memory.md found — consider running /learn to initialise it."
+  fi
 fi
 
 # ── Memory Maintenance Check ─────────────────────────────────────────────────
@@ -213,6 +270,47 @@ if [ ! -f ".claude/sync-check-dismissed" ] \
     echo ""
     echo "🔄  TEMPLATE DRIFT — $DRIFT_COUNT file(s) differ from workflow/$WORKFLOW_BRANCH"
     echo "    Run /sync to review and apply updates (or 'touch .claude/sync-check-dismissed' to silence)."
+  fi
+fi
+
+# ── Code Graph Staleness Check ───────────────────────────────────────────────
+# graphify indexes the repo into graphify-out/graph.json and answers queries from
+# that snapshot, so an out-of-date graph silently reports outdated structure.
+# Silent when graphify isn't installed and when the graph is fresh
+# (observability discipline: loud only on actionable state).
+if command -v graphify >/dev/null 2>&1; then
+  GRAPH_FILE="graphify-out/graph.json"
+  GRAPH_MAX_AGE=1209600  # 14 days — fallback when mtime comparison is unavailable
+
+  if [ ! -f "$GRAPH_FILE" ]; then
+    echo ""
+    echo "🕸  NO CODE GRAPH — graphify-out/graph.json is missing"
+    echo "    Run graphify to index this project, then 'graphify claude install' to wire it in."
+  else
+    GRAPH_MTIME=$(stat -c %Y "$GRAPH_FILE" 2>/dev/null \
+                  || stat -f %m "$GRAPH_FILE" 2>/dev/null \
+                  || echo 0)
+    GRAPH_AGE=$(( $(date +%s) - GRAPH_MTIME ))
+
+    # Any TRACKED source file touched after the graph was written makes it stale.
+    # Tracked-only keeps build output, logs and scratch files from crying wolf.
+    # Outside a git repo (or with nothing tracked) the age fallback below applies.
+    NEWER_SOURCE=""
+    if git rev-parse --is-inside-work-tree &>/dev/null; then
+      while IFS= read -r TRACKED_FILE; do
+        if [ -f "$TRACKED_FILE" ] && [ "$TRACKED_FILE" -nt "$GRAPH_FILE" ]; then
+          NEWER_SOURCE="$TRACKED_FILE"
+          break
+        fi
+      done < <(git ls-files 2>/dev/null || true)
+    fi
+
+    if [ -n "$NEWER_SOURCE" ] || [ "$GRAPH_AGE" -gt "$GRAPH_MAX_AGE" ]; then
+      echo ""
+      echo "🕸  CODE GRAPH STALE — source files changed since graphify-out/graph.json was built"
+      echo "    Queries will answer from an outdated snapshot. Re-index, or run"
+      echo "    'graphify hook install' to refresh it on every commit and checkout."
+    fi
   fi
 fi
 

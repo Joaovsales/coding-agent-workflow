@@ -71,6 +71,15 @@ Layer 3 — Pre-push in /wrap-up     codebase consistency, defensive audit,
 **Never Guess — Verify**
 Use Read tools before editing. Check file existence. Validate from actual content.
 
+**Code Graph First**
+For codebase exploration, prefer the per-project code graph (`graphify-out/graph.json`) over blind
+grep/read sweeps — `graphify query "<question>"` to explore, `explain "<symbol>"` for one node,
+`path "A" "B"` for how two things connect. Optional: if `graphify` or the graph is absent, fall back
+to normal search — that is not an error. A stale graph is worse than none, so keep it current with
+`graphify hook install` (re-indexes on commit/checkout). Scope: the graph covers *code* extensions
+only and skips dotted dirs — a shell/markdown repo (this one) has no code graph, so don't install
+the hook there or it reports "nothing to rebuild" on every commit.
+
 **Clean Code**
 - Functions ≤20 LOC, ≤3 parameters
 - Single abstraction level per function
