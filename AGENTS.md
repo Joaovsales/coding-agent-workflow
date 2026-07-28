@@ -38,3 +38,9 @@ data loss, and anything the user explicitly requested.
 **Intentional shortcuts** — when you deliberately pick a minimal solution with a
 known limitation, mark it with a `TODO(shortcut):` comment stating the limit and
 the upgrade path.
+
+### Code Graph
+
+Explore via the per-project code graph before broad grep/read sweeps:
+`graphify query "<question>"` (also `explain`, `path`; graph at `graphify-out/graph.json`).
+Optional — fall back to normal search when it is absent. See `CLAUDE.md` § *Code Graph First*.

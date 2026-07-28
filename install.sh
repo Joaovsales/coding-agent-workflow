@@ -8,7 +8,8 @@
 #   4. Sets up a git template dir so `git init` auto-installs a post-init hook
 #   5. Configures ~/.claude/settings.json with skills path
 #   6. Configures Pi (~/.pi/agent/settings.json) if installed
-#   7. Prints a `newproject` shell function to add to your .bashrc / .zshrc
+#   7. Wires graphify into this project if the CLI is present (optional)
+#   8. Prints a `newproject` shell function to add to your .bashrc / .zshrc
 #
 # Usage:
 #   git clone <this-repo> ~/coding-agent-workflow
@@ -58,7 +59,10 @@ cp "$REPO_DIR/.claude/hooks/session-start.sh" "$CLAUDE_HOME/hooks/session-start.
 chmod +x "$CLAUDE_HOME/hooks/session-start.sh"
 ok "copied" "~/.claude/hooks/session-start.sh"
 
-# Merge SessionStart into ~/.claude/settings.json (preserves existing settings)
+# Merge SessionStart into ~/.claude/settings.json (preserves existing settings).
+# NOTE: this is the ONLY place the SessionStart hook is registered. Deliberately
+# user-level only — the repo's .claude/settings.json must NOT register it too, or
+# /sync would copy that into every project and the hook would fire twice per session.
 SETTINGS_FILE="$CLAUDE_HOME/settings.json"
 SESSION_HOOK_CMD="bash $CLAUDE_HOME/hooks/session-start.sh"
 
@@ -124,7 +128,20 @@ if [ -f "$PI_SETTINGS" ]; then
   fi
 fi
 
-# ── 8. Git template directory ─────────────────────────────────────────────────
+# ── 8. Wire graphify into this project (optional) ────────────────────────────
+# graphify is a per-machine CLI with per-project state (./graphify-out/graph.json),
+# so it has to be wired per repo. Entirely optional — never block the install.
+step "Wiring graphify (optional)"
+if command -v graphify > /dev/null 2>&1; then
+  graphify claude install > /dev/null 2>&1 || true
+  graphify hook install > /dev/null 2>&1 || true
+  ok "wired" "graphify: CLAUDE.md section + PreToolUse hook + re-index git hooks"
+else
+  echo "  NOTE: graphify not found — optional code-graph indexing skipped."
+  echo "  Install with: pip install graphify   (then re-run this installer)"
+fi
+
+# ── 9. Git template directory ─────────────────────────────────────────────────
 step "Setting up git template dir → $GIT_TEMPLATE_DIR"
 mkdir -p "$GIT_TEMPLATE_DIR/hooks"
 
@@ -174,7 +191,7 @@ git config --global init.templateDir "$GIT_TEMPLATE_DIR"
 ok "set" "git config --global init.templateDir $GIT_TEMPLATE_DIR"
 ok "installed" "post-init hook (runs on every git init)"
 
-# ── 9. Print newproject shell function ────────────────────────────────────────
+# ── 10. Print newproject shell function ───────────────────────────────────────
 step "Shell function — add this to your ~/.bashrc or ~/.zshrc"
 cat <<'SHELLCONFIG'
 
