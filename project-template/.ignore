@@ -1,0 +1,17 @@
+# Search-tool exclusions — honoured by ripgrep, fd, and most agent tooling.
+#
+# These are generated artefacts that are gitignored but still sit in the working
+# tree, so `git status` stays quiet while recursive search walks straight into them.
+#
+# graphify-out/ is the dangerous one. graph.json indexes the source, so it matches
+# ordinary identifiers ("sessions", "extractPayerName", "supabase"), and graph.html
+# holds a SINGLE ~1.4 MB line. An unscoped `rg <identifier>` therefore returns a
+# megabyte-long line, which is enough on its own to exhaust an agent's context
+# window. Observed 2026-07-29: three subagents died this way before the cause was
+# found — it surfaces as a generic autocompact/API error, so it reads like a model
+# problem rather than a repo problem.
+#
+# NOTE: plain `grep -r` does NOT honour this file. Use ripgrep, or pass
+#   --exclude-dir={graphify-out,node_modules,.git}
+graphify-out/
+node_modules/
