@@ -135,7 +135,27 @@ step "Wiring graphify (optional)"
 if command -v graphify > /dev/null 2>&1; then
   graphify claude install > /dev/null 2>&1 || true
   graphify hook install > /dev/null 2>&1 || true
-  ok "wired" "graphify: CLAUDE.md section + PreToolUse hook + re-index git hooks"
+
+  # graphify-out/ is ~13 MB of generated artefacts that sit in the working tree.
+  # Two separate protections are needed, and neither is created by graphify itself:
+  #
+  #   .gitignore — without it the directory shows as untracked and is one
+  #                `git add .` away from being committed.
+  #   .ignore    — graph.json indexes the source, so it matches ordinary
+  #                identifiers, and graph.html holds a SINGLE ~1.4 MB line. An
+  #                unscoped `rg <identifier>` returns that line and can exhaust an
+  #                agent's context window in one tool call. Observed 2026-07-29:
+  #                three subagents died this way before the cause was found.
+  #
+  # Both writes are idempotent.
+  if ! grep -qx "graphify-out/" .gitignore 2> /dev/null; then
+    printf '\n# graphify knowledge graph — machine-local, rebuilt by post-commit hook\ngraphify-out/\n' >> .gitignore
+  fi
+  if ! grep -qx "graphify-out/" .ignore 2> /dev/null; then
+    printf '# Search-tool exclusions (ripgrep, fd — plain `grep -r` does NOT honour this).\ngraphify-out/\nnode_modules/\n' >> .ignore
+  fi
+
+  ok "wired" "graphify: CLAUDE.md + PreToolUse hook + git hooks + .gitignore/.ignore"
 else
   echo "  NOTE: graphify not found — optional code-graph indexing skipped."
   echo "  Install with: pip install graphify   (then re-run this installer)"
@@ -176,6 +196,7 @@ copy_if_missing() {
 }
 
 copy_if_missing "CLAUDE.md"
+copy_if_missing ".ignore"
 copy_if_missing "tasks/todo.md"
 copy_if_missing "tasks/bugs.md"
 copy_if_missing "tasks/lessons.md"

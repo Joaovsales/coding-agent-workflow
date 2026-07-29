@@ -1,0 +1,12 @@
+# Search-tool exclusions — honoured by ripgrep, fd, and most agent tooling.
+#
+# These are generated artefacts that are gitignored but still sit in the working
+# tree, so `git status` stays quiet while recursive search walks straight into them.
+#
+# graphify-out/ is the dangerous one. graph.json indexes the source, so it matches
+# ordinary identifiers 
+#
+# NOTE: plain `grep -r` does NOT honour this file. Use ripgrep, or pass
+#   --exclude-dir={graphify-out,node_modules,.git}
+graphify-out/
+node_modules/
