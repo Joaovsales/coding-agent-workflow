@@ -136,6 +136,25 @@ if command -v graphify > /dev/null 2>&1; then
   graphify claude install > /dev/null 2>&1 || true
   graphify hook install > /dev/null 2>&1 || true
 
+  # `graphify claude install` writes its `## graphify` rules into CLAUDE.md, which /sync
+  # overwrites wholesale — so the rules vanish silently on the next sync while the
+  # PreToolUse hook and the skill both survive, leaving graphify looking wired but
+  # rule-less. Relocate the section to .claude/project.md, which /sync never touches.
+  if [ -f CLAUDE.md ] && grep -q '^## graphify$' CLAUDE.md; then
+    mkdir -p .claude
+    [ -f .claude/project.md ] || printf '# Project-Specific Configuration\n\n> Imported by CLAUDE.md. Safe to edit — /sync never touches this file.\n' > .claude/project.md
+    if ! grep -q '^## graphify$' .claude/project.md; then
+      {
+        printf '\n'
+        awk '/^## graphify$/{f=1} f' CLAUDE.md
+      } >> .claude/project.md
+    fi
+    # Drop the section from CLAUDE.md. It is emitted last, so truncating at its
+    # header is sufficient and leaves the template content untouched.
+    awk '/^## graphify$/{exit} {print}' CLAUDE.md > CLAUDE.md.tmp && mv CLAUDE.md.tmp CLAUDE.md
+    ok "moved" "graphify rules: CLAUDE.md -> .claude/project.md (survives /sync)"
+  fi
+
   # graphify-out/ is ~13 MB of generated artefacts that sit in the working tree.
   # Two separate protections are needed, and neither is created by graphify itself:
   #
