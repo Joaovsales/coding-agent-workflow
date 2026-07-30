@@ -21,14 +21,28 @@ Apply to every code-writing turn. The cheapest line to review is the one never w
 
 1. **Necessity (YAGNI)** — does this need to exist at all? Skip speculative
    abstractions, config knobs with one setting, and features no AC asks for.
-2. **Standard library** — does the language's stdlib already provide it? Prefer
+2. **Existing code** — does a helper, util, type, or pattern already in this repo
+   do it? Reuse it. Re-implementing what lives a few files over is the most common
+   source of slop.
+3. **Standard library** — does the language's stdlib already provide it? Prefer
    it over a hand-rolled equivalent.
-3. **Native platform** — does the OS/browser/runtime provide it? (e.g.
+4. **Native platform** — does the OS/browser/runtime provide it? (e.g.
    `<input type="date">` over a date-picker dependency.)
-4. **Existing dependency** — is it already installed? Reuse it before adding a
-   new one. **Do not add a dependency for what 1–3 already cover.**
-5. **One line** — if a correct one-liner exists, write the one-liner.
-6. **Minimal viable code** — only then write the least code that satisfies the AC.
+5. **Existing dependency** — is it already installed? Reuse it before adding a
+   new one. **Do not add a dependency for what 1–4 already cover.**
+6. **One line** — if a correct one-liner exists, write the one-liner.
+7. **Minimal viable code** — only then write the least code that satisfies the AC.
+
+**Understand first, then walk the hierarchy** — it shortens the solution, never
+the reading. Trace the real flow through every file the change touches before
+picking a level. The smallest change in the wrong place is a second bug.
+
+**Root cause over symptom** — check every caller of the function you touch. One
+guard in the shared function is a smaller diff than one per caller, and patching
+only the path the ticket names leaves sibling callers broken.
+
+**Tiebreak on correctness** — two options, same line count? Take the one that
+handles edge cases. Economy means less code, not a flimsier algorithm.
 
 **Never-on-the-chopping-block** (these override the hierarchy — economy never
 justifies cutting them; see `CLAUDE.md` § *No Silent Failures*): security,
