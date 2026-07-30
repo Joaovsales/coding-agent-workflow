@@ -53,6 +53,14 @@ one-line `🔄 TEMPLATE DRIFT` notice at session start when syncable paths diffe
 from `workflow/<default-branch>`. It does **not** modify files — it only nudges
 you to run `/sync`.
 
+**Where the hook is registered:** `install.sh` registers `SessionStart` at the **user**
+level only (`~/.claude/hooks/session-start.sh` + `~/.claude/settings.json`) — once per
+machine, covering every project. It is deliberately **not** registered in the
+project-level `.claude/settings.json` that `/sync` copies. Registering it in both places
+makes the hook fire twice per session and print the banner twice. Do not "helpfully" add
+a `SessionStart` entry to `.claude/settings.json` — syncing that file does not, and must
+not, install this hook.
+
 **Enable on a fresh project:**
 
 ```bash
@@ -86,7 +94,7 @@ CLAUDE.md             → Shared rules: workflow, principles, skills index (both
 .claude/skills/       → Claude Code backwards-compat copy of .agents/skills/
 .claude/agents/       → Subagent definitions (Claude Code only)
 .claude/hooks/        → Lifecycle hooks (Claude Code only)
-.claude/settings.json → Hook configuration (Claude Code only)
+.claude/settings.json → Hook configuration + env (Claude Code only — no SessionStart, see above)
 ```
 
 **Never sync** (project-specific state):
@@ -287,10 +295,43 @@ For each applied file, briefly note what changed.
    - Suggested message: `chore: sync workflow updates from coding-agent-workflow`
 3. Remind the user to review `CLAUDE.md` if it was updated — they may need to merge project-specific customizations back in
 
+### Step 7 — Optional: Re-wire graphify
+
+`graphify` is a per-machine CLI (`~/.local/bin/graphify`) that most projects do not use.
+This step is **optional and non-blocking** — never abort, fail, or roll back a sync
+because of it. Skip silently when the binary is absent:
+
+```bash
+command -v graphify >/dev/null 2>&1 || echo "graphify not installed — skipping"
+```
+
+If it *is* available, note that `/sync` may have just overwritten `CLAUDE.md`, which
+wipes the graphify section written by `graphify claude install`. Re-run the per-project
+wiring to restore it:
+
+```bash
+graphify claude install || true   # CLAUDE.md section + PreToolUse hook
+graphify hook install  || true    # post-commit / post-checkout re-index git hooks
+```
+
+Both are idempotent, so re-running after every sync is expected and harmless.
+`graphify hook status` reports whether the git hooks are already in place if you'd
+rather check before writing.
+
+Then confirm the graph itself isn't stale. Per-project state lives in
+`graphify-out/graph.json`; if it is missing or older than recent commits, refresh it:
+
+```bash
+graphify update . || true
+```
+
+Report the outcome as a single line and move on. Because this runs after the sync is
+already applied, a graphify failure leaves the sync itself fully intact.
+
 ## Edge Cases
 
 - **CLAUDE.md is safe to overwrite**: `CLAUDE.md` contains only shared template rules (workflow, principles, skills index). Project-specific content lives in `.claude/project.md` (Claude Code) or `AGENTS.md` (Pi), which `/sync` never touches. The `@.claude/project.md` and `@CLAUDE.local.md` imports at the top of `CLAUDE.md` are Claude Code layering — they survive the overwrite unchanged since `/sync` replaces the whole file with the same imports.
-- **settings.json merge**: If the project has custom hooks in `.claude/settings.json`, show both versions and help the user merge rather than overwrite.
+- **settings.json merge**: If the project has custom hooks in `.claude/settings.json`, show both versions and help the user merge rather than overwrite. Syncing this file never installs the `SessionStart` drift hook — that is registered once at user level by `install.sh` (see Automatic Drift Notification). If a project's `.claude/settings.json` contains a `SessionStart` entry pointing at `session-start.sh`, it duplicates the user-level registration and makes the banner print twice — flag it for removal.
 - **New files**: Files that exist in the template but not the project are shown as NEW and can be added.
 - **Deleted files**: Files that exist in the project's `.claude/` but NOT in the template are flagged — they may be project-specific additions (don't remove them).
 - **`.claude/project.md` missing in the target project**: expected for fresh projects that haven't run `/setup-deployment` yet. `/sync` does not create it — that happens lazily on first write by `/setup-deployment` or the migration step above.

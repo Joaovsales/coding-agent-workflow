@@ -94,6 +94,28 @@ Address any MUST-FIX findings before proceeding to commit.
 
 ---
 
+## Step 3.7 — Shortcut Ledger
+
+`CLAUDE.md` § *Code Economy* marks deliberate shortcuts with `TODO(shortcut):`
+naming a limit and an upgrade path. Collect them so a deferral cannot quietly
+become permanent:
+
+```bash
+grep -rnE '(#|//|--) ?TODO\(shortcut\):' . \
+  --exclude-dir={.git,node_modules,dist,build,vendor} 2>/dev/null || true
+```
+
+One line per marker: `<file>:<line> — <limit>. upgrade: <trigger>.` Tag any
+marker naming no upgrade path `no-trigger` — those are the ones that rot. Close
+with `<N> shortcuts, <M> without a trigger.`
+
+No markers found: print nothing and move on (failure-only reporting, per
+`CLAUDE.md` § *Observability Discipline*). This step reports only — it never
+blocks the commit, and shortcuts are not bugs, so they do not go in
+`tasks/bugs.md`.
+
+---
+
 ## Step 4 — Code Review (4 passes)
 
 Run 4 sequential self-review passes in the main context. For each pass:
