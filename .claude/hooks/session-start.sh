@@ -20,12 +20,17 @@ DIVIDER="═══════════════════════�
 # ── Compaction-aware restore ─────────────────────────────────────────────────
 # Claude Code passes a `source` field (startup|resume|compact|clear) as JSON on
 # stdin. After a compaction we skip the heavy first-run banner and instead point
-# the agent at the state flushed to disk by the PreCompact hook. Older CLIs (or
-# missing jq) leave source=startup, preserving the full banner — no regression.
+# the agent at the state flushed to disk by the PreCompact hook. Parsed with sed
+# rather than jq: re-orientation matters most at exactly this moment, so the
+# branch must not vanish on a machine that lacks an optional binary. Older CLIs
+# omit the field — source stays startup, preserving the full banner, no
+# regression. The tty guard keeps a manual run from blocking on empty stdin.
 HOOK_SOURCE="startup"
-if command -v jq >/dev/null 2>&1; then
+if [ ! -t 0 ]; then
   HOOK_INPUT=$(cat 2>/dev/null || true)
-  HOOK_SOURCE=$(printf '%s' "$HOOK_INPUT" | jq -r '.source // "startup"' 2>/dev/null || echo startup)
+  HOOK_SOURCE=$(printf '%s' "$HOOK_INPUT" \
+    | sed -n 's/.*"source"[[:space:]]*:[[:space:]]*"\([A-Za-z]*\)".*/\1/p' | head -1 || true)
+  HOOK_SOURCE="${HOOK_SOURCE:-startup}"
 fi
 
 # ── Double-invocation guard ──────────────────────────────────────────────────
