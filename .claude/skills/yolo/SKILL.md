@@ -28,9 +28,32 @@ Sub-agent delegations follow the Model Routing table in `/build` (planner tier f
 NO USER PROMPTS BETWEEN PHASES.
 PLAN AUTO-CONFIRMS. BUILD RUNS TO COMPLETION. WRAP-UP COMMITS AND PUSHES.
 THE LOOP ONLY EXITS ON: BACKLOG EMPTY, CIRCUIT BREAKER, OR USER INTERRUPT.
+ALWAYS RUN IN A WORKTREE.
 ```
 
 If you find yourself about to ask "should I proceed?" — you are violating yolo mode. The user already said yes by invoking `/yolo`.
+
+---
+
+## Isolation — mandatory, not a judgement call
+
+Enter a worktree **before the first `/plan`**, and stay in it for the whole loop.
+`/build` Step 0.5 treats this as a decision; here it is not one.
+
+The reason is the Iron Law itself. No user prompts means nobody is watching, and
+an unattended loop is exactly when another session — or automation on a
+schedule — checks out a different branch in the shared clone and rewrites the
+files underneath a running edit. Supervised, you notice. Here you do not, and
+the loop keeps building against a tree that silently became something else.
+
+**How:** prefer the harness-native `EnterWorktree` tool; this instruction is what
+authorises it. Otherwise `scripts/bootstrap-worktree.sh <branch>`.
+
+Never a bare `git worktree add` — no `node_modules`, no `.env*`, and a suite
+gated on an env file will skip those tests and report green. An unattended loop
+that trusts a false green will happily build on top of it for hours.
+
+`/wrap-up-session` Step 7.5 closes the worktree at the end of each iteration.
 
 ---
 

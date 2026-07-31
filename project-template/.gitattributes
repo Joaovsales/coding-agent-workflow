@@ -1,0 +1,46 @@
+# Conflict hygiene for multi-agent work.
+#
+# When several agent sessions run against one repo, the top conflict sources are
+# usually not source files — they are the workflow's own append-only registers.
+# Every session ends by appending to them, so N concurrent sessions means N
+# collisions on files unrelated to the features being built.
+#
+# Measured on one project, last 200 commits:
+#   51  tasks/bugs.md      <- 25% of all commits
+#   43  tasks/todo.md
+#   39  tasks/lessons.md
+#   24  lib/services/<busiest source file>
+#
+# `merge=union` keeps both sides with no conflict markers, which is right for a
+# log that only ever grows.
+#
+# READ THIS BEFORE RELYING ON IT: union merge resolves the *textual* conflict,
+# not the *semantic* one. Two agents that both grep for the last ID and both
+# pick BUG-144 will get two BUG-144 entries and no marker to catch it. Union is
+# a mitigation; the real fix is IDs that need no coordination (timestamp or
+# branch slug), or one-file-per-entry with a thin index — see
+# `.agents/skills/wrap-up-session/SKILL.md`.
+
+tasks/bugs.md        merge=union
+tasks/lessons.md     merge=union
+tasks/backlog.md     merge=union
+tasks/design-debt.md merge=union
+tasks/e2e-log.md     merge=union
+
+# NOT union-merged, deliberately:
+#   tasks/todo.md      rewritten wholesale per plan, not appended. Union would
+#                      splice two unrelated plans into one incoherent list.
+#   tasks/memory.md    curated and consolidated by /memory-maintain; union
+#                      defeats the deduplication that skill exists to perform.
+
+# Lockfiles: never merge, always regenerate. A textually merged lockfile can be
+# internally inconsistent while looking clean.
+package-lock.json -merge
+pnpm-lock.yaml    -merge
+yarn.lock         -merge
+
+# Committed binary fixtures: no textual merge is meaningful. Regenerate from a
+# detached worktree at HEAD instead (scripts/bootstrap-worktree.sh --detach-head).
+*.png binary
+*.jpg binary
+*.pdf binary

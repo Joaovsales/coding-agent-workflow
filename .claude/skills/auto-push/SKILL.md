@@ -15,6 +15,29 @@ The single approval gate is the whole point. After it, you don't ask again.
 
 ---
 
+## Isolation — mandatory once the gate is passed
+
+Enter a worktree **before `/plan`**, so the branch the user approves is the
+branch that ships. `/build` Step 0.5 treats this as a decision; here it is not.
+
+The approval gate is what makes this unattended. Everything after it — build,
+review, tests, commit, push — runs with nobody watching, which is exactly when a
+concurrent session or a scheduled job checks out another branch in the shared
+clone and rewrites files under a live edit. The user approved a plan; they
+should get that plan, not whatever the tree became.
+
+**How:** prefer the harness-native `EnterWorktree` tool; this instruction is what
+authorises it. Otherwise `scripts/bootstrap-worktree.sh <branch>`.
+
+Never a bare `git worktree add` — no `node_modules`, no `.env*`, and a suite
+gated on an env file will skip those tests and report green. Pushing on a false
+green is worse here than in `/yolo`, because the user believes a human approved
+this one.
+
+`/wrap-up-session` Step 7.5 closes the worktree after the push.
+
+---
+
 ## Model Routing
 
 Sub-agent delegations follow the Model Routing table in `/build` (planner tier for planning/architecture, build tier for coding agents, review tier for reviewers, scout tier for exploration).

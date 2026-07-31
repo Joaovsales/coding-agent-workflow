@@ -31,6 +31,41 @@ Sub-agent model assignment for build orchestration. Edit this table to match you
 
 > **For Pi + OpenRouter users:** Session-level routing goes in `~/.pi/agent/presets.json` (see `PI_SETUP.md`). **Sub-agent** routing requires the `pi-subagents` extension (`pi install npm:pi-subagents`) — set `subagents.agentOverrides` in `~/.pi/agent/settings.json` (agent name → model, plus `fallbackModels` for provider failures). Workflow agents live in `.agents/agents/` and are auto-discovered per project. See `PI_SETUP.md` § Sub-Agent Routing.
 
+## Step 0.5 — Isolation
+
+Decide **before** the green baseline whether this build runs in a git worktree.
+Pairs with `/wrap-up-session` Step 7.5, which merges and removes it.
+
+**Enter a worktree if ANY of these hold:**
+
+- Invoked from `/yolo`, `/auto-improve`, or `/auto-push` — unattended, so nobody
+  is watching to notice a stray checkout
+- Another agent session is active in this clone
+- The plan regenerates committed fixtures or snapshots
+- `tasks/todo.md` has more than 6 open tasks (long enough to straddle a merge)
+
+**Otherwise stay in the clone** and say so in one line. A short supervised build
+does not earn the setup cost.
+
+**How:** prefer the harness-native `EnterWorktree` tool where available — this
+skill instructing it is what authorises that tool. Otherwise:
+
+```bash
+scripts/bootstrap-worktree.sh <branch>
+```
+
+Do not use a bare `git worktree add`. A fresh worktree has no `node_modules` and
+no `.env*`, and a suite that gates on an env file will **skip** those tests and
+report green. The script symlinks and copies both, and warns when it cannot.
+Count the tests, not the exit code.
+
+**What a worktree does and does not buy you.** It prevents *interference* — one
+agent's `checkout` rewriting files under another's running session. It does
+nothing for *merge conflicts*, which come from two branches editing the same
+lines and are identical however many directories were involved. It can even make
+them larger, since agents in separate trees never see each other's work in
+progress and drift further before finding out. Merge `main` in frequently.
+
 ## Pre-Flight Checks
 
 1. Verify `tasks/todo.md` exists and has pending `[ ]` tasks
@@ -65,9 +100,16 @@ Before processing tasks sequentially, assess if any can run in parallel.
 
 **If 2+ independent tasks found**:
 1. Group tasks by independence
-2. Dispatch one sub-agent per independent group
+2. Dispatch one sub-agent per independent group, passing
+   `isolation: "worktree"` on each `Agent` call **when the groups write files**.
+   Independence assessed at plan time is a prediction; worktree isolation makes
+   it structurally true, so a mis-grouping surfaces as a merge conflict you can
+   see rather than two agents silently overwriting each other.
 3. Wait for all to return; check for file conflicts
-4. Run full test suite to verify all changes integrate cleanly
+4. Run the full test suite **centrally, once** — never instruct the sub-agents to
+   run it themselves. Fanning verification out to every agent multiplies context
+   for no added signal and is a known way to lose a whole fleet to autocompact
+   thrashing. Isolate the *edits*, centralise the *verification*.
 
 **If tasks are sequential/dependent**: process one at a time (Steps 1–4 below).
 

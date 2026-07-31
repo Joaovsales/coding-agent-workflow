@@ -224,20 +224,6 @@ If no specs were touched: skip this gate silently.
 
 ---
 
-## Step 6.5 — Worktree Integration (if applicable)
-
-If in a git worktree (`git worktree list`):
-
-1. Verify clean state: all tests pass, no uncommitted changes
-2. Switch to main worktree, pull latest, merge feature branch
-3. Run tests on merged result
-4. If merge conflicts: resolve, re-run tests
-5. Remove worktree and delete feature branch after successful merge
-
-If NOT in a worktree: skip.
-
----
-
 ## Step 7 — Commit & Push
 
 ### Code Review Gate
@@ -266,6 +252,44 @@ If NOT in a worktree: skip.
 | Non-fast-forward | `git pull --rebase`, resolve conflicts, push again |
 | Permission denied | Report to user — do not retry |
 | Branch protection | Report to user — do not retry |
+
+---
+
+## Step 7.5 — Worktree Integration (if applicable)
+
+Runs **after** Step 7, not before it. Merging can only follow committing — the
+previous version of this step ran before the commit, so it either found a dirty
+tree or merged a branch that did not yet contain the session's work.
+
+If NOT in a git worktree: skip. Otherwise check which flow this repo uses.
+
+**If the work goes through a pull request (default when `origin` exists):**
+
+1. Confirm Step 7 pushed the branch: `git status -sb` shows no `ahead`
+2. Open the PR (`gh pr create`) or confirm one is already open
+3. **Stop here. Do not merge locally and do not delete the branch** — an open PR
+   whose source branch is gone is a dead PR, and a local merge to `main` bypasses
+   the review the PR exists to get
+4. Removing the *worktree directory* is fine once pushed
+   (`git worktree remove <path>`); the branch must survive until the PR lands
+
+**If the repo merges locally (no remote, or the user asked for a direct merge):**
+
+1. Verify clean: `git status --porcelain` empty
+2. Switch to the parent worktree, `git pull --ff-only`
+3. `git merge --no-ff <branch>`
+4. Run the **full** suite on the merged result — this is the first time these two
+   lines of history have coexisted, so a green run on either side proves nothing
+   about the merge
+5. Green → `git worktree remove <path>` and delete the branch
+6. Red → keep both, report the failures, change nothing else
+
+**Conflicts.** Expect them in `tasks/*.md` — the append-only registers are
+touched by nearly every session and are a bigger conflict source than source
+code. A `.gitattributes` with `merge=union` on those files removes the mechanical
+conflict but not the semantic one: two sessions that each allocate the next
+`BUG-NNN` produce duplicate IDs with no marker to catch it. After merging, scan
+the register for repeated IDs before trusting it.
 
 ---
 
