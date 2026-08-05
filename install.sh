@@ -6,14 +6,17 @@
 #   2. Copies .agents/ into ~/.agents/ (harness-neutral skills)
 #   3. Installs a global SessionStart hook that orients Claude in any project
 #   4. Sets up a git template dir so `git init` auto-installs a post-init hook
-#   5. Configures ~/.claude/settings.json with skills path
-#   6. Configures Pi (~/.pi/agent/settings.json) if installed
-#   7. Wires graphify into this project if the CLI is present (optional)
-#   8. Prints a `newproject` shell function to add to your .bashrc / .zshrc
+#   5. Configures Pi (~/.pi/agent/settings.json) if installed
+#   6. Wires graphify into this project if the CLI is present (optional)
+#   7. Prints a `newproject` shell function to add to your .bashrc / .zshrc
 #
 # Usage:
 #   git clone <this-repo> ~/coding-agent-workflow
-#   cd ~/coding-agent-workflow && bash install.sh
+#   cd ~/coding-agent-workflow && bash install.sh [--prune-skills]
+#
+# Skill installation is additive: nothing already in ~/.claude/skills/ is deleted
+# unless you pass --prune-skills, which lists every non-template entry and waits
+# for a typed confirmation first.
 
 set -euo pipefail
 
@@ -28,6 +31,62 @@ RESET='\033[0m'
 step() { echo -e "\n${BOLD}▶ $1${RESET}"; }
 ok()   { echo -e "  ${GREEN}✓${RESET} $2"; }
 
+usage() {
+  echo "Usage: bash install.sh [--prune-skills]"
+  echo ""
+  echo "  --prune-skills  Offer to delete entries in ~/.claude/skills/ that this"
+  echo "                  template no longer ships. Lists them and requires a typed"
+  echo "                  confirmation. Without this flag nothing is ever deleted."
+  echo "  -h, --help      Show this message."
+}
+
+PRUNE_SKILLS=0
+for arg in "$@"; do
+  case "$arg" in
+    --prune-skills) PRUNE_SKILLS=1 ;;
+    -h|--help)      usage; exit 0 ;;
+    *)              echo "Unknown option: $arg" >&2; usage >&2; exit 1 ;;
+  esac
+done
+
+# Entries in ~/.claude/skills/ that this template does not ship — the user's own
+# skills, plus template skills retired since their last install. One per line;
+# empty output means the two trees agree.
+extra_global_skills() {
+  local entry name
+  for entry in "$CLAUDE_HOME/skills"/*; do
+    [ -e "$entry" ] || continue
+    name="$(basename "$entry")"
+    [ -e "$REPO_DIR/.claude/skills/$name" ] || printf '%s\n' "$name"
+  done
+}
+
+# Delete those entries — but only after listing them and reading back the literal
+# word "delete". EOF or any other answer aborts, leaving everything in place.
+prune_extra_skills() {
+  local extras reply=""
+  extras="$(extra_global_skills)"
+  if [ -z "$extras" ]; then
+    ok "nothing to prune" "~/.claude/skills/ holds no non-template entries"
+    return 0
+  fi
+  echo ""
+  echo "  --prune-skills will PERMANENTLY DELETE these non-template entries from"
+  echo "  $CLAUDE_HOME/skills/ :"
+  printf '%s\n' "$extras" | sed 's/^/    - /'
+  echo ""
+  printf '  Type "delete" to confirm (anything else aborts): '
+  read -r reply || reply=""
+  if [ "$reply" != "delete" ]; then
+    echo "  Aborted — nothing deleted."
+    return 0
+  fi
+  printf '%s\n' "$extras" | while IFS= read -r name; do
+    [ -n "$name" ] && rm -rf "$CLAUDE_HOME/skills/$name"
+  done
+  ok "pruned" "$(printf '%s\n' "$extras" | wc -l | tr -d ' ') non-template entries deleted"
+}
+
 # ── 1. Global CLAUDE.md ───────────────────────────────────────────────────────
 step "Installing global CLAUDE.md"
 mkdir -p "$CLAUDE_HOME"
@@ -35,10 +94,26 @@ cp "$REPO_DIR/CLAUDE.md" "$CLAUDE_HOME/CLAUDE.md"
 ok "copied" "~/.claude/CLAUDE.md"
 
 # ── 2. Global skills (backwards-compat copy) ─────────────────────────────────
+# Copy INTO the directory (note the trailing /.) instead of replacing it. This
+# step used to run `rm -rf "$CLAUDE_HOME/skills"` first, which silently destroyed
+# every skill the user kept there that the template does not ship — personal
+# skills, and template skills retired since their last install. Overwriting the
+# template entries while leaving everything else alone is the safe default;
+# removing retired entries is opt-in via --prune-skills.
 step "Installing global skills → ~/.claude/skills/"
-rm -rf "$CLAUDE_HOME/skills"
-cp -r "$REPO_DIR/.claude/skills" "$CLAUDE_HOME/skills"
-ok "copied" "$(find "$CLAUDE_HOME/skills" -name 'SKILL.md' | wc -l | tr -d ' ') skills (backwards-compat)"
+mkdir -p "$CLAUDE_HOME/skills"
+cp -r "$REPO_DIR/.claude/skills/." "$CLAUDE_HOME/skills/"
+ok "copied" "$(find "$REPO_DIR/.claude/skills" -name 'SKILL.md' | wc -l | tr -d ' ') skills (backwards-compat)"
+
+EXTRA_SKILLS="$(extra_global_skills)"
+if [ -n "$EXTRA_SKILLS" ]; then
+  echo "  kept $(printf '%s\n' "$EXTRA_SKILLS" | wc -l | tr -d ' ') non-template entries: $(printf '%s\n' "$EXTRA_SKILLS" | tr '\n' ' ')"
+  echo "  (re-run with --prune-skills to review and delete them)"
+fi
+
+if [ "$PRUNE_SKILLS" -eq 1 ]; then
+  prune_extra_skills
+fi
 
 # ── 3. Shared workflow → ~/.agents/ ──────────────────────────────────────────
 step "Installing shared workflow → ~/.agents/"
@@ -98,21 +173,15 @@ else
   fi
 fi
 
-# ── 6. Configure skills path in ~/.claude/settings.json ──────────────────────
-step "Configuring skill paths in ~/.claude/settings.json"
-if command -v jq > /dev/null 2>&1; then
-  if jq -e '.skills | index("~/.agents/skills")' "$SETTINGS_FILE" > /dev/null 2>&1; then
-    ok "already" "~/.agents/skills already in settings"
-  else
-    jq '.skills = ((.skills // []) + ["~/.agents/skills"])' "$SETTINGS_FILE" > /tmp/settings_tmp.json && mv /tmp/settings_tmp.json "$SETTINGS_FILE"
-    ok "updated" "added ~/.agents/skills to settings.json skills array"
-  fi
-else
-  echo "  NOTE: jq not found — skill path not automatically added to settings.json."
-  echo "  Add manually: .skills = [\"~/.agents/skills\"] in $SETTINGS_FILE"
-fi
+# NOTE: there is deliberately no step here writing a top-level `skills` key into
+# ~/.claude/settings.json. Claude Code's settings schema is strict and has no such
+# field (verified against the CLI's own schema: it exposes `skillOverrides` and
+# `disableBundledSkills`, but no skill-path array), so writing one makes the CLI
+# report `Unrecognized field: skills`. It is also unnecessary — Claude Code reads
+# ~/.claude/skills/ natively, which step 2 populates. Pi is a separate schema and
+# is still configured below.
 
-# ── 7. Configure Pi if installed ─────────────────────────────────────────────
+# ── 6. Configure Pi if installed ─────────────────────────────────────────────
 PI_SETTINGS="$HOME/.pi/agent/settings.json"
 if [ -f "$PI_SETTINGS" ]; then
   step "Configuring Pi skill paths"
@@ -128,7 +197,7 @@ if [ -f "$PI_SETTINGS" ]; then
   fi
 fi
 
-# ── 8. Wire graphify into this project (optional) ────────────────────────────
+# ── 7. Wire graphify into this project (optional) ────────────────────────────
 # graphify is a per-machine CLI with per-project state (./graphify-out/graph.json),
 # so it has to be wired per repo. Entirely optional — never block the install.
 step "Wiring graphify (optional)"
@@ -180,7 +249,7 @@ else
   echo "  Install with: pip install graphify   (then re-run this installer)"
 fi
 
-# ── 9. Git template directory ─────────────────────────────────────────────────
+# ── 8. Git template directory ─────────────────────────────────────────────────
 step "Setting up git template dir → $GIT_TEMPLATE_DIR"
 mkdir -p "$GIT_TEMPLATE_DIR/hooks"
 
@@ -231,7 +300,7 @@ git config --global init.templateDir "$GIT_TEMPLATE_DIR"
 ok "set" "git config --global init.templateDir $GIT_TEMPLATE_DIR"
 ok "installed" "post-init hook (runs on every git init)"
 
-# ── 10. Print newproject shell function ───────────────────────────────────────
+# ── 9. Print newproject shell function ───────────────────────────────────────
 step "Shell function — add this to your ~/.bashrc or ~/.zshrc"
 cat <<'SHELLCONFIG'
 

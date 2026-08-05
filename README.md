@@ -9,7 +9,7 @@ A reusable, project-agnostic configuration system that enforces **spec-driven, T
 | Layer | What it does |
 |-------|-------------|
 | **CLAUDE.md** | Core rules: Spec → Plan → TDD workflow, Clean Code, SOLID, quality gate |
-| **Skills** (`.claude/skills/`) | 16 skills: `/brainstorm`, `/plan`, `/build`, `/tdd`, `/debug`, `/verify`, `/simplify`, `/receive-review`, `/learn`, `/checkpoint`, `/security-scan`, `/start-qa`, `/wrap-up-session`, `/writing-skills`, `/sync`, `/folder-context-optimization` |
+| **Skills** (`.claude/skills/`) | 16 skills: `/brainstorm`, `/plan`, `/build`, `/tdd`, `/debug`, `/verify`, `/quality-gate`, `/receive-review`, `/learn`, `/checkpoint`, `/security-scan`, `/start-qa`, `/wrap-up-session`, `/writing-skills`, `/sync`, `/folder-context-optimization` |
 | **Agents** (`.claude/agents/`) | 8 specialized subagents for planning, coding, review, debugging, security |
 | **Hooks** (`.claude/hooks/`) | Session start orientation + auto test runner on file save |
 | **Memory** (`.claude/memory.md`) | Persistent patterns and session history, updated via `/learn` |
@@ -153,7 +153,7 @@ Feature Request
 /plan ──► interviews you → writes spec → task list in tasks/todo.md
     │
     ▼  (confirm with 'y')
-/build ──► autonomous TDD + sub-agents → 2-stage review → simplify → spec validation
+/build ──► autonomous TDD + sub-agents → 2-stage review → quality-gate → spec validation
     │
     ▼  (all tasks done)
 /security-scan ──► audit changed files for OWASP issues
@@ -178,7 +178,7 @@ flowchart TD
     D -->|"delegates to"| D1["/tdd\nRed-green-refactor cycle"]
     D -->|"after each task"| D2["code-reviewer\nSpec compliance + quality"]
     D -->|"on failure"| D3["/debug\nRoot cause analysis"]
-    D -->|"after all tasks"| D4["/simplify\nCode cleanup"]
+    D -->|"after all tasks"| D4["/quality-gate\nStructural + anti-pattern + design review"]
     D -->|"before claims"| D5["/verify\nEvidence-based verification"]
 
     %% Skills called by /debug
@@ -206,7 +206,7 @@ flowchart TD
 
 **Core workflow** (top row): brainstorm → plan → build → security-scan → wrap-up-session
 
-**Internal calls**: /build delegates to sub-agents for TDD, invokes code-reviewer for 2-stage review, /debug on failures, /simplify after all tasks, and /verify before any completion claims.
+**Internal calls**: /build delegates to sub-agents for TDD, invokes code-reviewer for 2-stage review, /debug on failures, /quality-gate after all tasks, and /verify before any completion claims.
 
 **Standalone skills** (bottom): Can be invoked independently at any time.
 
@@ -220,11 +220,11 @@ Invoke with `/skill-name` in any Claude Code session:
 |-------|-------------|
 | `/brainstorm` | Divergent design exploration: 2-3 approaches with trade-offs, design approval before `/plan` |
 | `/plan` | Interviews you, writes spec to `specs/`, creates TDD task plan in `tasks/todo.md` |
-| `/build` | Autonomous orchestrator: TDD + sub-agents + 2-stage review + parallel dispatch + simplify + spec validation |
+| `/build` | Autonomous orchestrator: TDD + sub-agents + 2-stage review + parallel dispatch + quality-gate + spec validation |
 | `/tdd` | Manual TDD loop with user checkpoints: failing test → code → pass → refactor → `[x]` |
 | `/debug` | Root cause analysis with architecture questioning after 3 fails, bug register, lessons |
 | `/verify` | Evidence-based verification gate — no completion claims without fresh command output |
-| `/simplify` | Review changed code for reuse, quality, complexity; fix issues found |
+| `/quality-gate` | 3-phase post-build review: structural quality, AI anti-patterns, APOSD design |
 | `/receive-review` | Process code review feedback: technical evaluation, pushback protocol, no performative agreement |
 | `/learn` | Extracts session patterns and appends them to `.claude/memory.md` |
 | `/checkpoint` | Saves progress snapshot to `tasks/checkpoint.md` for handoff or pause |

@@ -54,6 +54,10 @@ For each file in scope:
 
 **Iron law: deletion over rewriting.**
 
+**Never delete `TODO`, `FIXME`, or `TODO(shortcut):` markers.** They record a known
+limitation and its upgrade path, so they must survive this phase even when the
+surrounding comment is reworded. A deliberate shortcut is not slop.
+
 For each file in scope:
 
 ### 2.1 Hedge Words in Comments
