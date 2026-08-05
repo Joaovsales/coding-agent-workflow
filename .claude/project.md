@@ -55,7 +55,7 @@ shown below — not active in this template):
 ### Code Economy
 
 A **generation-time** gate that runs *before* you write code — the preventive
-counterpart to the post-hoc `/simplify`, `/deslop`, and `/quality-gate` passes.
+counterpart to the post-hoc `/quality-gate` passes.
 Apply to every code-writing turn (main thread and sub-agents). The cheapest line
 to review is the one never written.
 
@@ -97,7 +97,8 @@ prevents data loss, and anything the user explicitly requested.
 
 **Intentional shortcuts** — when you deliberately pick a minimal solution with a
 known limitation, mark it with a `TODO(shortcut):` comment stating the limit and
-the upgrade path. `/deslop` preserves `TODO/FIXME`, so the marker survives cleanup.
+the upgrade path. `/quality-gate` Phase 2 preserves `TODO/FIXME`, so the marker
+survives cleanup.
 
 ### Surgical Changes
 

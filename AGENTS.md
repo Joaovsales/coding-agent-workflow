@@ -14,7 +14,7 @@
 ### Code Economy
 
 A **generation-time** gate that runs *before* you write code — the preventive
-counterpart to the post-hoc `/simplify`, `/deslop`, and `/quality-gate` passes.
+counterpart to the post-hoc `/quality-gate` passes.
 Apply to every code-writing turn. The cheapest line to review is the one never written.
 
 **Decision hierarchy** — walk top to bottom; stop at the first that applies:
@@ -51,7 +51,8 @@ data loss, and anything the user explicitly requested.
 
 **Intentional shortcuts** — when you deliberately pick a minimal solution with a
 known limitation, mark it with a `TODO(shortcut):` comment stating the limit and
-the upgrade path.
+the upgrade path. `/quality-gate` Phase 2 preserves `TODO/FIXME`, so the marker
+survives cleanup.
 
 ### Code Graph
 
