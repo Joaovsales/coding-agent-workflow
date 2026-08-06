@@ -1,7 +1,6 @@
 ---
 name: security-reviewer
 description: OWASP checks, auth flows, injection vectors
-model: sonnet
 ---
 
 # Security Reviewer Agent

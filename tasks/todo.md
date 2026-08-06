@@ -321,15 +321,15 @@ Run `tests/run.sh` after every task.
 
 [x] TDD: `tests/run.sh` is green on the untouched tree with all three new guards active — verify by full run -> Fix every real violation the guards surface in existing skills (fix, do not allowlist, unless a written reason is recorded in the test)
 
-[ ] TDD: `CLAUDE.md` Model Routing defines `ceiling` as "omit the override, inherit the session model", names it the fallback where a harness cannot select per-agent models, and resolves `code-reviewer` / `security-reviewer` / `critic` to it — verify by reading the table end to end -> Add the `ceiling` row and resolution rule; reword "pass `model` explicitly on every Agent tool call" so it cannot be read as requiring an override for `ceiling` roles
+[x] TDD: `CLAUDE.md` Model Routing defines `ceiling` as "omit the override, inherit the session model", names it the fallback where a harness cannot select per-agent models, and resolves `code-reviewer` / `security-reviewer` / `critic` to it — verify by reading the table end to end -> Add the `ceiling` row and resolution rule; reword "pass `model` explicitly on every Agent tool call" so it cannot be read as requiring an override for `ceiling` roles
 
-[ ] TDD: `/build`'s Model Routing table and `/plan`'s Model Routing note agree with `CLAUDE.md` on which roles are `ceiling` — verify by cross-reading all three -> Update both skill tables
+[x] TDD: `/build`'s Model Routing table and `/plan`'s Model Routing note agree with `CLAUDE.md` on which roles are `ceiling` — verify by cross-reading all three -> Update both skill tables
 
-[ ] TDD: `tests/test-model-tiers.sh` fails if any `ceiling` role regains a pinned model in `.claude/agents/` or in a routing table — verify by seeding a `model: sonnet` line -> Write the guard; remove the existing `sonnet` pins from the three `ceiling` agent definitions
+[x] TDD: `tests/test-model-tiers.sh` fails if any `ceiling` role regains a pinned model in `.claude/agents/` or in a routing table — verify by seeding a `model: sonnet` line -> Write the guard; remove the existing `sonnet` pins from the three `ceiling` agent definitions
 
-[ ] TDD: `/writing-skills` states the three-part prose admission test and names all three inadmissible categories (vague effort language, appended motivational rationale, off-drift-point repetition), plus the guard right-sizing rule — verify by reading against spec § M6 -> Add both sections to `writing-skills/SKILL.md`
+[x] TDD: `/writing-skills` states the three-part prose admission test and names all three inadmissible categories (vague effort language, appended motivational rationale, off-drift-point repetition), plus the guard right-sizing rule — verify by reading against spec § M6 -> Add both sections to `writing-skills/SKILL.md`
 
-[ ] TDD: `/receive-review` carries the Change/Verify/Consider classification, states that Verify and Consider items are not edited, and carries the four-step owning-layer protocol — verify by reading against spec § M6 -> Add the triage protocol to `receive-review/SKILL.md`
+[x] TDD: `/receive-review` carries the Change/Verify/Consider classification, states that Verify and Consider items are not edited, and carries the four-step owning-layer protocol — verify by reading against spec § M6 -> Add the triage protocol to `receive-review/SKILL.md`
 
 ### Tier 2 — Review epistemics (M1, M2)
 

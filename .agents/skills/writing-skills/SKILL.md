@@ -126,6 +126,55 @@ Before finalizing a skill:
 | Scripts | kebab-case with extension | `find-polluter.sh` |
 | Templates | `*-template.md` | `bug-report-template.md` |
 
+## Prose Admission Rules
+
+Every line of skill prose is read by a model on every invocation, so every line has
+a running cost. A line earns its place only if at least one of these is true:
+
+1. **It states a falsifiable constraint** — something you could point at an output
+   and say "this violated it".
+2. **It counters a known default tendency** — the model would do otherwise without
+   the line. You should be able to name the tendency.
+3. **It supplies domain knowledge that changes a decision** — a fact about this
+   repo, tool, or protocol the model cannot infer.
+
+A line that does none of these is removed, not reworded.
+
+**Inadmissible, regardless of how true it sounds:**
+
+| Category | Example | Why it fails |
+|----------|---------|--------------|
+| Vague effort language as a standalone instruction | "Be thorough." "Produce high-quality work." "Think carefully." | Unfalsifiable. Nothing distinguishes compliance from non-compliance, so it changes no behaviour while consuming budget on every run. Replace with the observable rule you actually want. |
+| Motivational rationale on a directive that already stands | "Run the tests — quality matters and the team depends on it." | The directive was complete. The clause adds tokens and dilutes the instruction. |
+| Repetition away from a drift point | The same rule restated in three sections "for emphasis" | Repetition is a placement tool, not an emphasis tool. Repeat a rule **only** where placement changes whether it fires. |
+
+**When repetition is genuinely required**, protect the duplicate with a parity
+assertion in `tests/` so it cannot rot into two divergent copies. An unguarded
+required duplicate is a future contradiction.
+
+A targeted effort cue is admissible only when it counters a *documented* tendency
+you have actually observed — then it qualifies under rule 2, and you should say
+which tendency in a comment.
+
+## Right-Sizing Mechanical Guards
+
+When a review or a bug reveals a greppable invariant the test suite missed:
+
+1. **Prefer tightening an existing assertion** over adding a new test file. Widen a
+   regex that already documents the rule.
+2. **Pin the smallest falsifiable unit** — a token, enum value, path, or heading
+   that would have failed on the regressing change. Not a whole skill body.
+3. **Never snapshot prose or pin incidental wording.** A test that fails on a
+   rewording teaches authors to avoid improving the file.
+4. **If judging the failure needs a model, it is not a test.** Non-deterministic
+   prose behaviour belongs in a manual run with recorded evidence, never in the
+   suite.
+
+Corollary: **never edit a test to make the suite green.** A string a test pins that
+you want to remove is a finding to resolve deliberately — update the pin *and*
+record why in the test — not an obstacle to route around. A suite that pins buggy
+behaviour will pass while the skill is broken.
+
 ## Common Mistakes
 
 | Mistake | Fix |
@@ -135,3 +184,5 @@ Before finalizing a skill:
 | Missing integration section | Always document which skills call or pair with this one |
 | Monolithic SKILL.md | Extract techniques into reference docs at >150 lines |
 | No "When NOT to use" section | Add off-ramps so the skill scales to actual complexity |
+| Prose that fails the admission rules | Delete it — see *Prose Admission Rules* above |
+| Executed path that assumes cwd is the skill dir | Paths in `bash` fences run from the project root; name the canonical `.agents/skills/...` path (`tests/test-skill-references.sh` enforces this) |
