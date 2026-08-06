@@ -80,7 +80,7 @@ they go back through `/plan`, not through direct edits from this skill.
    by relative path — do not duplicate its logic here):
 
    ```bash
-   python3 ../visual-recap/scripts/visual-render.py \
+   python3 .agents/skills/visual-recap/scripts/visual-render.py \
        --input <model.json> \
        -o specs/<feature>.plan.html
    ```
@@ -109,7 +109,7 @@ they go back through `/plan`, not through direct edits from this skill.
 
 ## Integration
 
-- **Calls**: `../visual-recap/scripts/visual-render.py` (shared post-processor;
+- **Calls**: `.agents/skills/visual-recap/scripts/visual-render.py` (shared post-processor;
   owned by the `visual-recap` skill, not duplicated here).
 - **Follows**: `/plan` (consumes its `specs/<feature>.md` output).
 - **Precedes**: implementation (`/build` or manual coding) — the visual plan

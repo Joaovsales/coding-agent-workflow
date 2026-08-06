@@ -57,7 +57,7 @@ Emit the `html-presentation` schema (`title`, `takeaway`, `meta`, `summary_cards
 ### 3. Render
 
 ```bash
-python3 .claude/skills/visual-recap/scripts/visual-render.py \
+python3 .agents/skills/visual-recap/scripts/visual-render.py \
     --input <model.json> \
     -o tasks/recaps/<branch-slug>.recap.html
 ```
@@ -87,6 +87,6 @@ Print the artifact's absolute path (`tasks/recaps/<branch-slug>.recap.html`) so 
 
 ## Integration
 
-- **Calls**: `.claude/skills/visual-recap/scripts/visual-render.py`, which in turn calls `html-presentation`'s generator.
+- **Calls**: `.agents/skills/visual-recap/scripts/visual-render.py`, which in turn calls `html-presentation`'s generator.
 - **Pairs with**: `/visual-plan` (pre-implementation counterpart), `/wrap-up-session` (recap can be generated before or alongside wrap-up).
 - **Output**: `tasks/recaps/<branch-slug>.recap.html` — gitignored by default (transient artifact).
