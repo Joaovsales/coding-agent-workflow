@@ -160,14 +160,18 @@ Canonical persona definitions live in `.agents/agents/` (model-agnostic — neve
 | `backend-developer` | `sonnet` | APIs, databases, auth, performance, security |
 | `frontend-developer` | `sonnet` | React/Vue/Angular components, responsive UI |
 | `frontend-design-validator` | `sonnet` | Validate UI against design specs |
-| `code-reviewer` | `sonnet` | Post-implementation quality review |
+| `code-reviewer` | *ceiling* | Post-implementation quality review |
 | `code-debugger` | `sonnet` | Debugging failing tests and runtime errors |
-| `security-reviewer` | `sonnet` | OWASP checks, auth flows, injection vectors |
-| `critic` | `sonnet` | Adversarial quality gate for plans, code, specs |
+| `security-reviewer` | *ceiling* | OWASP checks, auth flows, injection vectors |
+| `critic` | *ceiling* | Adversarial quality gate for plans, code, specs |
 | `context-document-optimizer` | `sonnet` | Compress large docs for token efficiency |
 | `software-design-expert-review` | `sonnet` | Read-only APOSD design audit — depth, leakage, error design (dispatched by `/quality-gate`) |
 
-**Rule**: One focused task per subagent. On Claude Code, pass `model` explicitly on every Agent tool call; on Pi, never pass per-call model params (agentOverrides resolves them).
+**Rule**: One focused task per subagent. Resolve each agent's model through the
+tier in *Model Routing* below — on Claude Code pass `model` explicitly for the
+Planner, Builder, Reviewer, and Scout tiers, and pass **nothing** for *ceiling*
+agents so they inherit the session model; on Pi, never pass per-call model params
+(agentOverrides resolves them).
 
 ---
 
@@ -177,12 +181,32 @@ Canonical tiers (concrete model IDs per provider setup live in `/build`'s Model 
 
 | Tier | Used for | Claude Code | Pi + OpenRouter (recommended) |
 |------|----------|-------------|-------------------------------|
+| Ceiling | correctness, security, and adversarial review — the highest-stakes judgment | *inherit* | *inherit* |
 | Planner | `/plan`, architecture, oracle, circuit breaker | `opus` | `moonshotai/kimi-k3` |
 | Builder | `/build` coding, debugging (attempts 1–2) | `sonnet` | `qwen/qwen3-coder-next` |
-| Reviewer | code/security/design review, debugging (3–4) | `sonnet` | `z-ai/glm-4.7` |
+| Reviewer | design review, doc compression, debugging (attempts 3–4) | `sonnet` | `z-ai/glm-4.7` |
 | Scout | search, recon, context building | `haiku` | `deepseek/deepseek-v4-flash` |
 
-Rules: never use the planner tier for code writing; never use the scout tier for coding or planning. On Claude Code always pass `model` explicitly; on Pi never pass per-call model params (`subagents.agentOverrides` resolves them).
+**`Ceiling` means: omit the model override entirely so the sub-agent inherits the
+session model.** It is not a model name and must never be written as one. If the
+user is running Opus, a ceiling-tier reviewer runs on Opus.
+
+Ceiling exists because pinning a tier to a concrete model *caps* it. A rule that
+says "always pass `model` explicitly" silently downgrades the highest-stakes
+review to the pinned tier for exactly the users who chose a stronger session
+model — the reviewers most worth running at full capability. Inheriting is also
+the correct cross-harness fallback: where a harness cannot select a model per
+agent, omit the override rather than guessing a name, because a working review on
+the parent model beats a failed dispatch on an unrecognized one.
+
+Rules:
+- Never use the planner tier for code writing; never use the scout tier for coding
+  or planning.
+- **Claude Code**: pass `model` explicitly for the Planner, Builder, Reviewer, and
+  Scout tiers. Pass **nothing** for Ceiling — an override there is the regression
+  this tier exists to prevent.
+- **Pi**: never pass per-call model params; `subagents.agentOverrides` resolves
+  them. Leave ceiling-tier agents out of `agentOverrides` so they inherit.
 
 ---
 

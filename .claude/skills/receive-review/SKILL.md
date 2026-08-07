@@ -99,16 +99,68 @@ When a reviewer suggests "implementing properly" or adding "professional" featur
 
 Don't add features nobody uses just because a reviewer suggests it.
 
+## Triage: Change / Verify / Consider
+
+Classify every feedback item before touching anything. An item is not addressed
+because a sentence landed somewhere; it is addressed when a demonstrated gap is
+closed at the layer that owns it.
+
+| Class | Evidence behind the item | Action |
+|-------|--------------------------|--------|
+| **Change** | A concrete failure, a reproduction, or a named contradiction in the code | Fix it |
+| **Verify** | A plausible concern with no evidence yet — "this might race" | Go look. Do **not** edit. Report what you found; only a confirmed finding becomes a Change |
+| **Consider** | A preference, an alternative design, a future idea | Record it and move on. Do **not** edit |
+
+**Do not edit for `Verify` or `Consider` items.** Editing on an unverified concern
+is how speculative complexity enters a codebase with a reviewer's name attached to
+it. Absence of evidence is weaker than this project's own bar for a change.
+
+### For each `Change`, find the owning layer
+
+Fix the gap where it lives, not where it was noticed:
+
+| Layer | Fix looks like |
+|-------|----------------|
+| Activation contract | Frontmatter, description, trigger wording |
+| Outcome spine / boundary | What the skill is *for*; its done condition |
+| Runtime protocol | The ordered steps an invocation follows |
+| Loading / placement | *Where* an instruction sits, so it fires at the right moment |
+| Deterministic enforcement | A test, guard, or hook — not prose |
+| Shared rule | `CLAUDE.md` or a convention used by several skills |
+
+**Prose is the fix only when it is the smallest mechanism that closes the gap.** If
+a guard can enforce it, write the guard instead — see `/writing-skills` §
+*Right-Sizing Mechanical Guards*.
+
+**Reviewer wording is a hypothesis about mechanism, not authority over it.**
+Sometimes the reviewer's one-line fix is exactly right; sometimes the same evidence
+points at a different layer. When the same cause shows up across several skills,
+fix the shared rule once rather than patching each skill.
+
+### Then reconcile
+
+After the edit, reread the surrounding block and remove or rewrite whatever the
+change made duplicated, contradictory, or obsolete. Stacking a new rule on top of
+the one it supersedes is how skills accumulate contradictions.
+
+For a multi-item round, record one line per item:
+
+```
+<item> -> Change|Verify|Consider | <owning layer> | <mechanism> — <why>
+```
+
 ## Implementation Order
 
 For multi-item feedback:
-1. **Clarify** anything unclear FIRST
-2. Then implement in this order:
+1. **Triage** every item as Change / Verify / Consider (above)
+2. **Clarify** anything unclear FIRST
+3. Then implement the `Change` items in this order:
    - Blocking issues (breaks, security)
    - Simple fixes (typos, imports)
    - Complex fixes (refactoring, logic)
-3. Test each fix individually
-4. Run full suite to verify no regressions
+4. Test each fix individually
+5. Run full suite to verify no regressions
+6. Reconcile the affected blocks
 
 ## When to Push Back
 

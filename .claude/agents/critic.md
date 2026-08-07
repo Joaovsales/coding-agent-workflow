@@ -1,7 +1,6 @@
 ---
 name: critic
 description: Adversarial quality gate for plans, code, and specs. Uses structured investigation to catch flaws before implementation. Invoked after code-reviewer for high-risk changes.
-model: opus
 ---
 
 # Critic Agent — Adversarial Quality Gate

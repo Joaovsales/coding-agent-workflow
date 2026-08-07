@@ -20,7 +20,8 @@ Sub-agent model assignment for build orchestration. Edit this table to match you
 | Coding agents | `backend-developer`, `frontend-developer` | `qwen/qwen3-coder-next` | `sonnet` |
 | Debugger (attempts 1-2) | `code-debugger` | `qwen/qwen3-coder-next` | `sonnet` |
 | Debugger (attempts 3-4, escalation) | `code-debugger` | `z-ai/glm-4.7` | `sonnet` |
-| Reviews (code, security, design, critic) | `code-reviewer`, `security-reviewer`, `software-design-expert-review`, `critic` | `z-ai/glm-4.7` | `sonnet` |
+| Highest-stakes review (correctness, security, adversarial) | `code-reviewer`, `security-reviewer`, `critic` | *inherit* | *inherit* |
+| Design review | `software-design-expert-review` | `z-ai/glm-4.7` | `sonnet` |
 | Search / recon | `scout` (extension builtin) | `deepseek/deepseek-v4-flash` | `haiku` |
 | Context / docs | `context-builder` (builtin), `context-document-optimizer` | `deepseek/deepseek-v4-flash` | `haiku` |
 
@@ -341,6 +342,10 @@ For 2+ independent tasks: dispatch in parallel (multiple Agent tool calls in a s
 
 On Claude Code, these resolve via built-in model name resolution (`sonnet`, `haiku`, `opus`).
 On Pi + OpenRouter, explicit model IDs from the Model Routing table are used.
+
+**Ceiling-tier agents take no `model` at all.** `code-reviewer`, `security-reviewer`,
+and `critic` inherit the session model — passing an override caps the highest-stakes
+review below the model the user chose. See `CLAUDE.md` § Model Routing.
 
 ### Pi Dispatch
 

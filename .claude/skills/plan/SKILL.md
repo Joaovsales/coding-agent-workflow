@@ -13,7 +13,9 @@ Enter plan mode to define a spec and task breakdown **before any code is written
 ## Model Routing
 
 Sub-agent delegations follow the Model Routing table in `/build` (planner tier for planning/architecture, scout tier for exploration).
-- **Claude Code** — pass `model` explicitly on every Agent tool call per that table.
+- **Claude Code** — pass `model` explicitly per that table, except for *ceiling*-tier
+  agents (`code-reviewer`, `security-reviewer`, `critic`), which take no `model` so they
+  inherit the session model. See `CLAUDE.md` § Model Routing.
 - **Pi** — no per-call model params; routing resolves from `subagents.agentOverrides` (requires the `pi-subagents` extension). Use `scout` for codebase exploration.
 - The planning phase requires the strongest reasoning model for architecture decisions
 
