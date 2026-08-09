@@ -321,7 +321,11 @@ Read `.agents/skills/build/references/subagent-resilience.md` before dispatching
   degraded return your fallbacks can see
 - Symbol-level tools over whole-file `Read` for anything above ~400 lines
 - Retry only with a **changed strategy**; an identical prompt fails identically
-- Stall monitor armed for unattended runs; report what was dropped when a fallback fires
+- Monitor **progress** (results landed, retries started), not file activity — a retry loop
+  writes constantly and looks perfectly healthy to an idle-time check
+- Budget for the **return**, not just the work — an agent that writes its artifact and dies
+  before returning looks identical to total failure, and gets retried from scratch
+- Report what was dropped when a fallback fires
 - **Implementation failure**: Retry once with additional context. If still failing, surface to user and pause.
 - **Test regression**: Fix with `code-debugger`. Max 3 fix attempts per regression (see circuit breaker).
 - **Spec gap found late**: Add tasks dynamically and loop back. Do not silently skip criteria.

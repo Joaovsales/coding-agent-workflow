@@ -36,6 +36,22 @@ heading. A partial, honest artifact is SUCCESS. Hanging is the only failure.
 Tune the number to the task (15 for a focused edit, 50 for a broad audit). The number matters less
 than the explicit permission to return incomplete work.
 
+**Budget for the return, not just the work.** Writing the artifact and returning the structured
+result are two separate costs, and the return is the one that gets dropped. Say so explicitly:
+
+```
+The moment you write your artifact, STOP — your next action must be returning the result.
+Do no further exploration after the write.
+```
+
+> **Field incident.** An agent given a ~35-call budget used 41, wrote a complete and correct 18 KB
+> artifact, then died before emitting its structured result. The orchestrator saw no return, treated
+> it as a failure, and redid the entire job twice. The work was never the problem; the last turn was.
+
+**Watch which tools drain the budget.** The same agent spent **29 of its 41 calls on `Bash`**. It
+had been told not to `Read` large files and complied — then substituted shell `grep`/`sed` loops,
+which are correct but no cheaper. Name the tools you want it to *use*, not only the ones to avoid.
+
 ### Rule 2 — Never put a risky agent inside a barrier
 
 Barrier (`parallel` / "wait for all to return") is correct only when the next step genuinely needs
@@ -54,32 +70,50 @@ three attempts cost 3× for the same outcome.
 Before retrying, ask: *what will be different this time?* If the answer is "nothing", change the
 approach instead — narrower scope, different tools, split into two agents.
 
-### Rule 4 — Arm a stall monitor, not a status poll
+### Rule 4 — Monitor **progress**, not activity
 
 The harness already notifies on **completion** and **error**. Polling "is it done yet?" is
-redundant and burns tokens. The uncovered case is silence.
+redundant and burns tokens. The uncovered case is silence — so arm a monitor at dispatch time that
+stays quiet while healthy and speaks only on trouble.
 
-Arm a monitor at dispatch time that stays quiet while healthy and speaks only on trouble:
+**The trap: a retry loop is indistinguishable from healthy work if you watch file activity.**
+
+> **Field incident.** A monitor watched "has any agent transcript been written recently?" with a
+> 240s idle threshold. It ran its full 23-minute window and never fired once — while the workflow
+> was stuck retrying the same agent three times. Each retry wrote constantly, so idle time never
+> rose. The heartbeat was perfect and nothing was progressing.
+
+Measure **results landed** and **retries started**, not bytes written:
 
 ```bash
-D=<transcript-dir>          # the workflow/agent transcript directory
-prev=-1; stalled=0
-for i in $(seq 1 70); do
-  n=$(cat "$D"/journal.jsonl 2>/dev/null | wc -l)
-  errs=$(grep -c '"type":"error"' "$D"/journal.jsonl 2>/dev/null || echo 0)
-  newest=$(ls -t "$D"/agent-*.jsonl 2>/dev/null | head -1)
-  idle=$(( $(date +%s) - $(stat -c %Y "$newest") ))
-  [ "$n" != "$prev" ] && { prev=$n; stalled=0; }
-  [ "$errs" -gt 0 ] && [ "$stalled" -ne 2 ] && { echo "ERROR entries: $errs"; stalled=2; }
-  [ "$idle" -gt 240 ] && [ "$stalled" -eq 0 ] && { echo "STALL: no write for ${idle}s"; stalled=1; }
+D=<transcript-dir>
+EXPECTED=<number of agents the workflow defines>
+lastres=-1; since=$(date +%s); warned=0; retrywarn=0
+for i in $(seq 1 90); do
+  res=$(grep -c '"type":"result"' "$D"/journal.jsonl 2>/dev/null || echo 0)
+  errs=$(grep -c '"type":"error"'  "$D"/journal.jsonl 2>/dev/null || echo 0)
+  started=$(ls -1 "$D"/agent-*.jsonl 2>/dev/null | wc -l)
+  now=$(date +%s)
+  [ "$res" != "$lastres" ] && { lastres=$res; since=$now; warned=0; }
+  # no NEW RESULT in 6 min - activity is not progress
+  [ $((now-since)) -gt 360 ] && [ "$warned" -eq 0 ] && \
+    { echo "NO-PROGRESS: ${res}/${EXPECTED} results for $((now-since))s"; warned=1; }
+  # more agents started than the workflow defines => something is failing to return
+  [ "$started" -gt "$EXPECTED" ] && [ "$retrywarn" -eq 0 ] && \
+    { echo "RETRYING: $started started, $EXPECTED expected"; retrywarn=1; }
+  [ "$errs" -gt 0 ] && { echo "ERROR entries: $errs"; exit 0; }
+  [ "$res" -ge "$EXPECTED" ] && { echo "all agents returned ($res/$EXPECTED)"; exit 0; }
   sleep 20
 done
 ```
 
-- **~240s threshold** — long enough that a slow model call or a large grep doesn't cry wolf, short
-  enough that a dead phase surfaces in minutes.
-- **Latch the flag** so one stall episode emits once. A monitor that fires every tick gets
-  auto-stopped for noise, which silently removes your only detector.
+- **Retry detection is the highest-value signal** — `started > EXPECTED` catches a silently
+  looping agent within one cycle, long before any timeout would.
+- **~360s on results** — coarser than an idle threshold, because a single agent legitimately runs
+  for minutes. Progress is the thing with a deadline, not activity.
+- **Latch each flag** so one episode emits once. A monitor that fires every tick gets auto-stopped
+  for noise, which silently removes your only detector.
+- Exit on completion so the monitor doesn't outlive the run.
 - Use an event-driven monitor, **not** a cron/wakeup poll — polling harness-tracked work is waste.
 
 ### Rule 5 — Report what was dropped
