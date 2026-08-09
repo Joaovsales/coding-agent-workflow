@@ -107,6 +107,10 @@ Before processing tasks sequentially, assess if any can run in parallel.
    it structurally true, so a mis-grouping surfaces as a merge conflict you can
    see rather than two agents silently overwriting each other.
 3. Wait for all to return; check for file conflicts
+   Before dispatching, give every sub-agent a tool-call budget with an explicit
+   "stop and write partial work" escape hatch, and arm a stall monitor. A hung agent
+   returns nothing, so null-check fallbacks never fire and this barrier never releases.
+   See `.agents/skills/build/references/subagent-resilience.md`.
 4. Run the full test suite **centrally, once** — never instruct the sub-agents to
    run it themselves. Fanning verification out to every agent multiplies context
    for no added signal and is a known way to lose a whole fleet to autocompact
@@ -299,6 +303,25 @@ Next: /wrap-up-session
 
 ## Error Handling
 
+
+### Sub-Agent Failure (hangs, silent stops, compaction conflicts)
+
+A sub-agent that **crashes** returns null and your fallback catches it. One that **hangs**
+returns nothing — no result, no error, no event — so every null-check fallback is downstream of
+a return that never happens. Under parallel dispatch this holds the entire phase.
+
+Most common cause: output-compression / compaction layers replace a large tool result with a
+placeholder, the agent loops on a failing retrieval call, and it is killed rather than erroring.
+This selects agents doing heavy source reading, so the most load-bearing agent is the one that
+dies while its siblings complete normally.
+
+Read `.agents/skills/build/references/subagent-resilience.md` before dispatching. Minimum bar:
+
+- Tool-call budget with a "write partial work and stop" escape hatch — converts a hang into a
+  degraded return your fallbacks can see
+- Symbol-level tools over whole-file `Read` for anything above ~400 lines
+- Retry only with a **changed strategy**; an identical prompt fails identically
+- Stall monitor armed for unattended runs; report what was dropped when a fallback fires
 - **Implementation failure**: Retry once with additional context. If still failing, surface to user and pause.
 - **Test regression**: Fix with `code-debugger`. Max 3 fix attempts per regression (see circuit breaker).
 - **Spec gap found late**: Add tasks dynamically and loop back. Do not silently skip criteria.

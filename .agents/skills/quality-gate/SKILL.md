@@ -6,6 +6,11 @@ argument-hint: "[--scope <path>]"
 
 # /quality-gate — Post-Build Quality Review
 
+> **Dispatching sub-agents?** Read `.agents/skills/build/references/subagent-resilience.md` first. This skill runs unattended, so a hung
+> sub-agent has no human watching it: give every agent a tool-call budget with a "write partial
+> work and stop" escape hatch, arm a stall monitor, and never retry a deterministic failure
+> with an identical prompt.
+
 3-phase sequential review run after all build tasks are complete. Each phase has a unique mandate.
 
 ## Scope
