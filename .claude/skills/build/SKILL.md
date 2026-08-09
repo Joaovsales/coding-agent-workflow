@@ -325,6 +325,10 @@ Read `.agents/skills/build/references/subagent-resilience.md` before dispatching
   writes constantly and looks perfectly healthy to an idle-time check
 - Budget for the **return**, not just the work — an agent that writes its artifact and dies
   before returning looks identical to total failure, and gets retried from scratch
+- Cap the artifact size in the prompt, and never ask for the artifact back in the return
+  schema — emitting it twice lands the second copy when context is tightest
+- If the output is a mechanical transform (merge, reformat, de-dup), use a **script**, not an
+  agent — an LLM re-emitting text verbatim is the most expensive way to run `cat`
 - Report what was dropped when a fallback fires
 - **Implementation failure**: Retry once with additional context. If still failing, surface to user and pause.
 - **Test regression**: Fix with `code-debugger`. Max 3 fix attempts per regression (see circuit breaker).

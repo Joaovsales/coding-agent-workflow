@@ -52,6 +52,38 @@ Do no further exploration after the write.
 had been told not to `Read` large files and complied — then substituted shell `grep`/`sed` loops,
 which are correct but no cheaper. Name the tools you want it to *use*, not only the ones to avoid.
 
+### Rule 1b — Generated size is the real budget, and never return the artifact twice
+
+Tool-call counts are a proxy. The thing that actually kills an agent is **how many tokens it must
+generate**, and the return is always last in line.
+
+Two rules follow, and they matter more than the call budget:
+
+**Cap the artifact, or don't use an agent at all.** An agent asked to emit a large document spends
+its whole budget transcribing and dies before returning. Give a concrete size target in the prompt
+("200–300 lines, hard cap 400; terse table rows, not prose").
+
+If the output is a *mechanical* transform of existing text — merging, concatenating, reformatting,
+de-duplicating — **do it with a script, not an agent.** An LLM re-emitting text verbatim is the
+most expensive way to run `cat`, and the volume is exactly what makes it fail.
+
+> **Field incident.** A "merge these two documents" agent had to emit ~40 KB (~12K output tokens)
+> of near-verbatim transcription. It produced a correct, complete document — and then had nothing
+> left to return, so the orchestrator retried the whole job. The task never needed a model.
+
+**Never ask for the artifact back in the return schema.** If the agent writes a table to a file and
+your schema also demands that table as structured output, it emits everything **twice**, and the
+second emission lands at the moment its context is tightest. Have the return be a receipt:
+
+```
+PATH:    <file written>
+COUNTS:  have=<n> partial=<n> missing=<n>
+VERDICT: <2-3 sentences>
+```
+
+Then read the file yourself for detail. A rich schema is a liability on any agent producing a large
+artifact — keep the payload to identifiers, counts, and a verdict.
+
 ### Rule 2 — Never put a risky agent inside a barrier
 
 Barrier (`parallel` / "wait for all to return") is correct only when the next step genuinely needs
