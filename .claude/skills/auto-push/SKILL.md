@@ -9,6 +9,11 @@ harness: universal
 
 # /auto-push — Approve-Once, Ship-Hands-Free
 
+> **Dispatching sub-agents?** Read `.agents/skills/build/references/subagent-resilience.md` first. This skill runs unattended, so a hung
+> sub-agent has no human watching it: give every agent a tool-call budget with a "write partial
+> work and stop" escape hatch, arm a stall monitor, and never retry a deterministic failure
+> with an identical prompt.
+
 A supervised cousin of `/yolo`. The user describes a feature; you produce a spec and plan; you **wait for an explicit `y` approval**; then the rest of the pipeline (build → review → tests → commit → push → deploy) runs autonomously with no further prompts.
 
 The single approval gate is the whole point. After it, you don't ask again.

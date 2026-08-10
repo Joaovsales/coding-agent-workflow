@@ -7,6 +7,11 @@ harness: universal
 
 # /auto-improve — Triage First, Discover When Dry, Ship One Improvement
 
+> **Dispatching sub-agents?** Read `.agents/skills/build/references/subagent-resilience.md` first. This skill runs unattended, so a hung
+> sub-agent has no human watching it: give every agent a tool-call budget with a "write partial
+> work and stop" escape hatch, arm a stall monitor, and never retry a deterministic failure
+> with an identical prompt.
+
 An unattended cousin of `/auto-push`. Nobody hands you a plan. You **act on already-flagged work first**, fall back to **fresh discovery only when there's nothing ready to act on** (or on the weekly deep-sweep day), then implement the single highest-value improvement with TDD, verify no regressions, and open a PR — all in one run, no user prompts.
 
 Designed to run daily on the cloud. Be conservative: one focused, reviewable change per run beats a sprawling risky diff, and cheap days (act on backlog) should not pay for a full deep scan.

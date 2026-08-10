@@ -1,4 +1,4 @@
-# Checkpoint — 2026-08-10T16:44:44Z
+# Checkpoint — 2026-08-10T19:36:45Z
 
 > Auto-written by PreCompact hook (trigger: unknown). Re-read on resume.
 
@@ -6,29 +6,19 @@
 - Branch: feat/compound-engineering-tier-2
 
 ```
- M .agents/agents/code-reviewer.md
- M .agents/agents/critic.md
- M .agents/agents/security-reviewer.md
- M .agents/agents/software-design-expert-review.md
- M .agents/skills/auto-improve/SKILL.md
- M .agents/skills/auto-push/SKILL.md
- M .agents/skills/quality-gate/SKILL.md
- M .agents/skills/wrap-up-session/SKILL.md
- M .agents/skills/yolo/SKILL.md
- M .claude/agents/code-reviewer.md
- M .claude/agents/critic.md
- M .claude/agents/security-reviewer.md
- M .claude/agents/software-design-expert-review.md
- M .claude/skills/auto-improve/SKILL.md
- M .claude/skills/auto-push/SKILL.md
- M .claude/skills/quality-gate/SKILL.md
- M .claude/skills/wrap-up-session/SKILL.md
- M .claude/skills/yolo/SKILL.md
- M CLAUDE.md
- M tasks/checkpoint.md
+M  .agents/skills/auto-improve/SKILL.md
+M  .agents/skills/auto-push/SKILL.md
+M  .agents/skills/build/SKILL.md
+A  .agents/skills/build/references/subagent-resilience.md
+M  .agents/skills/quality-gate/SKILL.md
+M  .agents/skills/yolo/SKILL.md
+M  .claude/skills/auto-improve/SKILL.md
+M  .claude/skills/auto-push/SKILL.md
+M  .claude/skills/build/SKILL.md
+A  .claude/skills/build/references/subagent-resilience.md
+M  .claude/skills/quality-gate/SKILL.md
+M  .claude/skills/yolo/SKILL.md
  M tasks/todo.md
- M tests/test-agents.sh
- M tests/test-doc-conventions.sh
 ```
 
 ## In-Progress & Pending Tasks (tasks/todo.md)

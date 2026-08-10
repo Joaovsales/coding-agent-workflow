@@ -411,10 +411,12 @@ Run `tests/run.sh` after every task.
 
 ---
 
-## Session Summary — 2026-08-10 [8dbed79..pending]
+## Session Summary — 2026-08-10 [e96ed5f..43e38a5]
 - Completed: 8 tasks (Tier 2 — Review epistemics, M1 + M2)
 - Pending: 27 tasks (Tier 3.1 store schema + migration script, Tier 3.2 harness cutover, Tier 3.3 concept glossary)
 - Carry-forward: Tier 3 is the largest tier by blast radius — retires `tasks/memory.md`,
-  `lessons.md`, and `bugs.md` behind `scripts/migrate-learning-store.py`. Tier 2 landed on
-  `feat/compound-engineering-tier-2`, stacked on unmerged `feat/compound-engineering-tier-1`;
-  both must merge before Tier 3.2 rewrites the same skills.
+  `lessons.md`, and `bugs.md` behind `scripts/migrate-learning-store.py`.
+- Merge note: Tier 1 landed as PR #53 (squash-merged, `e96ed5f`), so this branch's base
+  was not an ancestor of `master` and `origin/master` had to be merged in. Tier 3 should
+  branch from `master` **after** Tier 2 merges — starting it from this branch would repeat
+  the same squash-mismatch conflict against the four skills #54 also touched.
