@@ -17,6 +17,14 @@ cd "$REPO"
 
 CEILING_AGENTS="code-reviewer security-reviewer critic"
 
+# Reviewer-tier personas that MUST keep their Claude-side pin. This is the mirror
+# of the ceiling assertion and it guards a real, already-observed regression: the
+# `.agents/` -> `.claude/` parity copy is a plain `cp`, and the canonical tree is
+# model-agnostic by contract, so copying over a Claude-only `model:` line drops it
+# silently. Parity tests cannot catch it -- the `cp` is what made the two files
+# identical. Pin the line itself.
+PINNED_AGENTS="software-design-expert-review:sonnet"
+
 # --- 1. Ceiling agents carry no model pin in the Claude Code tree -------------
 for agent in $CEILING_AGENTS; do
   f=".claude/agents/$agent.md"
@@ -32,6 +40,14 @@ for agent in $CEILING_AGENTS; do
   else
     assert_eq "unpinned" "unpinned" "ModelTier: $agent inherits the session model"
   fi
+done
+
+# --- 1b. Reviewer-tier agents keep their Claude-side model pin ----------------
+for entry in $PINNED_AGENTS; do
+  agent="${entry%%:*}"; want="${entry##*:}"
+  f=".claude/agents/$agent.md"
+  assert_file_contains "$f" "model: $want" \
+    "ModelTier: $agent keeps its Claude-side 'model: $want' pin (not a ceiling role)"
 done
 
 # --- 2. Canonical agent tree stays model-agnostic ----------------------------

@@ -88,11 +88,45 @@ Before synthesizing, pressure-test your own findings:
 
 ## Severity Classification
 
-| Severity | Meaning | Evidence Required |
-|----------|---------|-------------------|
-| **CRITICAL** | Blocks execution — will cause failures, security breach, or data loss | File:line reference + concrete impact scenario |
-| **MAJOR** | Significant rework needed — design flaw, missing requirement, broken contract | Direct quote from work + codebase reference contradicting it |
-| **MINOR** | Suboptimal but functional — unclear naming, missing edge case test, style inconsistency | Specific example demonstrating the issue |
+| Severity | Meaning | Evidence Required | `severity` tag |
+|----------|---------|-------------------|----------------|
+| **CRITICAL** | Blocks execution — will cause failures, security breach, or data loss | File:line reference + concrete impact scenario | `MUST-FIX` |
+| **MAJOR** | Significant rework needed — design flaw, missing requirement, broken contract | Direct quote from work + codebase reference contradicting it | `MUST-FIX` |
+| **MINOR** | Suboptimal but functional — unclear naming, missing edge case test, style inconsistency | Specific example demonstrating the issue | `SHOULD-FIX` / `NITPICK` |
+
+## Finding Classification
+
+Every finding MUST carry all four axes. The orchestrator uses `autofix_class` +
+`confidence` to decide whether it may edit code over your finding; a finding with
+only a severity degrades to `confidence: 50` / `autofix_class: manual` downstream
+and will never be applied.
+
+| Field | Answers | Values |
+|-------|---------|--------|
+| `severity` | how urgent | `MUST-FIX` / `SHOULD-FIX` / `NITPICK` |
+| `confidence` | how sure | `50` / `75` / `100` |
+| `autofix_class` | what shape the fix is | `gated_auto` / `manual` / `advisory` |
+| `owner` | who acts | `agent` / `human` / `release` |
+
+**Confidence anchors** — behavioral criteria. Use the numeric anchors, never
+HIGH/MEDIUM/LOW:
+
+| Anchor | Criterion |
+|--------|-----------|
+| `100` | You read the defect and can quote the line that proves it. Reproducible from the evidence alone. |
+| `75` | You located the defect and can cite the line, but correctness turns on a caller, config, or runtime value you could not read. |
+| `50` | Pattern-matched or inferred. No line proves it, or you never read the path it depends on. |
+
+`autofix_class`: `gated_auto` for a mechanical fix with one obvious correct form;
+`manual` when the fix needs design judgment; `advisory` when you are flagging a
+risk rather than prescribing a change. Most critic findings are `manual` or
+`advisory` — an adversarial reading that reframes a design is rarely a mechanical
+edit, and labelling it `gated_auto` invites a shallow patch over a real objection.
+
+Any finding at `75` or `100` MUST carry an `evidence` line with `file:line`. **No
+evidence, no anchor above `50`.** This is the same discipline as Phase 2
+verification, expressed as a number: your pre-commitment predictions exist so an
+unverified suspicion cannot quietly become a confident finding.
 
 ## Escalation — Adversarial Mode
 
@@ -129,10 +163,9 @@ In adversarial mode:
 ### Findings
 
 #### CRITICAL
-- **[Finding title]**
-  Evidence: [file:line or quote]
+- **[Finding title]** — [MUST-FIX | confidence: 100 | autofix_class: manual | owner: agent]
+  evidence: [verbatim line with file:line]
   Impact: [what happens if this ships]
-  Confidence: [HIGH/MEDIUM/LOW]
   Fix: [specific actionable remediation]
 
 #### MAJOR
@@ -169,3 +202,8 @@ In adversarial mode:
 - Single-perspective tunnel vision (only checking security, ignoring usability)
 - Making claims without verifying against the actual codebase
 - Asserting low-confidence findings as high-severity
+- Claiming corroboration you cannot have: you are one dispatched context. Do not
+  describe a finding as confirmed by another reviewer, and do not raise a
+  `confidence` anchor because a finding seems like something others would flag.
+  Whether your finding was independently corroborated is the orchestrator's
+  determination, not yours.
