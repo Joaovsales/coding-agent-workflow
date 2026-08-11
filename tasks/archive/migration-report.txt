@@ -1,0 +1,24 @@
+Migration plan for C:\Users\Joao.Souto\coding-agent-workflow\.claude\worktrees\m3-typed-learning-store
+Mode: APPLY
+
+WROTE tasks/project-context.md
+WROTE tasks/solutions/architecture/spec-before-code.md (problem_type: architecture-decision) [needs_review, date_source=git-log]
+WROTE tasks/solutions/architecture/tdd-enforcement.md (problem_type: architecture-decision) [needs_review, date_source=git-log]
+WROTE tasks/solutions/architecture/hard-gate-on-tasks-todo-md.md (problem_type: architecture-decision) [needs_review, date_source=git-log]
+WROTE tasks/solutions/architecture/subagents-for-research.md (problem_type: architecture-decision) [needs_review, date_source=git-log]
+WROTE tasks/solutions/architecture/memory-md-lessons-md.md (problem_type: architecture-decision) [needs_review, date_source=git-log]
+WROTE tasks/solutions/architecture/claude-code-primary.md (problem_type: architecture-decision) [needs_review, date_source=git-log]
+WROTE tasks/solutions/architecture/layered-config-claude-md-template-claude-project-md-project.md (problem_type: architecture-decision) [needs_review, date_source=git-log]
+WROTE tasks/solutions/patterns/a-parity-cp-can-clobber-a-legitimate-harness-divergence.md (problem_type: pattern) [date_source=git-log]
+WROTE tasks/solutions/patterns/check-git-worktree-list-before-declaring-a-prerequisite-miss.md (problem_type: pattern) [date_source=git-log]
+WROTE tasks/solutions/patterns/a-slow-test-is-not-a-hung-test.md (problem_type: pattern) [date_source=git-log]
+WROTE tasks/solutions/patterns/pin-whitespace-normalized-text-when-guarding-hard-wrapped-pr.md (problem_type: pattern) [date_source=git-log]
+WROTE tasks/solutions/patterns/confidence-and-severity-are-independent-severity-says-how-mu.md (problem_type: pattern) [needs_review]
+WROTE tasks/solutions/patterns/a-must-fix-at-confidence-50-must-be-verified-not-fixed.md (problem_type: pattern) [needs_review]
+WROTE tasks/solutions/patterns/to-extend-a-sync-managed-skill-s-output-without-editing-it-w.md (problem_type: pattern) [needs_review]
+WROTE tasks/solutions/patterns/the-bash-test-suite-enforces-agents-claude-byte-identical-sk.md (problem_type: pattern) [needs_review]
+WROTE tasks/history.md
+ARCHIVED tasks/memory.md -> tasks/archive/20260811T183743Z/memory.md
+ARCHIVED tasks/bugs.md -> tasks/archive/20260811T183743Z/bugs.md
+
+Summary: 15 document(s), 2 file(s) archived, 11 flagged needs_review, 0 conflict(s), 0 unmigrated section(s).
