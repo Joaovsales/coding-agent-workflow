@@ -307,9 +307,39 @@ If no specs were touched: skip this gate silently.
 2. Commit with type prefix: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`
 3. Append optional trailers: `Constraint:`, `Rejected:`, `Not-tested:`, `Confidence:`
 4. Push: `git push -u origin <branch>`
-5. Create PR if none exists for this branch
+5. Open the PR, or re-sync its description if one already exists — see *PR Description Sync*
 
 **Do not push if**: any test is failing, uncommitted changes unreviewed, MUST-FIX skipped.
+
+### PR Description Sync
+
+`gh pr create` writes the description once, from the branch as it stood at that
+moment. Every later commit can falsify it — a follow-up session, a review fix, a
+resolved deferral — and nothing re-reads it. The body is what reviewers act on, so
+a stale one is not cosmetic: a PR whose notes still list a defect as "deferred" is
+asking for review of work that no longer exists.
+
+**No PR for this branch** → create it.
+
+**A PR already exists** → reconcile the body against the branch before reporting done:
+
+1. Read it: `gh pr view <n> --json body -q .body`. List every factual claim —
+   counts (files changed, tests, assertions) and every item marked deferred,
+   known-gap, unresolved, or not-yet-done.
+2. Check each against the branch now. `git log <sha-when-body-was-written>..HEAD`
+   names what landed since; anything a later commit resolved is now false.
+3. Rewrite every claim that no longer holds.
+
+**Correct, do not erase.** When a later commit resolved something the body called
+deferred, say so and name the commit — do not silently delete the bullet. A
+reviewer who read the earlier version needs to see what changed, and a description
+edited to look as though the gap never existed hides the decision that mattered.
+Same rule as a commit that fixes an earlier commit: the history stays visible.
+
+This runs on **every** push to a branch with an open PR, including a
+`/wrap-up-session` run that adds a single commit. Report the outcome on the `PR:`
+line of the Done report — a sync step with no visible result is one that silently
+stops happening.
 
 ### Push Failure Handling
 
@@ -389,6 +419,7 @@ Session wrapped up.
 - Tests: [PASS — suite name] or [FAIL] or [SKIPPED — no suite]
 - E2E coverage: [N user-facing ACs verified / NONE / GAP — N acknowledged]
 - Pushed: [yes / no — reason]
+- PR: [#N opened / #N description re-synced — what changed / #N already accurate / none]
 - Deployments: [results or SKIPPED / NONE]
 ```
 
