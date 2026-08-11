@@ -93,14 +93,20 @@ INNER_EOF
 # These docs are hard-wrapped prose, so a pinned multi-word phrase can straddle a
 # newline. Match against a whitespace-collapsed rendering: the guard is about the
 # rule being stated, not about where the paragraph happens to wrap.
-flatten() { tr '\n' ' ' < "$1" | tr -s ' '; }
+#
+# `tr -d '\r'` first, and it is not optional. These files are checked out with CRLF
+# on Windows, so collapsing only '\n' leaves the '\r' behind and "dispatched\r
+# contexts" never matches "dispatched contexts". Without it the guard passes in a
+# worktree whose files were authored with LF and fails on a fresh clone of the same
+# commit -- which is exactly what it did.
+flatten() { tr -d '\r' < "$1" | tr '\n' ' ' | tr -s ' '; }
 
 assert_file_contains "CLAUDE.md" "### Independence Accounting" \
   "M1: CLAUDE.md has an Independence Accounting subsection"
 assert_contains "$(flatten CLAUDE.md)" "separately dispatched contexts" \
   "M1: CLAUDE.md requires separately dispatched contexts for corroboration"
 
-taxonomy="$(sed -n '/^## Review Gate Taxonomy/,/^## Finding Model/p' CLAUDE.md | tr '\n' ' ' | tr -s ' ')"
+taxonomy="$(sed -n '/^## Review Gate Taxonomy/,/^## Finding Model/p' CLAUDE.md | tr -d '\r' | tr '\n' ' ' | tr -s ' ')"
 assert_contains "$taxonomy" "Independence Accounting" \
   "M1: Review Gate Taxonomy cross-references Independence Accounting"
 assert_contains "$taxonomy" "Finding Model" \
@@ -177,6 +183,29 @@ for f in .claude/skills/yolo/SKILL.md .agents/skills/yolo/SKILL.md \
          .claude/skills/auto-improve/SKILL.md .agents/skills/auto-improve/SKILL.md; do
   assert_file_contains "$f" "gated_auto" \
     "M2: $f states how a non-gated_auto MUST-FIX is routed"
+done
+
+# --- /wrap-up-session re-syncs a stale PR description ------------------------
+# `gh pr create` writes the body once. Later commits falsify it and nothing
+# re-reads it, so a PR can keep advertising a defect as deferred after the commit
+# that fixed it already landed -- observed on PR #55. Two things are pinned: that
+# the step exists, and that Step 7 no longer says "create if none exists" without
+# handling the update case, which is the wording the gap lived in.
+for f in .claude/skills/wrap-up-session/SKILL.md .agents/skills/wrap-up-session/SKILL.md; do
+  assert_file_contains "$f" "PR Description Sync" \
+    "PRSync: $f carries the PR Description Sync step"
+  assert_contains "$(flatten "$f")" "Correct, do not erase" \
+    "PRSync: $f forbids silently deleting a superseded claim"
+  assert_file_contains "$f" "- PR: [" \
+    "PRSync: $f reports the sync outcome on the Done report's PR line"
+  # The create-only wording is the defect itself, not merely incomplete docs.
+  if grep -qF "Create PR if none exists" "$f"; then
+    assert_eq "absent" "present" \
+      "PRSync: $f must not describe PR creation as the only case"
+  else
+    assert_eq "absent" "absent" \
+      "PRSync: $f must not describe PR creation as the only case"
+  fi
 done
 
 finish
