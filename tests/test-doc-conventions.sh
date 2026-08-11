@@ -112,7 +112,9 @@ assert_contains "$taxonomy" "Finding Model" \
 # it is invisible in a whole-block snapshot.
 for f in CLAUDE.md \
          .claude/skills/quality-gate/SKILL.md .agents/skills/quality-gate/SKILL.md \
-         .claude/skills/wrap-up-session/SKILL.md .agents/skills/wrap-up-session/SKILL.md; do
+         .claude/skills/wrap-up-session/SKILL.md .agents/skills/wrap-up-session/SKILL.md \
+         .claude/skills/software-design-expert-review/SKILL.md \
+         .agents/skills/software-design-expert-review/SKILL.md; do
   flat="$(flatten "$f")"
   for axis in severity confidence autofix_class owner; do
     assert_contains "$flat" "\`$axis\`" "M2: $f defines the \`$axis\` axis"
@@ -144,6 +146,26 @@ for f in .claude/skills/quality-gate/SKILL.md .agents/skills/quality-gate/SKILL.
     "M1: $f carries a Dispatch Disclosure requirement"
   assert_file_contains "$f" "Review independence:" \
     "M1: $f emits the independence line in its output block"
+done
+
+# /software-design-expert-review dispatches its reviewer per file-batch, so its
+# independence question is batching, not dispatch-vs-inline. Two batches naming the
+# same file:line corroborate; two lenses inside one batch do not. It must also stop
+# telling the agent to emit the old single-axis format -- that instruction would
+# override the persona and degrade every finding to anchor 50.
+for f in .claude/skills/software-design-expert-review/SKILL.md \
+         .agents/skills/software-design-expert-review/SKILL.md; do
+  assert_file_contains "$f" "Review independence:" \
+    "M1: $f emits the independence line in its output block"
+  assert_contains "$(flatten "$f")" "separately dispatched" \
+    "M1: $f promotes only on separately dispatched batches"
+  if grep -qF 'format only."' "$f"; then
+    assert_eq "absent" "present" \
+      "M2: $f must not instruct the agent to emit single-axis findings"
+  else
+    assert_eq "absent" "absent" \
+      "M2: $f must not instruct the agent to emit single-axis findings"
+  fi
 done
 
 # --- Tier 2 (M2): unattended loops route a non-auto-appliable MUST-FIX -------
