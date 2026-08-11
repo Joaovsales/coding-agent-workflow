@@ -23,6 +23,58 @@ Skip: generated files, lock files, migration files, test fixtures.
 
 ---
 
+## Finding Model
+
+Every finding this gate produces or consumes carries four orthogonal fields.
+Rationale and the cross-harness rule live in `CLAUDE.md` § *Finding Model*; the
+operational contract is here, at the point where findings get applied.
+
+| Field | Answers | Values |
+|-------|---------|--------|
+| `severity` | how urgent | `MUST-FIX` / `SHOULD-FIX` / `NITPICK` |
+| `confidence` | how sure | `50` / `75` / `100` |
+| `autofix_class` | what shape the fix is | `gated_auto` / `manual` / `advisory` |
+| `owner` | who acts | `agent` / `human` / `release` |
+
+```
+[MUST-FIX | confidence: 100 | autofix_class: gated_auto | owner: agent] file.py:42 — description and impact
+  evidence: `except Exception: pass` (file.py:42)
+```
+
+**Confidence anchors** — behavioral criteria, not a feeling:
+
+| Anchor | Criterion |
+|--------|-----------|
+| `100` | You read the defect in the diff and can quote the line that proves it. Reproducible from the evidence alone. |
+| `75` | You located the defect and can cite the line, but correctness turns on a caller, config, or runtime value outside the reviewed scope. |
+| `50` | Pattern-matched or inferred. No line proves it, or you never read the path it depends on. |
+
+### Apply Gate
+
+| Condition | Action |
+|-----------|--------|
+| `gated_auto` **and** `confidence >= 75` | Apply in-phase, then run tests. |
+| `gated_auto` but `confidence` `50` | Report only. An unproven fix is not cheaper than no fix. |
+| `manual` or `advisory`, any confidence | Report only, with `owner`. |
+
+A `MUST-FIX` at `confidence` `50` is worth one verification attempt before you
+report it: read the path it depends on. Evidence found → it is `75`+ and the gate
+clears it. Refuted → say so, and drop it. Reporting an unverified `MUST-FIX`
+onward makes the next gate solve a problem you were holding the context to solve.
+
+- A finding at `75` or `100` **must** carry `evidence` — the verbatim motivating
+  line with `file:line`. Missing evidence **demotes** it to `50`.
+- A finding arriving with no `confidence` — an older single-axis reviewer, or an
+  agent that ignored this contract — is read as `50` / `autofix_class: manual`:
+  reported, never auto-applied, never discarded.
+- Where two phases or reviewers disagree on a finding, synthesis takes the
+  **more conservative** `autofix_class`. It never widens.
+- A `MUST-FIX` that the gate will not auto-apply is still a `MUST-FIX`. Report it
+  under `owner` and let the caller's gate decide — do not downgrade it to make
+  this phase come out clean.
+
+---
+
 ## Phase 1 — Structural Quality (simplify)
 
 **Mandate**: "Is this code structurally sound?" — function size, naming, reuse, SOLID.
@@ -49,7 +101,7 @@ For each file in scope:
 - **Premature generalization**: configurable with only one config → simplify
 - **Defensive code for impossible cases** (internal values already guaranteed) → remove
 
-**Process**: Read → list issues → fix → run tests after all fixes. Revert any fix that breaks tests.
+**Process**: Read → list issues as four-axis findings → apply those the **Apply Gate** clears → run tests after all fixes. Revert any fix that breaks tests.
 
 ---
 
@@ -105,7 +157,7 @@ try { doThing(); } catch (e) { throw e; }  // passthrough
 ```
 → Remove entirely.
 
-**Process**: Scan → list findings → apply deletions → run tests per file. Revert if tests fail.
+**Process**: Scan → list findings as four-axis findings → apply the deletions the **Apply Gate** clears → run tests per file. Revert if tests fail.
 
 ---
 
@@ -125,11 +177,28 @@ Read all changed files together. For each module, check:
 6. **Vague names**: Any public name that requires reading the body to understand? → flag
 7. **Conjoined methods**: Methods so coupled you can't use one without the other? → flag
 
-Report findings as `file:line [MUST-FIX/SHOULD-FIX/NITPICK] — description`. Apply MUST-FIX and SHOULD-FIX fixes inline. Run tests after fixes.
+Report findings in the canonical four-axis format from *Finding Model*. Apply per
+the **Apply Gate** — `MUST-FIX` and `SHOULD-FIX` are not self-applying licences.
+Run tests after fixes.
+
+### Dispatch Disclosure
+
+Phase 3 runs either as a dispatched `software-design-expert-review` agent or
+inline in the main context. The two are not equivalent, and the output must say
+which happened:
+
+| How it ran | Disclosure | Promotion |
+|-----------|-----------|-----------|
+| Dispatched agent | `dispatched` | Its agreement with a Phase 1 or Phase 2 finding is independent corroboration: promote `confidence` by exactly one anchor. |
+| Inline in the main context | `inline` | **No promotion.** Phase 3 shares this context's priors with Phases 1 and 2, so agreement is one perspective repeated. Name the corroboration lost. |
+
+Per `CLAUDE.md` § *Independence Accounting*, agreement inside one context is not
+two witnesses. An inline run is a complete run — it reports and applies under the
+Apply Gate — but it may never report a promoted confidence.
 
 ## Claude Code Enhancements
 
-Dispatch the `software-design-expert-review` skill (invokes `software-design-expert-review` agent, model: sonnet) instead of running inline Phase 3. The agent is read-only — it reports findings only. Apply MUST-FIX and SHOULD-FIX findings in the main context after the agent returns. Run tests after applying fixes.
+Dispatch the `software-design-expert-review` skill (invokes `software-design-expert-review` agent, model: sonnet) instead of running inline Phase 3. The agent is read-only — it reports findings only. Apply findings in the main context after the agent returns per the Apply Gate. Run tests after applying fixes. Because this path is a separate dispatch, record it as `dispatched`.
 
 ---
 
@@ -152,5 +221,12 @@ Phase 3 — APOSD Design (/software-design-expert-review)
   Verdict: 🟢 GO / 🟡 HOLD (N refactors applied) / 🔴 STOP
   Tests: [PASS / FAIL]
 
+Review independence: [Phase 3 dispatched / Phase 3 inline — no promotion; lost corroboration: <what>]
+Reported, not applied: [N findings — list with file:line, autofix_class, owner]
+
 ══════════════════════════════════════════
 ```
+
+The `Reported, not applied` line is not optional. A finding the Apply Gate held
+back is the one most likely to be lost, and an output that lists only what was
+fixed reads as though nothing else was found.

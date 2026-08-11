@@ -86,4 +86,97 @@ done <<INNER_EOF
 $(find .agents/skills .claude/skills -name '*.md' -not -path '*/.claude/worktrees/*' | sort)
 INNER_EOF
 
+# --- Tier 2 (M1): independence accounting -----------------------------------
+# Corroboration is only evidence when the findings came from separately
+# dispatched contexts. The regression this guards is a skill quietly promoting a
+# finding because two lenses inside ONE context agreed.
+# These docs are hard-wrapped prose, so a pinned multi-word phrase can straddle a
+# newline. Match against a whitespace-collapsed rendering: the guard is about the
+# rule being stated, not about where the paragraph happens to wrap.
+flatten() { tr '\n' ' ' < "$1" | tr -s ' '; }
+
+assert_file_contains "CLAUDE.md" "### Independence Accounting" \
+  "M1: CLAUDE.md has an Independence Accounting subsection"
+assert_contains "$(flatten CLAUDE.md)" "separately dispatched contexts" \
+  "M1: CLAUDE.md requires separately dispatched contexts for corroboration"
+
+taxonomy="$(sed -n '/^## Review Gate Taxonomy/,/^## Finding Model/p' CLAUDE.md | tr '\n' ' ' | tr -s ' ')"
+assert_contains "$taxonomy" "Independence Accounting" \
+  "M1: Review Gate Taxonomy cross-references Independence Accounting"
+assert_contains "$taxonomy" "Finding Model" \
+  "M1: Review Gate Taxonomy cross-references the Finding Model"
+
+# --- Tier 2 (M2): four-axis findings in CLAUDE.md and both review skills -----
+# Each axis, enum value, and confidence anchor is pinned as its own token. A
+# dropped enum value is exactly what would let an unsure finding auto-apply, and
+# it is invisible in a whole-block snapshot.
+for f in CLAUDE.md \
+         .claude/skills/quality-gate/SKILL.md .agents/skills/quality-gate/SKILL.md \
+         .claude/skills/wrap-up-session/SKILL.md .agents/skills/wrap-up-session/SKILL.md \
+         .claude/skills/software-design-expert-review/SKILL.md \
+         .agents/skills/software-design-expert-review/SKILL.md; do
+  flat="$(flatten "$f")"
+  for axis in severity confidence autofix_class owner; do
+    assert_contains "$flat" "\`$axis\`" "M2: $f defines the \`$axis\` axis"
+  done
+  for value in gated_auto manual advisory release; do
+    assert_contains "$flat" "\`$value\`" "M2: $f names the \`$value\` enum value"
+  done
+  for anchor in 50 75 100; do
+    assert_contains "$flat" "\`$anchor\`" "M2: $f names confidence anchor \`$anchor\`"
+  done
+  # Evidence gate: 75+ requires file:line, and its absence demotes rather than drops.
+  assert_contains "$flat" "file:line" "M2: $f requires file:line evidence"
+  assert_contains "$flat" "demote" "M2: $f demotes on missing evidence"
+  # Apply gate: the conjunction is the gate. Either half alone is the bug.
+  assert_contains "$flat" "confidence >= 75" "M2: $f gates auto-apply at anchor 75+"
+  # Backwards compatibility: an old single-axis finding is neither applied nor lost.
+  assert_contains "$flat" "no \`confidence\`" \
+    "M2: $f handles a finding arriving with no confidence"
+  # Synthesis never widens the autofix class on disagreement.
+  assert_contains "$flat" "more conservative" \
+    "M2: $f takes the more conservative autofix_class on disagreement"
+done
+
+# Both review skills must disclose whether their passes were dispatched or ran
+# inline, and must not promote on same-context agreement.
+for f in .claude/skills/quality-gate/SKILL.md .agents/skills/quality-gate/SKILL.md \
+         .claude/skills/wrap-up-session/SKILL.md .agents/skills/wrap-up-session/SKILL.md; do
+  assert_file_contains "$f" "Dispatch Disclosure" \
+    "M1: $f carries a Dispatch Disclosure requirement"
+  assert_file_contains "$f" "Review independence:" \
+    "M1: $f emits the independence line in its output block"
+done
+
+# /software-design-expert-review dispatches its reviewer per file-batch, so its
+# independence question is batching, not dispatch-vs-inline. Two batches naming the
+# same file:line corroborate; two lenses inside one batch do not. It must also stop
+# telling the agent to emit the old single-axis format -- that instruction would
+# override the persona and degrade every finding to anchor 50.
+for f in .claude/skills/software-design-expert-review/SKILL.md \
+         .agents/skills/software-design-expert-review/SKILL.md; do
+  assert_file_contains "$f" "Review independence:" \
+    "M1: $f emits the independence line in its output block"
+  assert_contains "$(flatten "$f")" "separately dispatched" \
+    "M1: $f promotes only on separately dispatched batches"
+  if grep -qF 'format only."' "$f"; then
+    assert_eq "absent" "present" \
+      "M2: $f must not instruct the agent to emit single-axis findings"
+  else
+    assert_eq "absent" "absent" \
+      "M2: $f must not instruct the agent to emit single-axis findings"
+  fi
+done
+
+# --- Tier 2 (M2): unattended loops route a non-auto-appliable MUST-FIX -------
+# The apply gate narrows what may be auto-applied, so a MUST-FIX can now be
+# unappliable. In an unattended loop that must reach the existing FAIL/STOP
+# path, never a user prompt.
+for f in .claude/skills/yolo/SKILL.md .agents/skills/yolo/SKILL.md \
+         .claude/skills/auto-push/SKILL.md .agents/skills/auto-push/SKILL.md \
+         .claude/skills/auto-improve/SKILL.md .agents/skills/auto-improve/SKILL.md; do
+  assert_file_contains "$f" "gated_auto" \
+    "M2: $f states how a non-gated_auto MUST-FIX is routed"
+done
+
 finish

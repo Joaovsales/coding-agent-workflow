@@ -77,6 +77,45 @@ Exclude: lock files, generated files, migrations (unless they contain raw SQL), 
 - Unbounded file uploads or query results
 - Regex patterns vulnerable to catastrophic backtracking (ReDoS)
 
+## Finding Classification
+
+Every finding MUST carry all four axes alongside its risk tier. The orchestrator
+uses `autofix_class` + `confidence` to decide whether it may edit code over your
+finding; a finding with only a risk tier degrades to `confidence: 50` /
+`autofix_class: manual` downstream and will never be applied.
+
+| Field | Answers | Values |
+|-------|---------|--------|
+| `severity` | how urgent | `MUST-FIX` / `SHOULD-FIX` / `NITPICK` |
+| `confidence` | how sure | `50` / `75` / `100` |
+| `autofix_class` | what shape the fix is | `gated_auto` / `manual` / `advisory` |
+| `owner` | who acts | `agent` / `human` / `release` |
+
+| Risk tier | `severity` tag |
+|-----------|----------------|
+| 🔴 CRITICAL | `MUST-FIX` |
+| 🟠 HIGH | `MUST-FIX` |
+| 🟡 MEDIUM | `SHOULD-FIX` |
+
+**Confidence anchors** — behavioral criteria:
+
+| Anchor | Criterion |
+|--------|-----------|
+| `100` | You read the vulnerable line and can quote it, and the attack path is reachable from an untrusted input you traced. |
+| `75` | You read the vulnerable line and can cite it, but reachability depends on a caller, deployment config, or framework default you could not verify. |
+| `50` | Pattern-matched from a signature or shape. You did not trace the input to the sink. |
+
+`autofix_class`: `gated_auto` only for a mechanical, single-form fix such as
+parameterizing a query or adding an existing decorator; `manual` when the fix
+needs design judgment (auth model, key handling); `advisory` when you are flagging
+exposure rather than prescribing a change. `owner: release` covers findings fixed
+by rotating a credential or changing deployment config rather than by editing code.
+
+Any finding at `75` or `100` MUST carry an `evidence` line with `file:line`. **No
+evidence, no anchor above `50`.** Never raise the anchor because the
+vulnerability class is severe — severity and confidence are independent, and a
+`MUST-FIX` at `50` is a legitimate, reportable finding.
+
 ## Output Format
 
 ```markdown
@@ -89,7 +128,9 @@ Exclude: lock files, generated files, migrations (unless they contain raw SQL), 
 ### 🔴 CRITICAL Issues
 
 #### [Issue Title]
+- **Finding**: `[MUST-FIX | confidence: 100 | autofix_class: gated_auto | owner: agent]`
 - **File**: `path/to/file.py:42`
+- **evidence**: `cursor.execute("SELECT * FROM t WHERE id=" + user_id)` (path/to/file.py:42)
 - **Vulnerability**: [type — e.g., SQL Injection]
 - **Risk**: [What an attacker could do]
 - **Current Code**:

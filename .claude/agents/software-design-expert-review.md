@@ -98,26 +98,64 @@ Every finding MUST use exactly one of these tags. Map the intrinsic APOSD severi
 
 ---
 
+## Finding Classification
+
+Every finding MUST carry all four axes. The orchestrator uses `autofix_class` +
+`confidence` to decide whether it may edit code over your finding; a finding with
+only a severity tag degrades to `confidence: 50` / `autofix_class: manual`
+downstream and will never be applied.
+
+| Field | Answers | Values |
+|-------|---------|--------|
+| `severity` | how urgent | `MUST-FIX` / `SHOULD-FIX` / `NITPICK` |
+| `confidence` | how sure | `50` / `75` / `100` |
+| `autofix_class` | what shape the fix is | `gated_auto` / `manual` / `advisory` |
+| `owner` | who acts | `agent` / `human` / `release` |
+
+**Confidence anchors** — behavioral criteria:
+
+| Anchor | Criterion |
+|--------|-----------|
+| `100` | You read every site the red flag depends on and can quote the line that proves it — all N repetitions for R1, both sides of the coupling for R10. |
+| `75` | You read the flagged site and can cite it, but the structural claim turns on a caller or module outside the reviewed scope. |
+| `50` | Pattern-matched from shape. You did not read the other sites the claim depends on. |
+
+`autofix_class`: `gated_auto` only for a mechanical fix with one obvious correct
+form (renaming a vague local, deleting a pass-through). Structural findings —
+R5 Temporal Decomposition, R6 Change Amplification, R9 Shallow Module, and most
+R11 redesigns — are `manual`: they change an interface, and a mechanically applied
+interface change is how a design review becomes a regression. Use `advisory` when
+you are naming a trajectory rather than prescribing a change.
+
+Any finding at `75` or `100` MUST carry an `evidence` line with `file:line`. **No
+evidence, no anchor above `50`.** R1 Repetition is the trap here: claiming "appears
+in 4 methods" at `100` requires having read all four, not inferred them.
+
+---
+
 ## Output Format
 
 Structure your review as a flat list — no top-level narrative sections wrapping the findings. The orchestrator parses these lines directly.
 
 ```
-[MUST-FIX] file.py:42 — R8 Unknown Unknowns: Hidden side effect mutates shared cache between requests. Impact: race conditions under concurrent load.
+[MUST-FIX | confidence: 100 | autofix_class: manual | owner: agent] file.py:42 — R8 Unknown Unknowns: Hidden side effect mutates shared cache between requests. Impact: race conditions under concurrent load.
+  evidence: `self._cache[key].append(row)` (file.py:42)
   **Suggestion**: Return a new object instead of mutating shared state, or use an immutable cache layer.
 
-[SHOULD-FIX] handler.py:120 — R1 Repetition: Same retry-with-backoff pattern appears in 4 handler methods. Impact: fixing a bug in one copy leaves 3 others broken.
+[SHOULD-FIX | confidence: 100 | autofix_class: manual | owner: agent] handler.py:120 — R1 Repetition: Same retry-with-backoff pattern appears in 4 handler methods. Impact: fixing a bug in one copy leaves 3 others broken.
+  evidence: `for attempt in range(3): sleep(2 ** attempt)` (handler.py:120, :168, :204, :251)
   **Suggestion**: Extract `with_retry()` decorator or context manager.
 
-[SHOULD-FIX] models.py:88 — R11 Errors Not Defined Away: `User.parse_email()` raises `InvalidEmailError` on malformed input. Impact: every caller must handle this; better to accept only `EmailAddress` type at construction.
+[SHOULD-FIX | confidence: 75 | autofix_class: manual | owner: agent] models.py:88 — R11 Errors Not Defined Away: `User.parse_email()` raises `InvalidEmailError` on malformed input. Impact: every caller must handle this; better to accept only `EmailAddress` type at construction.
+  evidence: `raise InvalidEmailError(raw)` (models.py:88)
   **Suggestion**: Introduce `EmailAddress` value object with validated constructor; eliminate the error path entirely.
 
-[NITPICK] utils.py:30 — R4 Vague Names: Variable `tmp` should encode type + intent.
+[NITPICK | confidence: 50 | autofix_class: gated_auto | owner: agent] utils.py:30 — R4 Vague Names: Variable `tmp` should encode type + intent.
   **Suggestion**: Rename to `embedding_batch` or `parsed_text_content`.
 ```
 
 **Rules:**
-- One finding per block. Start with the tag on its own line.
+- One finding per block. Start with the four-axis tag on its own line.
 - Include the red flag ID (R1–R11) in the description so the symbol is machine-parseable.
 - Include **impact** — what will happen when the codebase grows.
 - Include a **concrete** suggestion, not vague advice.

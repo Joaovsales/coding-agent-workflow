@@ -103,6 +103,11 @@ Follow TDD strictly: failing/characterization test → minimal change → refact
 
 1. Run the **full** test suite. It must be green. If red and you cannot make it green safely in this run → `git reset` your change, revert to findings-only mode (Phase 5), and log why.
 2. Run `/quality-gate` on the changed files (structural quality → anti-patterns → APOSD).
+   Its Apply Gate runs normally — **no prompt added**. A `MUST-FIX` that is not
+   `gated_auto` at `confidence >= 75` is not auto-appliable: fix it deliberately if
+   you can, otherwise carry it into the PR body as an unresolved finding with its
+   `owner`. Never widen `autofix_class`, and never downgrade a finding, to get a
+   clean gate — this run is unattended, so nobody will catch it.
 3. Confirm coverage on new/changed code ≥ 80%.
 
 No green suite → no PR. This is non-negotiable.
