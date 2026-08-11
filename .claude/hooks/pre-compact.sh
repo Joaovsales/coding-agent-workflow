@@ -57,7 +57,7 @@ write_checkpoint() {
     echo ""
     echo "## How to Resume"
     echo "1. Read this file and \`tasks/todo.md\`"
-    echo "2. Read \`tasks/memory.md\` for project context"
+    echo "2. Grep \`tasks/solutions/\` frontmatter (problem_type, module, tags) for relevant learnings"
     echo "3. Continue from the first \`[~]\` (or \`[ ]\`) item in \`tasks/todo.md\`"
   } > tasks/checkpoint.md 2>/dev/null || return 0
 }

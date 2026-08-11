@@ -286,8 +286,8 @@ copy_if_missing() {
 copy_if_missing "CLAUDE.md"
 copy_if_missing ".ignore"
 copy_if_missing "tasks/todo.md"
-copy_if_missing "tasks/bugs.md"
-copy_if_missing "tasks/lessons.md"
+copy_if_missing "tasks/solutions/README.md"
+copy_if_missing "tasks/history.md"
 
 if [ ! -d "$REPO_ROOT/specs" ]; then
   mkdir -p "$REPO_ROOT/specs"
@@ -326,5 +326,5 @@ echo "  Start a new project: newproject my-app"
 echo "  Or in an existing repo: copy project-template/ files in manually."
 echo ""
 echo "  Claude will now orient itself at session start in every project"
-echo "  (memory, active tasks, lessons, git branch) via the global SessionStart hook."
+echo "  (learning-store counts, active tasks, git branch) via the global SessionStart hook."
 echo ""

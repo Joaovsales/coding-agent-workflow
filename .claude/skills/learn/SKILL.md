@@ -1,6 +1,6 @@
 ---
 name: learn
-description: Extract durable patterns from the current session and persist to memory.md and lessons.md.
+description: Extract durable learnings from the current session and persist them as typed documents in tasks/solutions/.
 argument-hint: "[--cleanup]"
 disable-model-invocation: false
 harness: universal
@@ -8,52 +8,71 @@ harness: universal
 
 # /learn — Capture Session Learnings
 
-Extract durable patterns from this session and persist them into `tasks/memory.md` and `tasks/lessons.md`.
+Extract durable learnings from this session and persist each as a typed document
+under `tasks/solutions/<category>/<slug>.md`, plus one narrative entry in
+`tasks/history.md`. The schema, `problem_type` enum, and category map live in
+`tasks/solutions/README.md` — documents must validate against it
+(`tests/test-solutions-schema.sh` enforces this in the template repo).
 
 ## Steps
 
 ### 1. Review the Session
 - Run `git log --oneline -10` to see what changed
 - Read `tasks/todo.md` to see what was completed
-- Read `tasks/lessons.md` for any notes made mid-session
 - Recall any corrections the user made or surprises encountered
 
-### 2. Extract 1–5 Patterns
+### 2. Extract 1–5 Learnings
 Focus on insights that would prevent future mistakes or speed up future work:
-- Mistakes made and their root causes
-- Effective approaches discovered
-- Architectural decisions and the reasoning behind them
-- Edge cases that weren't anticipated
-- Tool or workflow patterns that worked well
+- Mistakes made and their root causes → **bug track**
+- Effective approaches discovered, architectural decisions, edge cases,
+  workflow patterns → **knowledge track**
 
-Skip trivial or one-off observations. Only persist patterns with reuse value.
+Skip trivial or one-off observations. Only persist learnings with reuse value.
 
-### 3. Format Each Learning
+### 3. Ground Every Claim
+A claim about how code behaves must be **verified against the tree and cited as
+`file:line`**, or softened and attributed ("this session observed…"). Cite PR
+numbers, not bare commit SHAs — rebase and squash merges rewrite SHAs. A learning
+with no verifiable code claim goes on the knowledge track with its claims
+attributed to the session rather than stated as fact.
 
-```
-### [Short descriptive title]
-**Context**: When does this pattern apply?
-**Pattern**: What to do (or avoid)
-**Evidence**: What triggered this insight
-```
+### 4. Score Overlap Before Writing
+For each candidate, compare against existing documents (grep
+`tasks/solutions/` frontmatter: `problem_type`, `module`, `tags`) across five
+dimensions: **problem, root cause, solution, files touched, prevention rule**.
 
-### 4. Append to `tasks/memory.md`
-Under the "Patterns & Lessons" section, append each new learning.
+| Score | Dimensions matched | Action |
+|-------|--------------------|--------|
+| High | 4–5 | Update the existing document. Do not create a second one. |
+| Moderate | 2–3 | Create the new document and cross-link both. |
+| Low | 0–1 | Create the new document. |
 
-### 5. Append Session Summary to `tasks/memory.md`
-Under the "Session History" section:
+If the existing document is wrong, update it and note the correction — never add
+a contradicting sibling.
+
+### 5. Write the Documents
+Create `tasks/solutions/` (and the category directory) if absent — first write
+bootstraps the store. Filename is a stable ASCII kebab-case slug from the title;
+**the date goes in frontmatter, never in the filename**. Frontmatter per track:
+
+- both tracks: `title`, `date`, `problem_type`, `module`, `tags`
+- bug track: `symptoms`, `root_cause`, `resolution`
+- knowledge track: `applies_when`
+
+A document with an inferred or missing required field gets `needs_review: true`
+so `/memory-maintain` sweeps it later.
+
+### 6. Append the Session Entry to `tasks/history.md`
+The narrative log records what happened, not learnings:
 
 ```
 ### [YYYY-MM-DD] — [2-3 word summary]
 - Key changes: [bullet list of what was built/changed]
-- Lessons added: [number, or "none"]
+- Learnings captured: [links to the tasks/solutions/ documents, or "none"]
 ```
 
-### 6. Update `tasks/lessons.md`
-Mirror the patterns into `tasks/lessons.md` if it exists (tactical, project-specific lessons).
-
 ### 7. Confirm
-Reply: "Learnings captured. `tasks/memory.md` and `tasks/lessons.md` updated."
+Reply: "Learnings captured: [N] documents in `tasks/solutions/` ([updated/created]), history entry appended."
 
 ---
 

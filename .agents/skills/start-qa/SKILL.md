@@ -133,4 +133,4 @@ While the user performs manual QA:
 - Keep the browser session and log monitoring active
 - When the user reports an issue, check captured console errors and failed network requests
 - Access backend logs using the log command from config
-- Suggest fixes or file bugs in `tasks/bugs.md` as issues are discovered
+- Suggest fixes or file bug-track documents in `tasks/solutions/bugs/` as issues are discovered

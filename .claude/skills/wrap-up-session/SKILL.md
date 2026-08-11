@@ -51,7 +51,8 @@ If `tasks/project-context.md` exists:
 
 ## Step 1 — Capture Learnings
 
-Run `/learn` to extract patterns and append to `tasks/memory.md` and `tasks/lessons.md`.
+Run `/learn` to extract learnings into typed documents under `tasks/solutions/`
+and append the session entry to `tasks/history.md`.
 
 If `/learn` produces no patterns: log "No patterns captured" and continue.
 If `/learn` errors: log the error, continue. Learnings are valuable but not blocking.
@@ -79,11 +80,13 @@ Run `/memory-maintain` (it self-gates on the session count — runs every 5 sess
 
 ---
 
-## Step 3 — Update Bug Register (`tasks/bugs.md`)
+## Step 3 — Update Bug Documents (`tasks/solutions/bugs/`)
 
-- Add new bugs discovered (status: `open`)
-- Close bugs fixed this session (status: `fixed — [YYYY-MM-DD]`)
-- Create file with header if it doesn't exist
+- New bugs discovered this session get a bug-track document (status `open` in
+  the body) — see `/debug`'s bug document template
+- Bugs fixed this session: update their document's body status to
+  `fixed — [YYYY-MM-DD]`
+- Create `tasks/solutions/bugs/` on first write
 
 ---
 
@@ -111,8 +114,8 @@ with `<N> shortcuts, <M> without a trigger.`
 
 No markers found: print nothing and move on (failure-only reporting, per
 `CLAUDE.md` § *Observability Discipline*). This step reports only — it never
-blocks the commit, and shortcuts are not bugs, so they do not go in
-`tasks/bugs.md`.
+blocks the commit, and shortcuts are not bugs, so they do not get bug-track
+documents in `tasks/solutions/`.
 
 ---
 
@@ -285,7 +288,7 @@ For every user-facing AC in specs touched this session:
 2. If missing: ask:
    > "AC [ID] is user-facing but has no e2e walkthrough. Run /verify --scope e2e now, or acknowledge the gap? (run/acknowledge)"
 3. On `run`: invoke `/verify --scope e2e`, then re-check
-4. On `acknowledge`: record the gap in `tasks/lessons.md` under "E2E Gaps"
+4. On `acknowledge`: record the gap as a knowledge-track document in `tasks/solutions/process/` (tags: `[e2e-gap]`)
 
 If no specs were touched: skip this gate silently.
 

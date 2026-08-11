@@ -12,7 +12,7 @@ A reusable, project-agnostic configuration system that enforces **spec-driven, T
 | **Skills** (`.claude/skills/`) | 16 skills: `/brainstorm`, `/plan`, `/build`, `/tdd`, `/debug`, `/verify`, `/quality-gate`, `/receive-review`, `/learn`, `/checkpoint`, `/security-scan`, `/start-qa`, `/wrap-up-session`, `/writing-skills`, `/sync`, `/folder-context-optimization` |
 | **Agents** (`.claude/agents/`) | 8 specialized subagents for planning, coding, review, debugging, security |
 | **Hooks** (`.claude/hooks/`) | Session start orientation + auto test runner on file save |
-| **Memory** (`.claude/memory.md`) | Persistent patterns and session history, updated via `/learn` |
+| **Learning store** (`tasks/solutions/`) | Typed per-document learnings, grep-first retrieval, written via `/learn` |
 
 ---
 
@@ -63,9 +63,8 @@ Copies your skills, agents, and CLAUDE.md into `~/.claude/`. Claude Code reads t
 ```
 
 The **SessionStart hook** runs automatically at the start of every Claude Code session. It prints:
-- Active patterns and lessons from `.claude/memory.md`
+- Learning-store counts from `tasks/solutions/` (documents + needs_review)
 - Pending and in-progress tasks from `tasks/todo.md`
-- Recent lessons from `tasks/lessons.md`
 - Current git branch and uncommitted change count
 
 ### Layer 2 — Git template directory (`~/.git-templates/`)
@@ -73,10 +72,10 @@ The **SessionStart hook** runs automatically at the start of every Claude Code s
 Sets `git config --global init.templateDir ~/.git-templates`. Every time you run `git init`, a `post-init` hook fires and copies this scaffold into the new repo (only if files don't already exist):
 
 ```
-tasks/todo.md       ← active task plan
-tasks/bugs.md       ← bug register
-tasks/lessons.md    ← session lessons
-specs/              ← feature specification directory
+tasks/todo.md            ← active task plan
+tasks/solutions/         ← typed learning store (schema in its README.md)
+tasks/history.md         ← session narrative log
+specs/                   ← feature specification directory
 CLAUDE.md           ← project-specific overrides
 ```
 
@@ -131,8 +130,8 @@ No need to use `newproject`. Just copy the scaffold files manually:
 
 ```bash
 cp ~/coding-agent-workflow/project-template/tasks/todo.md tasks/
-cp ~/coding-agent-workflow/project-template/tasks/bugs.md tasks/
-cp ~/coding-agent-workflow/project-template/tasks/lessons.md tasks/
+cp -r ~/coding-agent-workflow/project-template/tasks/solutions tasks/
+cp ~/coding-agent-workflow/project-template/tasks/history.md tasks/
 cp ~/coding-agent-workflow/project-template/CLAUDE.md .
 mkdir -p specs
 ```
@@ -226,7 +225,7 @@ Invoke with `/skill-name` in any Claude Code session:
 | `/verify` | Evidence-based verification gate — no completion claims without fresh command output |
 | `/quality-gate` | 3-phase post-build review: structural quality, AI anti-patterns, APOSD design |
 | `/receive-review` | Process code review feedback: technical evaluation, pushback protocol, no performative agreement |
-| `/learn` | Extracts session patterns and appends them to `.claude/memory.md` |
+| `/learn` | Extracts session learnings into typed documents under `tasks/solutions/` |
 | `/checkpoint` | Saves progress snapshot to `tasks/checkpoint.md` for handoff or pause |
 | `/security-scan` | Audits changed files against OWASP top 10; blocks commit on HIGH/MEDIUM |
 | `/start-qa` | Discover project config, restart app, launch browser, background smoke tests |
@@ -252,7 +251,7 @@ This workflow is built on patterns that prevent common AI agent failure modes:
 
 **Evidence Over Claims** — The `/verify` skill bans phrases like "should work" or "looks correct". Only actual command output counts.
 
-**Memory Across Sessions** — `.claude/memory.md` and `tasks/lessons.md` persist patterns so the agent doesn't repeat mistakes.
+**Memory Across Sessions** — the typed learning store (`tasks/solutions/`) persists one document per learning with grep-first retrieval, so the agent doesn't repeat mistakes or bulk-load stale context. Old-format projects convert with `scripts/migrate-learning-store.py`.
 
 ---
 
@@ -292,11 +291,10 @@ Claude delegates to these automatically (or you can invoke them via the Agent to
 │   ├── CLAUDE.md                    ← Project-specific override template
 │   └── tasks/
 │       ├── todo.md
-│       ├── bugs.md
-│       └── lessons.md
+│       ├── history.md
+│       └── solutions/
 ├── .claude/
 │   ├── AGENTS.md                    ← Agent reference documentation
-│   ├── memory.md                    ← Persistent project memory (updated via /learn)
 │   ├── settings.json                ← Hook configuration
 │   ├── agents/                      ← 8 specialized subagents
 │   ├── skills/                      ← 16 skills, each with SKILL.md + optional reference docs
@@ -305,7 +303,8 @@ Claude delegates to these automatically (or you can invoke them via the Agent to
 │       └── auto-test-runner.sh
 ├── tasks/
 │   ├── todo.md                      ← Active task plan
-│   └── bugs.md                      ← Bug register
+│   ├── history.md                   ← Session narrative log
+│   └── solutions/                   ← Typed learning store (written via /learn)
 ├── specs/                           ← Feature specifications
 └── tests.md                         ← Project-specific test configuration
 ```

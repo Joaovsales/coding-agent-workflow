@@ -5,15 +5,21 @@
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO"
 
-# --- Task 4: no stale .claude/memory.md path; correct tasks/memory.md used ---
+# --- M3: retired store — the old monolith files have no live references ------
+# INVERTED from the pre-M3 assertion that /build and /checkpoint reference
+# tasks/memory.md. The store is now tasks/solutions/ + tasks/history.md; only
+# tasks/archive/ and specs/ may name the retired files. Detection logic (e.g.
+# /sync, session-start.sh) constructs the paths instead of naming them literally,
+# so this sweep stays strict.
+for old in "tasks/memory.md" "tasks/lessons.md" "tasks/bugs.md"; do
+  offenders="$(grep -rlF "$old" .agents .claude/skills .claude/agents .claude/hooks \
+      CLAUDE.md README.md install.sh project-template 2>/dev/null \
+    | grep -v '\.claude/worktrees/' || true)"
+  assert_eq "" "$offenders" "M3: no live reference to $old (offenders: ${offenders:-none})"
+done
 for f in .claude/skills/checkpoint/SKILL.md .agents/skills/checkpoint/SKILL.md \
          .claude/skills/build/SKILL.md .agents/skills/build/SKILL.md; do
-  if grep -qF ".claude/memory.md" "$f"; then
-    assert_eq "absent" "present" "Task4: $f has NO stale .claude/memory.md ref"
-  else
-    assert_eq "absent" "absent" "Task4: $f has NO stale .claude/memory.md ref"
-  fi
-  assert_file_contains "$f" "tasks/memory.md" "Task4: $f references tasks/memory.md"
+  assert_file_contains "$f" "tasks/solutions" "M3: $f references the typed store"
 done
 
 # --- Task 5 (P2): both build copies checkpoint at task boundaries ---

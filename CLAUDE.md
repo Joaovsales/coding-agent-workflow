@@ -14,10 +14,9 @@
 
 ## Session Start Checklist
 
-1. Read `tasks/memory.md` for persistent patterns and lessons
+1. Note the learning-store counts from the session-start banner; grep `tasks/solutions/` frontmatter (`problem_type`, `module`, `tags`) when a task touches a known area — never bulk-load the store. An unmigrated project (old monolithic store) is converted with `scripts/migrate-learning-store.py` (dry-run by default)
 2. Check `tasks/todo.md` for in-progress work
-3. Check `tasks/lessons.md` for self-improvement notes
-4. Run `/memory-maintain` (self-gates — only does work every 5 sessions or when overdue)
+3. Run `/memory-maintain` (self-gates — only does work every 5 sessions or when overdue)
 
 ---
 
@@ -49,7 +48,7 @@ Run `/build` to execute the plan:
 - No user prompts between tasks
 
 ### 4. Wrap Up
-After corrections: note root cause in `tasks/lessons.md`.
+After corrections: capture the root cause as a bug-track document in `tasks/solutions/` (via `/debug` or `/learn`).
 At session end: run `/wrap-up-session` to sync learnings, run tests, and push.
 
 ---
@@ -203,9 +202,8 @@ specs/                     → Feature specifications
 tasks/todo.md              → Active task plan
 tasks/backlog.md           → Ordered work items (from /prd)
 tasks/project-context.md   → Compressed agent briefing (auto-generated)
-tasks/memory.md            → Project memory (architecture decisions, patterns, session history)
-tasks/bugs.md              → Bug register
-tasks/lessons.md           → Self-improvement patterns (tactical, per-session)
+tasks/solutions/           → Typed learning store: one doc per learning, grep-first retrieval (schema in its README.md)
+tasks/history.md           → Session narrative log (what happened, not learnings)
 tasks/checkpoint.md        → Session snapshots
 ```
 
@@ -291,7 +289,7 @@ Rules:
 | `/software-design-expert-review` | APOSD structural design gate — depth, leakage, error design; GO/HOLD/STOP verdict |
 | `/software-design-expert-learn` | APOSD design tutorial — end-of-session learning review based on Ousterhout |
 | `/receive-review` | Process code review feedback with pushback protocol |
-| `/learn` | Extract session patterns → `memory.md` + `lessons.md` |
+| `/learn` | Extract session learnings → typed documents in `tasks/solutions/` |
 | `/memory-maintain` | Consolidate, prune, and organize project memory every 5 sessions |
 | `/checkpoint` | Snapshot progress to `tasks/checkpoint.md` |
 | `/refresh` | Context reset — snapshot state to disk, then rebuild from a clean context (backstop for long tasks) |

@@ -22,6 +22,8 @@ assert_file_contains "$cp1" "Checkpoint —" "P1: checkpoint has timestamp heade
 assert_file_contains "$cp1" "in-progress thing" "P1: checkpoint records [~] item"
 assert_file_contains "$cp1" "pending thing" "P1: checkpoint records [ ] item"
 assert_file_contains "$cp1" "specs/demo.md" "P1: checkpoint records active spec"
+assert_file_contains "$cp1" "tasks/solutions" "M3: resume steps point at the typed store"
+assert_eq "0" "$(grep -c 'tasks/memory.md' "$cp1")" "M3: checkpoint no longer references tasks/memory.md"
 
 # --- Case 2: no todo.md -> git-only state, no crash ---
 tmp2=$(mktemp -d)

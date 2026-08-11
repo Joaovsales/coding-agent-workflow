@@ -13,7 +13,7 @@
 ```
 src/        → application source
 tests/      → test suite
-tasks/      → todo, bugs, lessons (Claude workflow files)
+tasks/      → todo, solutions/ learning store, history (Claude workflow files)
 specs/      → feature specifications
 ```
 
