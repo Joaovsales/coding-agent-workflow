@@ -98,26 +98,67 @@ Every finding MUST use exactly one of these tags. Map the intrinsic APOSD severi
 
 ---
 
+## The Other Three Axes
+
+Severity alone cannot carry a finding — an urgent finding may be a guess, and a certain
+finding may be cosmetic. Every finding also carries:
+
+| Field | Answers | Values |
+|-------|---------|--------|
+| `confidence` | how sure | `50` / `75` / `100` |
+| `autofix_class` | what shape the fix is | `gated_auto` / `manual` / `advisory` |
+| `owner` | who acts | `agent` / `human` / `release` |
+
+| Anchor | Criterion |
+|--------|-----------|
+| `100` | The red flag is visible in the quoted line without inference (e.g. the pass-through body is right there). |
+| `75` | A concrete structural consequence is named and the quoted line plainly permits it, but you did not trace every caller. |
+| `50` | Pattern-matched, inferred from naming, or dependent on module behavior you did not read. |
+
+`owner`: `agent` — in this diff's scope. `human` — needs a design decision. `release` —
+real but not blocking this branch.
+
+Structural findings skew toward `manual` and `advisory`: a refactor that moves a module
+boundary is rarely safe to apply unattended. Reserve `gated_auto` for mechanical,
+behavior-preserving fixes (a pass-through deleted, a vague local renamed).
+
+**Evidence gate (hard):** every finding at `conf=75` or `conf=100` MUST carry an
+`evidence:` line quoting the verbatim motivating source line with `file:line`. If you
+cannot quote the line, the finding is `conf=50`. Downgrade it — never drop it, and never
+invent an evidence line to reach a higher anchor.
+
+Do not promote your own confidence because two of your own red flags point the same way.
+You are one context, so that is one witness.
+
+---
+
 ## Output Format
 
 Structure your review as a flat list — no top-level narrative sections wrapping the findings. The orchestrator parses these lines directly.
 
 ```
-[MUST-FIX] file.py:42 — R8 Unknown Unknowns: Hidden side effect mutates shared cache between requests. Impact: race conditions under concurrent load.
+[MUST-FIX] conf=100 fix=manual owner=agent file.py:42 — R8 Unknown Unknowns: Hidden side effect mutates shared cache between requests. Impact: race conditions under concurrent load.
+  evidence: `self._cache[key].append(row)` (file.py:42)
   **Suggestion**: Return a new object instead of mutating shared state, or use an immutable cache layer.
 
-[SHOULD-FIX] handler.py:120 — R1 Repetition: Same retry-with-backoff pattern appears in 4 handler methods. Impact: fixing a bug in one copy leaves 3 others broken.
+[SHOULD-FIX] conf=75 fix=manual owner=agent handler.py:120 — R1 Repetition: Same retry-with-backoff pattern appears in 4 handler methods. Impact: fixing a bug in one copy leaves 3 others broken.
+  evidence: `for attempt in range(3): time.sleep(2 ** attempt)` (handler.py:120)
   **Suggestion**: Extract `with_retry()` decorator or context manager.
 
-[SHOULD-FIX] models.py:88 — R11 Errors Not Defined Away: `User.parse_email()` raises `InvalidEmailError` on malformed input. Impact: every caller must handle this; better to accept only `EmailAddress` type at construction.
+[SHOULD-FIX] conf=75 fix=advisory owner=human models.py:88 — R11 Errors Not Defined Away: `User.parse_email()` raises `InvalidEmailError` on malformed input. Impact: every caller must handle this; better to accept only `EmailAddress` type at construction.
+  evidence: `raise InvalidEmailError(raw)` (models.py:88)
   **Suggestion**: Introduce `EmailAddress` value object with validated constructor; eliminate the error path entirely.
 
-[NITPICK] utils.py:30 — R4 Vague Names: Variable `tmp` should encode type + intent.
+[NITPICK] conf=50 fix=advisory owner=release utils.py:30 — R4 Vague Names: Variable `tmp` should encode type + intent.
   **Suggestion**: Rename to `embedding_batch` or `parsed_text_content`.
 ```
 
 **Rules:**
 - One finding per block. Start with the tag on its own line.
+- Emit all four axes on every finding. The orchestrator's apply gate keys on
+  `autofix_class` and `confidence`; a finding missing them is degraded to `conf=50` /
+  `fix=manual` and never auto-applied.
+- Carry an `evidence:` line on every finding at `conf=75` or above.
 - Include the red flag ID (R1–R11) in the description so the symbol is machine-parseable.
 - Include **impact** — what will happen when the codebase grows.
 - Include a **concrete** suggestion, not vague advice.

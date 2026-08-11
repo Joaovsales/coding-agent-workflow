@@ -164,7 +164,7 @@ Invoke `/wrap-up-session` with one override:
 | `/wrap-up-session` step | Yolo override |
 |---|---|
 | Step 6.3 — E2E coverage gate | If a user-facing AC lacks an e2e walkthrough, **do not prompt the user**. Run `/verify --scope e2e` automatically. If verify fails: log gap and continue. |
-| Step 7 — Commit gate (any MUST-FIX skipped → STOP) | If a MUST-FIX cannot be auto-fixed within the wrap-up loop, mark this iteration FAIL and **do not push**. The circuit breaker handles repeated failures. |
+| Step 7 — Commit gate (any MUST-FIX skipped → STOP) | If a MUST-FIX cannot be auto-fixed within the wrap-up loop, mark this iteration FAIL and **do not push**. The circuit breaker handles repeated failures. A `MUST-FIX` at `conf 50` that failed the apply gate is reported, not blocking (per `/wrap-up-session` § 5.1) — log it and continue rather than burning an iteration on a suspicion. |
 | Step 7 — Push | Run normally. Push to the feature branch. |
 | Step 8 — Deployment verification | Run normally if configured. |
 

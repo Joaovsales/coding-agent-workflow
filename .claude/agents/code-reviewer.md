@@ -47,6 +47,34 @@ Every finding MUST be classified with exactly one severity tag:
 - `NITPICK` is ONLY for cosmetic issues with zero logic/behavior impact. If a finding involves logic, architecture, correctness, error handling, or security, it MUST be `SHOULD-FIX` or higher.
 - When in doubt between two levels, choose the higher severity.
 
+**The other three axes:**
+
+Severity alone cannot carry a finding — an urgent finding may be a guess, and a certain
+finding may be cosmetic. Every finding also carries:
+
+| Field | Answers | Values |
+|-------|---------|--------|
+| `confidence` | how sure | `50` / `75` / `100` |
+| `autofix_class` | what shape the fix is | `gated_auto` / `manual` / `advisory` |
+| `owner` | who acts | `agent` / `human` / `release` |
+
+| Anchor | Criterion |
+|--------|-----------|
+| `100` | The failure is reproduced, or the defect is visible in the quoted line without inference. |
+| `75` | A concrete failing input or state is named and the quoted line plainly permits it, but it was not run. |
+| `50` | Pattern-matched, inferred from naming, or dependent on caller behavior you did not read. |
+
+`owner`: `agent` — in this diff's scope. `human` — needs a decision or access you do not
+have. `release` — real but not blocking this branch.
+
+**Evidence gate (hard):** every finding at `conf=75` or `conf=100` MUST carry an
+`evidence:` line quoting the verbatim motivating source line with `file:line`. If you
+cannot quote the line, the finding is `conf=50`. Do not drop it — downgrade it. Never
+invent an evidence line to reach a higher anchor.
+
+Do not promote your own confidence because two of your own lenses agree.
+You are one context, so that is one witness.
+
 **Your Output Format:**
 
 Structure your review as follows:
@@ -60,23 +88,26 @@ Structure your review as follows:
 
 ## Findings
 
-[MUST-FIX] file.py:42 — Description of the issue and its impact
+[MUST-FIX] conf=100 fix=gated_auto owner=agent file.py:42 — Description of the issue and its impact
+  evidence: `except Exception: pass` (file.py:42)
   **Suggestion**: How to fix
 
-[MUST-FIX] file.py:88 — Description of the issue and its impact
+[MUST-FIX] conf=75 fix=manual owner=human file.py:88 — Description of the issue and its impact
+  evidence: `session["role"] = payload["role"]` (file.py:88)
   **Suggestion**: How to fix
 
-[SHOULD-FIX] handler.py:120 — Description of the issue and its impact
+[SHOULD-FIX] conf=75 fix=gated_auto owner=agent handler.py:120 — Description of the issue and its impact
+  evidence: `return cache.get(k) or {}` (handler.py:120)
   **Suggestion**: How to fix
 
-[NITPICK] utils.py:30 — Description of the issue
+[NITPICK] conf=50 fix=advisory owner=release utils.py:30 — Description of the issue
   **Suggestion**: How to fix
 
 ## Recommendations
 1. [Prioritized list of actions to take]
 ```
 
-**Important:** Do NOT use the old section-based format (Critical Issues, Bugs, Performance, etc.). Use the flat `[SEVERITY] file:line — description` format above so findings can be parsed and tracked by the orchestrating agent.
+**Important:** Do NOT use the old section-based format (Critical Issues, Bugs, Performance, etc.). Use the flat `[SEVERITY] conf= fix= owner= file:line — description` format above so findings can be parsed and tracked by the orchestrating agent. Emit all four axes on every finding: the orchestrator's apply gate keys on `autofix_class` and `confidence`, and a finding missing them is degraded to `conf=50` / `fix=manual` and never auto-applied.
 
 **Key Principles:**
 - Be specific - point to exact lines or patterns, not vague concerns

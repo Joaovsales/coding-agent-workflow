@@ -127,7 +127,7 @@ Invoke `/wrap-up-session` with these overrides:
 | `/wrap-up-session` step | Auto-push override |
 |---|---|
 | Step 6.3 — E2E coverage gate | If a user-facing AC lacks an e2e walkthrough, **do not prompt the user**. Run `/verify --scope e2e` automatically. The approval covered "ship it"; e2e verification is part of shipping. |
-| Step 7 — Commit gate (MUST-FIX skipped → STOP) | If a MUST-FIX cannot be auto-fixed, STOP and report. Do NOT push partial work. The approval did not cover skipping safety gates. |
+| Step 7 — Commit gate (MUST-FIX skipped → STOP) | If a MUST-FIX cannot be auto-fixed, STOP and report. Do NOT push partial work. The approval did not cover skipping safety gates. A `MUST-FIX` at `conf 50` that failed the apply gate is reported, not blocking (per `/wrap-up-session` § 5.1). |
 | Step 7 — Push | Run normally. Push to the feature branch. |
 | Step 8 — Deployment verification | Run normally if configured. |
 

@@ -65,6 +65,26 @@ Layer 3 — Pre-push in /wrap-up     codebase consistency, defensive audit,
                                    test coverage, adversarial critic
 ```
 
+Agreement *between* passes counts as corroboration only under the rule below.
+
+### Independence Accounting
+
+Corroboration between review findings counts **only** when the findings came from
+separately dispatched contexts. Two lenses reasoned inside one context are two
+perspectives, not two witnesses — they share the same priors, the same misreading of
+the diff, and the same blind spots, so their agreement is not evidence.
+
+- Independent corroboration promotes a finding's `confidence` by exactly one anchor.
+- Same-context agreement never promotes, however many lenses agree.
+- A run that could not dispatch still reports every finding, but states which
+  corroboration was unavailable instead of promoting on it. Inline is the correct
+  floor, not a failure.
+- Never claim independent corroboration from a model whose identity was only
+  *requested* rather than verified.
+
+`/quality-gate` Phase 3 and `/wrap-up-session` Step 4 each disclose whether their
+passes ran as dispatched agents or inline, and name the lost corroboration when inline.
+
 ---
 
 ## Core Principles

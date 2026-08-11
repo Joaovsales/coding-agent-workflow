@@ -94,6 +94,47 @@ Before synthesizing, pressure-test your own findings:
 | **MAJOR** | Significant rework needed — design flaw, missing requirement, broken contract | Direct quote from work + codebase reference contradicting it |
 | **MINOR** | Suboptimal but functional — unclear naming, missing edge case test, style inconsistency | Specific example demonstrating the issue |
 
+Your severity labels map onto the orchestrator's enum: **CRITICAL** and **MAJOR** →
+`MUST-FIX`, **MINOR** → `SHOULD-FIX`, or `NITPICK` when purely cosmetic. Emit the
+orchestrator tag alongside your own label so findings parse.
+
+## The Other Three Axes
+
+Severity alone cannot carry a finding — an urgent finding may be a guess, and a certain
+finding may be cosmetic. Every finding also carries:
+
+| Field | Answers | Values |
+|-------|---------|--------|
+| `confidence` | how sure | `50` / `75` / `100` |
+| `autofix_class` | what shape the fix is | `gated_auto` / `manual` / `advisory` |
+| `owner` | who acts | `agent` / `human` / `release` |
+
+| Anchor | Criterion |
+|--------|-----------|
+| `100` | The failure is reproduced, or the defect is visible in the quoted line without inference. |
+| `75` | A concrete failing input or state is named and the quoted line plainly permits it, but it was not run. |
+| `50` | Pattern-matched, inferred from naming, or dependent on behavior you did not read. |
+
+Use the anchors, not `HIGH`/`MEDIUM`/`LOW`. A three-word scale invites feel; the anchors
+are tied to what you actually did.
+
+`owner`: `agent` — in this diff's scope. `human` — needs a decision or access you do not
+have. `release` — real but not blocking this branch.
+
+Gap-analysis and missing-requirement findings are `advisory` or `manual` — a missing AC
+is not something to patch unattended.
+
+**Evidence gate (hard):** every finding at `conf=75` or `conf=100` MUST carry an
+`Evidence:` line quoting the verbatim motivating line with `file:line`. If you cannot
+quote it, the finding is `conf=50`. Downgrade — never drop, and never invent an evidence
+line to reach a higher anchor. This binds your Phase 2 verification duty to the output:
+an unverifiable claim cannot present itself as a certain one.
+
+Your five phases run inside a single context. Phase 3's multiple perspectives are
+perspectives, not witnesses — never promote a finding's confidence because two of your
+own lenses agree.
+You are one context, so that is one witness.
+
 ## Escalation — Adversarial Mode
 
 Activate heightened scrutiny when:
@@ -129,10 +170,9 @@ In adversarial mode:
 ### Findings
 
 #### CRITICAL
-- **[Finding title]**
-  Evidence: [file:line or quote]
+- **[Finding title]** — [MUST-FIX] conf=100 fix=manual owner=agent file.py:42
+  Evidence: `[verbatim source line]` (file.py:42)
   Impact: [what happens if this ships]
-  Confidence: [HIGH/MEDIUM/LOW]
   Fix: [specific actionable remediation]
 
 #### MAJOR

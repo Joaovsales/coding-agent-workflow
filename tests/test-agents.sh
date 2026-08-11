@@ -35,4 +35,19 @@ for f in "$CLAUDE"/*.md; do
     "Agents: canonical counterpart exists for .claude/agents/$base"
 done
 
+# 3. Review agents emit all four finding axes with the evidence gate (spec M2).
+# The orchestrator's apply gate keys on autofix_class + confidence, so an agent that
+# stops emitting them silently degrades every one of its findings to conf=50/manual.
+# Pinned per tree: a fix applied to only one copy is the regression this catches.
+for tree in "$CANONICAL" "$CLAUDE"; do
+  for base in code-reviewer critic security-reviewer software-design-expert-review; do
+    f="$tree/$base.md"
+    for token in "conf=" "fix=" "owner=" "Evidence gate" "conf=50"; do
+      assert_file_contains "$f" "$token" "M2: $f emits '$token'"
+    done
+    assert_file_contains "$f" "one witness" \
+      "M1: $f is told its own internal lenses are one witness"
+  done
+done
+
 finish

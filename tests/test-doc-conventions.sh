@@ -86,4 +86,44 @@ done <<INNER_EOF
 $(find .agents/skills .claude/skills -name '*.md' -not -path '*/.claude/worktrees/*' | sort)
 INNER_EOF
 
+
+# --- Review epistemics: independence accounting + four-axis findings ---
+# Pins the smallest falsifiable units of spec M1/M2: the shared rule's location,
+# the four field names, the two numeric gates, and the mode disclosure. Deliberately
+# does NOT pin surrounding prose -- wording is free to change, the mechanism is not.
+assert_file_contains "CLAUDE.md" "Independence Accounting" \
+  "M1: CLAUDE.md carries the Independence Accounting subsection"
+assert_file_contains "CLAUDE.md" "separately dispatched contexts" \
+  "M1: corroboration is defined as requiring separately dispatched contexts"
+
+for f in .agents/skills/quality-gate/SKILL.md .claude/skills/quality-gate/SKILL.md \
+         .agents/skills/wrap-up-session/SKILL.md .claude/skills/wrap-up-session/SKILL.md; do
+  # all four axes named
+  for axis in "severity" "confidence" "autofix_class" "owner"; do
+    assert_file_contains "$f" "$axis" "M2: $f names the '$axis' axis"
+  done
+  # the three confidence anchors exist as an enum, not as prose adjectives
+  assert_file_contains "$f" '`50` / `75` / `100`' "M2: $f defines the 50/75/100 anchors"
+  # evidence gate + its demotion consequence
+  assert_file_contains "$f" "file:line" "M2: $f requires file:line evidence"
+  assert_file_contains "$f" "demoted to 50" "M2: $f demotes an unevidenced 75+ finding"
+  # apply gate -- both halves of the conjunction
+  assert_file_contains "$f" "gated_auto" "M2: $f gates auto-apply on autofix_class"
+  assert_file_contains "$f" 'confidence >= 75' "M2: $f gates auto-apply on the 75 anchor"
+  # old-format backwards compatibility
+  assert_file_contains "$f" "no \`confidence\`" "M2: $f handles a finding with no confidence"
+  # independence disclosure
+  assert_file_contains "$f" "Independence" "M1: $f carries the independence disclosure"
+  assert_file_contains "$f" "same-context agreement" \
+    "M1: $f names same-context agreement as the non-promoting case"
+  assert_file_contains "$f" "DISPATCHED / INLINE" "M1: $f discloses the run mode in its output"
+done
+
+# The dispatched path must not pin a model for ceiling-tier reviewers (M5 regression
+# guard at the call site -- test-model-tiers.sh covers the agent definitions).
+for f in .agents/skills/wrap-up-session/SKILL.md .claude/skills/wrap-up-session/SKILL.md; do
+  hits="$(grep -c 'Each agent uses model: sonnet' "$f" 2>/dev/null || true)"
+  assert_eq "0" "${hits:-0}" "M5: $f does not pin sonnet for the ceiling-tier review passes"
+done
+
 finish

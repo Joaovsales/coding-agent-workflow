@@ -23,6 +23,54 @@ Skip: generated files, lock files, migration files, test fixtures.
 
 ---
 
+## Finding Model (four axes)
+
+Every finding in every phase carries four orthogonal fields. One axis cannot answer
+another's question: an urgent finding may be a guess, and a certain finding may be
+cosmetic. Collapsing them hides which is which.
+
+| Field | Answers | Values |
+|-------|---------|--------|
+| `severity` | how urgent | `MUST-FIX` / `SHOULD-FIX` / `NITPICK` |
+| `confidence` | how sure | `50` / `75` / `100` |
+| `autofix_class` | what shape the fix is | `gated_auto` / `manual` / `advisory` |
+| `owner` | who acts | `agent` / `human` / `release` |
+
+**Confidence anchors** — pick by the behavioral criterion, never by feel:
+
+| Anchor | Criterion |
+|--------|-----------|
+| `100` | The failure is reproduced, or the defect is visible in the quoted line without inference. |
+| `75` | A concrete failing input or state is named and the quoted line plainly permits it, but it was not run. |
+| `50` | Pattern-matched, inferred from naming, or dependent on caller behavior that was not read. |
+
+**`owner` values**: `agent` — in this diff's scope, an agent applies it. `human` —
+needs a decision or an access an agent does not have. `release` — real but not
+blocking this branch.
+
+**Evidence gate**: anchors `75` and `100` require `evidence` — the verbatim motivating
+line with `file:line`. A finding at 75+ with no evidence is **demoted to 50**, never
+discarded.
+
+**Apply gate**: auto-apply a finding only when `autofix_class: gated_auto` **and**
+`confidence >= 75`. Everything else is reported, not applied.
+
+**On disagreement** between reviewers, synthesis takes the **more conservative**
+`autofix_class` — `advisory` is more conservative than `manual`, which is more
+conservative than `gated_auto`. Synthesis never widens.
+
+**Old-format degrade**: a finding arriving with no `confidence` is handled as anchor
+`50` / `autofix_class: manual` — reported, never auto-applied and never discarded.
+
+Per-finding output format:
+
+```
+[MUST-FIX] conf=100 fix=gated_auto owner=agent handler.py:120 — Description and impact
+  evidence: `except Exception: pass` (handler.py:120)
+```
+
+---
+
 ## Phase 1 — Structural Quality (simplify)
 
 **Mandate**: "Is this code structurally sound?" — function size, naming, reuse, SOLID.
@@ -105,7 +153,7 @@ try { doThing(); } catch (e) { throw e; }  // passthrough
 ```
 → Remove entirely.
 
-**Process**: Scan → list findings → apply deletions → run tests per file. Revert if tests fail.
+**Process**: Scan → list findings → apply deletions that clear the apply gate → run tests per file. Revert if tests fail.
 
 ---
 
@@ -125,11 +173,30 @@ Read all changed files together. For each module, check:
 6. **Vague names**: Any public name that requires reading the body to understand? → flag
 7. **Conjoined methods**: Methods so coupled you can't use one without the other? → flag
 
-Report findings as `file:line [MUST-FIX/SHOULD-FIX/NITPICK] — description`. Apply MUST-FIX and SHOULD-FIX fixes inline. Run tests after fixes.
+Report every finding in the four-axis format above. Apply only findings that clear the
+apply gate; report the rest. Run tests after fixes.
+
+### Independence disclosure (required)
+
+Phase 3 must state in its output which mode it ran in, because the two are otherwise
+indistinguishable downstream:
+
+- **Dispatched** — the design review ran as a separately dispatched agent. Its
+  agreement with a Phase 1 or Phase 2 finding is independent corroboration and
+  promotes `confidence` by exactly one anchor.
+- **Inline** — the checks above ran in this context. Agreement with Phase 1 or Phase 2
+  is same-context agreement and **never** promotes. Name the corroboration that was
+  unavailable.
+
+Per `CLAUDE.md` § *Independence Accounting*. Inline is the correct floor, not a failure.
 
 ## Claude Code Enhancements
 
-Dispatch the `software-design-expert-review` skill (invokes `software-design-expert-review` agent, model: sonnet) instead of running inline Phase 3. The agent is read-only — it reports findings only. Apply MUST-FIX and SHOULD-FIX findings in the main context after the agent returns. Run tests after applying fixes.
+Dispatch the `software-design-expert-review` skill (invokes the
+`software-design-expert-review` agent, model: sonnet) instead of running inline Phase 3.
+The agent is read-only — it reports findings only. In the main context, apply the
+returned findings that clear the apply gate and report the rest. Run tests after
+applying fixes. This is the **dispatched** mode for the disclosure above.
 
 ---
 
@@ -141,16 +208,22 @@ Dispatch the `software-design-expert-review` skill (invokes `software-design-exp
 ══════════════════════════════════════════
 
 Phase 1 — Structural Quality
-  Applied: [N changes — list with file:line]
+  Applied: [N changes — list with file:line, conf, fix, owner]
+  Reported only: [N findings below the apply gate — list with the axis that held them]
   Tests: [PASS / FAIL — N reverted]
 
 Phase 2 — AI Anti-Patterns
   Removed: [N lines — list with file:line and category]
+  Reported only: [N findings below the apply gate]
   Tests: [PASS / FAIL — N reverted]
 
 Phase 3 — APOSD Design (/software-design-expert-review)
+  Mode: DISPATCHED / INLINE — [when inline: corroboration unavailable, no promotion]
   Verdict: 🟢 GO / 🟡 HOLD (N refactors applied) / 🔴 STOP
+  Reported only: [N findings below the apply gate]
   Tests: [PASS / FAIL]
+
+Demoted: [N findings at 75+ with no file:line evidence → anchor 50]
 
 ══════════════════════════════════════════
 ```

@@ -333,21 +333,21 @@ Run `tests/run.sh` after every task.
 
 ### Tier 2 — Review epistemics (M1, M2)
 
-[ ] TDD: `CLAUDE.md` has an Independence Accounting subsection stating corroboration requires separately dispatched contexts, and the Review Gate Taxonomy block cross-references it — verify by reading both -> Add the subsection and the taxonomy note
+[x] TDD: `CLAUDE.md` has an Independence Accounting subsection stating corroboration requires separately dispatched contexts, and the Review Gate Taxonomy block cross-references it — verify by reading both -> Add the subsection and the taxonomy note
 
-[ ] TDD: `/wrap-up-session` Step 4 emits whether the four passes ran dispatched or inline, and names the lost corroboration when inline; no promotion occurs on same-context agreement — verify by reading Step 4 and the output block -> Add the disclosure requirement and the no-promotion rule; add the disclosure line to the output template
+[x] TDD: `/wrap-up-session` Step 4 emits whether the four passes ran dispatched or inline, and names the lost corroboration when inline; no promotion occurs on same-context agreement — verify by reading Step 4 and the output block -> Add the disclosure requirement and the no-promotion rule; add the disclosure line to the output template
 
-[ ] TDD: `/quality-gate` emits the same disclosure for Phase 3 and never promotes on inline agreement — verify by reading Phase 3 and the output block -> Add the disclosure and no-promotion rule
+[x] TDD: `/quality-gate` emits the same disclosure for Phase 3 and never promotes on inline agreement — verify by reading Phase 3 and the output block -> Add the disclosure and no-promotion rule
 
-[ ] TDD: `/quality-gate` defines `severity`, `confidence`, `autofix_class`, and `owner` with a behavioral criterion for each of anchors 50/75/100, requires `file:line` evidence at 75+, demotes on absence, and auto-applies only `gated_auto` at 75+ — verify by reading against spec § M2 -> Rewrite the quality-gate finding model and apply gate
+[x] TDD: `/quality-gate` defines `severity`, `confidence`, `autofix_class`, and `owner` with a behavioral criterion for each of anchors 50/75/100, requires `file:line` evidence at 75+, demotes on absence, and auto-applies only `gated_auto` at 75+ — verify by reading against spec § M2 -> Rewrite the quality-gate finding model and apply gate
 
-[ ] TDD: `/wrap-up-session`'s severity table carries all four axes and Step 5.1 enforcement is keyed on the combination, taking the more conservative `autofix_class` on disagreement and never widening — verify by reading the table and 5.1 -> Rewrite the severity classification and enforcement sections
+[x] TDD: `/wrap-up-session`'s severity table carries all four axes and Step 5.1 enforcement is keyed on the combination, taking the more conservative `autofix_class` on disagreement and never widening — verify by reading the table and 5.1 -> Rewrite the severity classification and enforcement sections
 
-[ ] TDD: A finding arriving with no `confidence` is handled as anchor 50 / `manual` and is reported rather than applied or discarded — verify by reading the degrade rule in both skills -> Add the backwards-compatibility rule to both
+[x] TDD: A finding arriving with no `confidence` is handled as anchor 50 / `manual` and is reported rather than applied or discarded — verify by reading the degrade rule in both skills -> Add the backwards-compatibility rule to both
 
-[ ] TDD: `code-reviewer`, `critic`, `security-reviewer`, and `software-design-expert-review` each emit all four fields with the evidence gate, in both trees — verify by reading all eight files -> Update the four agent definitions and copy
+[x] TDD: `code-reviewer`, `critic`, `security-reviewer`, and `software-design-expert-review` each emit all four fields with the evidence gate, in both trees — verify by reading all eight files -> Update the four agent definitions and copy
 
-[ ] TDD: `/yolo`, `/auto-push`, and `/auto-improve` reach commit with no new user prompt introduced by the apply gate — verify by reading each skill's flow against the new gate -> Adjust the three loop skills only where the gate would otherwise block them
+[x] TDD: `/yolo`, `/auto-push`, and `/auto-improve` reach commit with no new user prompt introduced by the apply gate — verify by reading each skill's flow against the new gate -> Adjust the three loop skills only where the gate would otherwise block them
 
 ### Tier 3.1 — Store schema and migration script (M3)
 

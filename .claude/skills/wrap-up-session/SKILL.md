@@ -121,9 +121,19 @@ blocks the commit, and shortcuts are not bugs, so they do not go in
 Run 4 sequential self-review passes in the main context. For each pass:
 - Use `git diff --name-only <base-branch>...HEAD` to scope to changed files
 - Focus on issues **introduced** by this session, not pre-existing patterns
-- Classify every finding with exactly one severity tag: `MUST-FIX`, `SHOULD-FIX`, or `NITPICK`
+- Classify every finding on all four axes below
 
-### Severity Classification
+### Finding Model (four axes)
+
+Every finding carries four orthogonal fields. One axis cannot answer another's
+question: an urgent finding may be a guess, and a certain finding may be cosmetic.
+
+| Field | Answers | Values |
+|-------|---------|--------|
+| `severity` | how urgent | `MUST-FIX` / `SHOULD-FIX` / `NITPICK` |
+| `confidence` | how sure | `50` / `75` / `100` |
+| `autofix_class` | what shape the fix is | `gated_auto` / `manual` / `advisory` |
+| `owner` | who acts | `agent` / `human` / `release` |
 
 | Severity | Definition |
 |----------|-----------|
@@ -133,12 +143,47 @@ Run 4 sequential self-review passes in the main context. For each pass:
 
 `NITPICK` is ONLY for cosmetic issues. Any logic, architecture, or security finding is `SHOULD-FIX` or higher.
 
+**Confidence anchors** — pick by the behavioral criterion, never by feel:
+
+| Anchor | Criterion |
+|--------|-----------|
+| `100` | The failure is reproduced, or the defect is visible in the quoted line without inference. |
+| `75` | A concrete failing input or state is named and the quoted line plainly permits it, but it was not run. |
+| `50` | Pattern-matched, inferred from naming, or dependent on caller behavior that was not read. |
+
+**`owner` values**: `agent` — in this diff's scope, an agent applies it. `human` —
+needs a decision or an access an agent does not have. `release` — real but not
+blocking this branch.
+
+**Evidence gate**: anchors `75` and `100` require `evidence` — the verbatim motivating
+line with `file:line`. A finding at 75+ with no evidence is **demoted to 50**, never
+discarded.
+
+**Old-format degrade**: a finding arriving with no `confidence` is handled as anchor
+`50` / `autofix_class: manual` — reported, never auto-applied and never discarded.
+
 **Output format for each finding**:
 ```
-[MUST-FIX] file.py:42 — Description and impact
-[SHOULD-FIX] handler.py:120 — Description and impact
-[NITPICK] utils.py:30 — Description
+[MUST-FIX] conf=100 fix=gated_auto owner=agent file.py:42 — Description and impact
+  evidence: `except Exception: pass` (file.py:42)
+[SHOULD-FIX] conf=75 fix=manual owner=agent handler.py:120 — Description and impact
+  evidence: `return cache.get(k) or {}` (handler.py:120)
+[NITPICK] conf=50 fix=advisory owner=release utils.py:30 — Description
 ```
+
+### Independence disclosure (required)
+
+State in the Step 4 output which mode the four passes ran in — inline and dispatched
+runs are otherwise indistinguishable downstream:
+
+- **Dispatched** — each pass ran as a separately dispatched agent (see § *Claude Code
+  Enhancements*). Two passes agreeing is independent corroboration and promotes
+  `confidence` by exactly one anchor.
+- **Inline** — the four passes ran sequentially in this context. Two passes agreeing is
+  same-context agreement and **never** promotes, however many passes agree. Name the
+  corroboration that was unavailable.
+
+Per `CLAUDE.md` § *Independence Accounting*. Inline is the correct floor, not a failure.
 
 ### Pass 1: Codebase Consistency
 - Duplicated logic that already exists elsewhere in the codebase
@@ -166,13 +211,29 @@ Run 4 sequential self-review passes in the main context. For each pass:
 
 ## Step 5 — Reconcile & Apply Fixes
 
-### 5.1 — Severity-Based Enforcement
+### 5.1 — Enforcement (keyed on severity × apply gate)
 
-| Severity | Action |
-|----------|--------|
-| `MUST-FIX` | Apply immediately. Cannot be skipped. |
-| `SHOULD-FIX` | Apply by default. May skip ≤3 total with code-specific justification. |
-| `NITPICK` | Auto-skip. |
+**Apply gate**: auto-apply a finding only when `autofix_class: gated_auto` **and**
+`confidence >= 75`. A finding that fails the gate is reported, not applied — including
+a `MUST-FIX`. Severity says how much it matters; the gate says whether an agent is
+entitled to change code unattended. They are different questions.
+
+| Severity | Clears the apply gate | Fails the apply gate |
+|----------|----------------------|----------------------|
+| `MUST-FIX` | Apply immediately. Cannot be skipped. | At `conf >= 75`: **blocking** — do not push, escalate to `owner`. At `conf 50`: report only, does not block. |
+| `SHOULD-FIX` | Apply by default. May skip ≤3 total with code-specific justification. | Report. Does not block the push. |
+| `NITPICK` | Auto-skip. | Auto-skip. |
+
+A `MUST-FIX` at `conf 50` is a suspicion, not a defect — blocking a push on it would
+stall an unattended loop on noise. A `MUST-FIX` at `conf >= 75` that an agent is not
+entitled to auto-fix is exactly the case a human must see, so it blocks.
+
+**On disagreement** between passes, synthesis takes the **more conservative**
+`autofix_class` — `advisory` is more conservative than `manual`, which is more
+conservative than `gated_auto`. Synthesis never widens.
+
+Same-context agreement between passes never promotes `confidence` (§ *Independence
+disclosure* in Step 4).
 
 ### 5.2 — Review Reconciliation Table
 
@@ -181,8 +242,10 @@ After processing all findings (skip if total findings ≤ 3):
 ```markdown
 ### Review Reconciliation
 
-| # | Pass | Severity | Finding | Action | Justification |
-|---|------|----------|---------|--------|---------------|
+Review mode: DISPATCHED / INLINE — [when inline: corroboration unavailable, no promotion]
+
+| # | Pass | Severity | Conf | Fix | Owner | Finding | Action | Justification |
+|---|------|----------|------|-----|-------|---------|--------|---------------|
 ```
 
 ### 5.3 — Review-Fix-Recheck Loop (max 2 iterations)
@@ -312,10 +375,12 @@ Session wrapped up.
 - Learnings: [N patterns / none]
 - Tasks: [X completed, Y pending]
 - Bugs: [N opened, N closed / no changes]
-- Code Review: [PASS / INCOMPLETE — N unresolved issues]
-  - MUST-FIX: [N found, N fixed]
+- Code Review: [PASS / INCOMPLETE — N unresolved issues] — mode: [DISPATCHED / INLINE]
+  - MUST-FIX: [N found, N fixed, N reported below the apply gate]
   - SHOULD-FIX: [N found, N fixed, N skipped]
   - NITPICK: [N found, skipped]
+  - Demoted: [N at 75+ with no file:line evidence → anchor 50]
+  - Promotions: [N on independent corroboration / none — inline run]
 - Security Scan: [PASS / N issues addressed]
 - Tests: [PASS — suite name] or [FAIL] or [SKIPPED — no suite]
 - E2E coverage: [N user-facing ACs verified / NONE / GAP — N acknowledged]
@@ -327,7 +392,11 @@ Session wrapped up.
 
 ### Step 4 — Parallel Code Review
 Launch all 4 review passes as parallel agents in a SINGLE message with multiple Agent tool calls.
-Each agent uses model: sonnet.
+`code-reviewer` and `critic` are **ceiling**-tier: pass no `model` override, so they
+inherit the session model (`CLAUDE.md` § *Model Routing*).
+
+This is the **dispatched** mode for the Step 4 independence disclosure: four separately
+dispatched contexts, so agreement between them is independent corroboration.
 
 Agent assignments:
 - Agent 1: `code-reviewer` — Codebase Consistency (Pass 1)

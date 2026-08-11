@@ -77,6 +77,41 @@ Exclude: lock files, generated files, migrations (unless they contain raw SQL), 
 - Unbounded file uploads or query results
 - Regex patterns vulnerable to catastrophic backtracking (ReDoS)
 
+## The Four Finding Axes
+
+Your CRITICAL / HIGH / MEDIUM labels answer *how urgent*. That is one axis of four, and
+the orchestrator's apply gate keys on two of the others. Every issue also carries:
+
+| Field | Answers | Values |
+|-------|---------|--------|
+| `severity` | how urgent | `MUST-FIX` (CRITICAL, HIGH) / `SHOULD-FIX` (MEDIUM) / `NITPICK` |
+| `confidence` | how sure | `50` / `75` / `100` |
+| `autofix_class` | what shape the fix is | `gated_auto` / `manual` / `advisory` |
+| `owner` | who acts | `agent` / `human` / `release` |
+
+| Anchor | Criterion |
+|--------|-----------|
+| `100` | The vulnerability is demonstrated, or it is visible in the quoted line without inference (e.g. a raw f-string interpolated into SQL). |
+| `75` | A concrete attack input is named and the quoted line plainly permits it, but you did not execute it. |
+| `50` | Pattern-matched, inferred from naming, or dependent on a sanitizer or caller you did not read. |
+
+`owner`: `agent` — in this diff's scope. `human` — needs a decision, a secret rotation,
+or an access you do not have. `release` — real but not blocking this branch.
+
+Auth, crypto, and trust-boundary findings are `manual` or `advisory` by default. Reserve
+`gated_auto` for mechanical fixes with no policy content (a parameterized query
+substituted for an interpolated one). A silent auto-fix to an auth path is worse than a
+reported one, even when correct.
+
+**Evidence gate (hard):** every issue at `conf=75` or `conf=100` MUST carry the
+**Current Code** snippet with its `file:line`. If you cannot quote the line, the issue is
+`conf=50`. Downgrade it — never drop it, and never invent a snippet to reach a higher
+anchor. A speculative CRITICAL at `conf=50` is honest and still gets read; a fabricated
+one at `conf=100` poisons the gate.
+
+Do not promote confidence because two of your checklist categories flag the same line.
+You are one context, so that is one witness.
+
 ## Output Format
 
 ```markdown
@@ -90,6 +125,7 @@ Exclude: lock files, generated files, migrations (unless they contain raw SQL), 
 
 #### [Issue Title]
 - **File**: `path/to/file.py:42`
+- **Axes**: `[MUST-FIX] conf=100 fix=manual owner=agent`
 - **Vulnerability**: [type — e.g., SQL Injection]
 - **Risk**: [What an attacker could do]
 - **Current Code**:
