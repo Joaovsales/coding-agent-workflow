@@ -14,7 +14,7 @@
 
 ## Session Start Checklist
 
-1. Note the learning-store counts from the session-start banner; grep `tasks/solutions/` frontmatter (`problem_type`, `module`, `tags`) when a task touches a known area — never bulk-load the store. An unmigrated project (old monolithic store) is converted with `scripts/migrate-learning-store.py` (dry-run by default)
+1. Note the learning-store counts from the session-start banner; grep `tasks/solutions/` frontmatter (`problem_type`, `module`, `tags`) when a task touches a known area — never bulk-load the store. An unmigrated project (old monolithic store) is converted with the template repo's `scripts/migrate-learning-store.py` (dry-run by default; `/sync` Step 6.5 has the invocation)
 2. Check `tasks/todo.md` for in-progress work
 3. Run `/memory-maintain` (self-gates — only does work every 5 sessions or when overdue)
 
@@ -282,7 +282,7 @@ Rules:
 | `/auto-push` | One approval gate at `/plan`, then `/build` + `/wrap-up-session` run autonomously through commit and push |
 | `/yolo` | Ralph-style full-auto loop: `/plan` (auto-confirmed) → `/build` → `/wrap-up-session`, iterating until backlog empty or circuit breaker |
 | `/auto-improve` | Unattended discover→fix loop: survey backlog/tech-debt/tests/perf/design, ship one high-value improvement as a PR. Built for daily cloud runs |
-| `/debug` | Root cause analysis, bug register, loop verification |
+| `/debug` | Root cause analysis, bug-track store documents, loop verification |
 | `/tdd` | Manual TDD loop with user checkpoints |
 | `/verify` | Evidence-based verification gate (`--scope deployment|e2e`) |
 | `/quality-gate` | 3-phase post-build review: structural quality, AI anti-patterns, APOSD design |
@@ -290,7 +290,7 @@ Rules:
 | `/software-design-expert-learn` | APOSD design tutorial — end-of-session learning review based on Ousterhout |
 | `/receive-review` | Process code review feedback with pushback protocol |
 | `/learn` | Extract session learnings → typed documents in `tasks/solutions/` |
-| `/memory-maintain` | Consolidate, prune, and organize project memory every 5 sessions |
+| `/memory-maintain` | Sweep the typed learning store — resolve, merge, prune — every 5 sessions |
 | `/checkpoint` | Snapshot progress to `tasks/checkpoint.md` |
 | `/refresh` | Context reset — snapshot state to disk, then rebuild from a clean context (backstop for long tasks) |
 | `/security-scan` | OWASP-focused audit on recently changed files |

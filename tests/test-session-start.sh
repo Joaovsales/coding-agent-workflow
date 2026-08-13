@@ -84,7 +84,61 @@ assert_eq "0" "$ec_zero" "M3: zero-flag store does not abort the hook"
 assert_contains "$out_zero" "SKILLS AVAILABLE" "M3: zero-flag store still prints the full banner"
 assert_contains "$out_zero" "1 documents, 0 needs_review" \
   "M3: zero-flag store counts 0 needs_review (README mention not counted)"
+assert_not_contains "$out_zero" "Partially migrated" \
+  "M3: fully-migrated store gets no partial-migration warning"
 cd "$REPO"
 rm -rf "$tmpZ"
+
+# --- M3: unmigrated-store branch — old files present, no tasks/solutions/ ---
+tmpU=$(mktemp -d)
+cd "$tmpU"
+mkdir -p tasks
+printf '# Memory\n' > tasks/memory.md
+out_unmig=$(printf '{"source":"startup"}' | CCW_SESSION_GUARD=0 bash "$HOOK" 2>/dev/null)
+assert_contains "$out_unmig" "Unmigrated learning store" \
+  "M3: old-store repo gets the migration pointer"
+assert_contains "$out_unmig" "migrate-learning-store.py" \
+  "M3: migration pointer names the script"
+cd "$REPO"
+rm -rf "$tmpU"
+
+# --- M3: half-migrated repo — store AND old files both present --------------
+tmpP=$(mktemp -d)
+cd "$tmpP"
+mkdir -p tasks/solutions/patterns
+printf '# Memory\n' > tasks/memory.md
+out_partial=$(printf '{"source":"startup"}' | CCW_SESSION_GUARD=0 bash "$HOOK" 2>/dev/null)
+assert_contains "$out_partial" "LEARNING STORE" \
+  "M3: half-migrated repo still prints store counts"
+assert_contains "$out_partial" "Partially migrated" \
+  "M3: half-migrated repo warns about orphaned old-store files"
+cd "$REPO"
+rm -rf "$tmpP"
+
+# --- M3: no-store branch — neither old files nor tasks/solutions/ -----------
+tmpN=$(mktemp -d)
+cd "$tmpN"
+out_none=$(printf '{"source":"startup"}' | CCW_SESSION_GUARD=0 bash "$HOOK" 2>/dev/null)
+assert_contains "$out_none" "No learning store yet" \
+  "M3: storeless repo gets the bootstrap line"
+cd "$REPO"
+rm -rf "$tmpN"
+
+# --- M3: maintenance nudge fires on a multiple of 5 history entries ---------
+tmpM=$(mktemp -d)
+cd "$tmpM"
+mkdir -p tasks/solutions/patterns
+for d in 01 02 03 04 05; do
+  printf '### [2026-08-%s] — session %s\n- Key changes: x\n\n' "$d" "$d" >> tasks/history.md
+done
+out_five=$(printf '{"source":"startup"}' | CCW_SESSION_GUARD=0 bash "$HOOK" 2>/dev/null)
+assert_contains "$out_five" "MEMORY MAINTENANCE DUE (5 sessions)" \
+  "M3: nudge fires at 5 bracketed-date history entries"
+printf '### [2026-08-06] — session 06\n- Key changes: x\n\n' >> tasks/history.md
+out_six=$(printf '{"source":"startup"}' | CCW_SESSION_GUARD=0 bash "$HOOK" 2>/dev/null)
+assert_not_contains "$out_six" "MEMORY MAINTENANCE DUE" \
+  "M3: nudge stays silent off the multiple of 5"
+cd "$REPO"
+rm -rf "$tmpM"
 
 finish

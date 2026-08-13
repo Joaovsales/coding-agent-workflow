@@ -122,7 +122,7 @@ No green suite → no PR. This is non-negotiable.
 3. PR body: what was changed, why it was the highest-value pick, the ranked runner-ups deferred to backlog, and the test/coverage evidence.
 
 **Findings-only mode (nothing safe to change):**
-1. Commit the enriched `backlog.md` / `bugs.md` with newly discovered issues (each with enough context to be fixed cold in a later run).
+1. Commit the enriched `backlog.md` / new bug-track documents in `tasks/solutions/` with newly discovered issues (each with enough context to be fixed cold in a later run).
 2. Open a docs-only PR titled `chore(backlog): triage from auto-improve <date>`.
 3. Never leave the run with zero output — a triaged backlog is a valid, honest result.
 

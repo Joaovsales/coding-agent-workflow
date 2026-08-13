@@ -315,7 +315,8 @@ If any hit **and** `tasks/solutions/` does not exist:
 > coding-agent-workflow clone —
 > `python3 <template-clone>/scripts/migrate-learning-store.py --repo .`
 > (dry-run by default; `--apply` to convert; originals are archived, never
-> deleted).
+> deleted). Where `python3` is not on PATH (Windows, notably), substitute
+> `python` or `py` — the script is plain stdlib and runs on any of the three.
 
 If `tasks/solutions/` exists alongside old files, name the leftover files and
 suggest re-running the migration or archiving them manually. Silent when there

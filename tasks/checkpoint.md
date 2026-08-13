@@ -1,4 +1,4 @@
-# Checkpoint — 2026-08-11T18:58:25Z
+# Checkpoint — 2026-08-13T13:18:59Z
 
 > Auto-written by PreCompact hook (trigger: unknown). Re-read on resume.
 
@@ -6,7 +6,7 @@
 - Branch: worktree-m3-typed-learning-store
 
 ```
- M tasks/todo.md
+(working tree clean)
 ```
 
 ## In-Progress & Pending Tasks (tasks/todo.md)

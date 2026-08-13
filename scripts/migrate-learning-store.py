@@ -70,11 +70,18 @@ BULLET_PATTERN_RE = re.compile(r"^\s*-\s*Pattern:\s*(.*)$")
 # --------------------------------------------------------------------------
 
 def read_text(path: Path) -> str:
+    if path.is_symlink():
+        raise MigrationError(
+            f"{path} is a symlink; refusing to migrate content from outside the repo"
+        )
     return path.read_text(encoding="utf-8")
 
 
-def write_text_file(path: Path, content: str) -> None:
-    with open(path, "w", encoding="utf-8", newline="\n") as handle:
+def write_text_file(path: Path, content: str, overwrite: bool = False) -> None:
+    # Migration outputs must never clobber an existing file — mode "x" turns a
+    # collision into FileExistsError (an OSError apply_plan converts to a loud
+    # MigrationError). Only report files, which the user names, may overwrite.
+    with open(path, "w" if overwrite else "x", encoding="utf-8", newline="\n") as handle:
         handle.write(content)
 
 
@@ -157,7 +164,11 @@ def git_log_date(source_path: Path, repo_root: Path) -> str | None:
 
 
 def resolve_date(explicit: str | None, source_path: Path, repo_root: Path) -> tuple[str, str | None]:
-    if explicit:
+    # An explicit date is trusted only in the schema's YYYY-MM-DD shape; any
+    # other format ("Jan 5", "2026/01/05", "N/A") would produce a document the
+    # store validator rejects, so it falls through to the inferred-date path
+    # (which date_source records).
+    if explicit and re.fullmatch(r"\d{4}-\d{2}-\d{2}", explicit):
         return explicit, None
     git_date = git_log_date(source_path, repo_root)
     if git_date:
@@ -185,7 +196,10 @@ def parse_markdown_tables(content: str) -> list[list[list[str]]]:
         if len(block) < 2:
             continue
         rows = [[c.strip() for c in line.strip("|").split("|")] for line in block]
-        tables.append([rows[0]] + rows[2:])  # rows[1] is the '---' separator row
+        # Only drop the second line when it really is the '---' separator row;
+        # a malformed table without one must not lose its first data row.
+        data_start = 2 if re.fullmatch(r"[\s|:\-]+", block[1]) else 1
+        tables.append([rows[0]] + rows[data_start:])
     return tables
 
 
@@ -317,6 +331,11 @@ def handle_project_context(content: str, repo_root: Path, plan: Plan) -> None:
     target = repo_root / "tasks" / "project-context.md"
     if target.exists():
         conflict_path = repo_root / "tasks" / "project-context.migrated.md"
+        if conflict_path.exists():
+            raise MigrationError(
+                "tasks/project-context.migrated.md already exists (a previous run's "
+                "diversion, possibly mid-merge); merge or remove it before re-running"
+            )
         plan.project_context = ProjectContextWrite(path=conflict_path, body=body, conflict=True)
         plan.conflicts.append(
             "tasks/project-context.md already exists; writing "
@@ -329,11 +348,18 @@ def handle_project_context(content: str, repo_root: Path, plan: Plan) -> None:
 def handle_architecture(content: str, source_path: Path, repo_root: Path, plan: Plan) -> None:
     rows = parse_markdown_table(content)
     if not rows:
+        if content.strip():
+            plan.unmigrated_sections.append(
+                (rel(source_path, repo_root), "Architecture Decisions (no table found)")
+            )
         return
     header = [normalize_ws(h).lower() for h in rows[0]]
     decision_idx = header.index("decision") if "decision" in header else None
     rationale_idx = header.index("rationale") if "rationale" in header else None
     if decision_idx is None:
+        plan.unmigrated_sections.append(
+            (rel(source_path, repo_root), "Architecture Decisions (table has no Decision column)")
+        )
         return
 
     for row in rows[1:]:
@@ -484,9 +510,13 @@ def handle_session_history(content: str, source_path: Path, repo_root: Path, pla
 # tasks/lessons.md
 # --------------------------------------------------------------------------
 
-def is_blockquote_only(text: str) -> bool:
-    lines = [l for l in text.splitlines() if l.strip() != ""]
-    return bool(lines) and all(l.strip().startswith(">") for l in lines)
+def is_boilerplate_block(text: str) -> bool:
+    """A block of only blockquote lines and/or single-line HTML comments is
+    file preamble (the shipped lessons.md template), not a learning."""
+    lines = [l.strip() for l in text.splitlines() if l.strip() != ""]
+    return bool(lines) and all(
+        l.startswith(">") or (l.startswith("<!--") and l.endswith("-->")) for l in lines
+    )
 
 
 def split_lessons_blocks(text: str) -> list[tuple[str, str]]:
@@ -510,7 +540,7 @@ def split_lessons_blocks(text: str) -> list[tuple[str, str]]:
 def process_lessons(path: Path, repo_root: Path, plan: Plan) -> None:
     text = read_text(path)
     for title, body in split_lessons_blocks(text):
-        if is_blockquote_only(body):
+        if is_boilerplate_block(body):
             continue
         date, date_source = resolve_date(None, path, repo_root)
         doc = Document(
@@ -547,6 +577,11 @@ def process_bug_table(rows: list[list[str]], path: Path, repo_root: Path, plan: 
     idx_fix = header_index(header, "fix")
     idx_files = header_index(header, "files")
     idx_date = header_index(header, "date")
+    if idx_desc is None:
+        plan.unmigrated_sections.append(
+            (rel(path, repo_root), "bug table without a Description column")
+        )
+        return
     mapped = {i for i in (idx_desc, idx_root, idx_fix, idx_files, idx_date) if i is not None}
 
     for row in rows[1:]:
@@ -619,7 +654,13 @@ def finalize_history(plan: Plan) -> None:
         return
     target = plan.repo_root / "tasks" / "history.md"
     if target.exists():
-        plan.history_path = plan.repo_root / "tasks" / "history.migrated.md"
+        diverted = plan.repo_root / "tasks" / "history.migrated.md"
+        if diverted.exists():
+            raise MigrationError(
+                "tasks/history.migrated.md already exists (a previous run's "
+                "diversion, possibly mid-merge); merge or remove it before re-running"
+            )
+        plan.history_path = diverted
         plan.conflicts.append(
             "tasks/history.md already exists; writing tasks/history.migrated.md "
             "instead — merge manually"
@@ -799,7 +840,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             print(message)
             if args.report:
-                write_text_file(Path(args.report), message + "\n")
+                write_text_file(Path(args.report), message + "\n", overwrite=True)
             return 0
 
         if args.apply:
@@ -822,7 +863,7 @@ def main(argv: list[str] | None = None) -> int:
         report_text = render_report(plan, args.apply)
         print(report_text, end="")
         if args.report:
-            write_text_file(Path(args.report), report_text)
+            write_text_file(Path(args.report), report_text, overwrite=True)
 
         return 0
     except MigrationError as exc:

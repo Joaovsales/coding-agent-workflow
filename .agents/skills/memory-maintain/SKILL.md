@@ -23,7 +23,7 @@ cheap light pass every session, and the heavy consolidation only every 5.
 ### Light pass — every session (cheap, continuous decay)
 
 Runs on **every** invocation (session start + wrap-up). Bounded work only:
-- Count documents and `needs_review` flags (`grep -rl 'needs_review: true' tasks/solutions`).
+- Count documents and `needs_review` flags (`grep -rl 'needs_review: true' tasks/solutions/*/` — category dirs only, so the README's literal mention of the flag is not counted).
 - If any document written **this session** duplicates an existing one
   (same `module` + overlapping `tags` **and** >70% semantic overlap — the
   migration's generic `module: general` + `migrated` tag alone never qualify),
@@ -45,6 +45,11 @@ For every document carrying `needs_review: true` (migration output and flagged
 - Fill the missing track-required fields from evidence: read the files named in
   `module`, the PRs cited in the body, and git history. Bug track needs
   `symptoms` / `root_cause` / `resolution`; knowledge track needs `applies_when`.
+- Repair migration placeholders the same way: replace `module: general` with the
+  real module when evidence names one, replace generic `[migrated, ...]` tags
+  with retrieval-worthy ones, and complete a `derive_title`-truncated title
+  (fix the `title:` field only — the filename slug stays stable so inbound
+  cross-links survive).
 - A claim you can verify against the tree gets cited as `file:line`; one you
   cannot is softened and attributed (grounding rule, see /learn).
 - When the fields are complete, remove the `needs_review: true` line.
@@ -76,6 +81,9 @@ For each document:
 - Every document validates against the schema (`tasks/solutions/README.md`):
   required frontmatter, known `problem_type`, category directory matching the
   map, no dates in filenames. Fix violations in place.
+- Documents still carrying the migration's `module: general` placeholder — even
+  ones no longer (or never) flagged `needs_review` — get the Phase 1 placeholder
+  repair when evidence names a real module; otherwise leave them and move on.
 - `tasks/history.md` stays a narrative log: any learning prose that leaked into
   it is extracted to a typed document and cross-linked, matching how the
   migration handled `- Pattern:` bullets.

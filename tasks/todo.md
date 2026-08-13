@@ -42,3 +42,8 @@
 ## Task 9 — Full validation + reference sweep proof
 
 [x] TDD: `bash tests/run.sh` fully green; `grep -rn "tasks/(memory|lessons|bugs)\.md"` across both trees, hooks, CLAUDE.md, README.md, install.sh returns hits only under `tasks/archive/` and `specs/` -> record the sweep output as evidence
+
+## Session Summary — 2026-08-13 [128952c..18e3304]
+- Completed: 9 tasks (M3 typed learning store + M3-MIG migration script, all ACs evidenced)
+- Pending: 0 tasks
+- Carry-forward: M4 (Tier 3.3 concepts glossary) deliberately out of scope — next spec item

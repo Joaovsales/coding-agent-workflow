@@ -11,9 +11,17 @@ cd "$REPO"
 # tasks/archive/ and specs/ may name the retired files. Detection logic (e.g.
 # /sync, session-start.sh) constructs the paths instead of naming them literally,
 # so this sweep stays strict.
+# Every swept root must exist — the `|| true` below absorbs grep's no-match
+# exit, but it would also absorb a missing-path error, letting a renamed root
+# silently shrink the sweep's coverage.
+for root in .agents .claude/skills .claude/agents .claude/hooks \
+            CLAUDE.md AGENTS.md .claude/project.md README.md install.sh project-template; do
+  assert_eq "present" "$([ -e "$root" ] && echo present || echo missing)" \
+    "M3: sweep root $root exists (sweep coverage intact)"
+done
 for old in "tasks/memory.md" "tasks/lessons.md" "tasks/bugs.md"; do
   offenders="$(grep -rlF "$old" .agents .claude/skills .claude/agents .claude/hooks \
-      CLAUDE.md README.md install.sh project-template 2>/dev/null \
+      CLAUDE.md AGENTS.md .claude/project.md README.md install.sh project-template 2>/dev/null \
     | grep -v '\.claude/worktrees/' || true)"
   assert_eq "" "$offenders" "M3: no live reference to $old (offenders: ${offenders:-none})"
 done

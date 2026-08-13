@@ -2,7 +2,8 @@
 
 > Replaces the retired monolithic store (the old memory, lessons, and bug-register
 > files under `tasks/`). Written by `/learn` and `/debug`; swept by
-> `/memory-maintain`; converted from the old store by `scripts/migrate-learning-store.py`.
+> `/memory-maintain`; converted from the old store by the template repo's
+> `scripts/migrate-learning-store.py`.
 
 One document per learning:
 

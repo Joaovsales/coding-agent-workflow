@@ -95,24 +95,32 @@ echo "$DIVIDER"
 # One line of counts, never document bodies — the store is grep-retrieved on
 # demand (see tasks/solutions/README.md). An old-store project gets pointed at
 # the migration script instead.
+# Old-store detection constructs the retired paths rather than naming them
+# literally, so the repo-wide retired-reference sweep stays strict. Checked
+# unconditionally: old files alongside tasks/solutions/ mean a HALF-migrated
+# repo (e.g. /learn bootstrapped the store before the migration ran), which
+# must warn too — orphaned learnings are invisible to the grep-first checklist.
+UNMIGRATED=0
+for OLD_STORE in memory lessons bugs; do
+  [ -f "tasks/${OLD_STORE}.md" ] && UNMIGRATED=1
+done
 if [ -d "tasks/solutions" ]; then
-  DOC_COUNT=$(find tasks/solutions -mindepth 2 -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
+  # `|| true`: find exits non-zero on traversal errors (unreadable subdir) and
+  # pipefail would turn that into a dead banner, same hazard as REVIEW_COUNT.
+  DOC_COUNT=$(find tasks/solutions -mindepth 2 -name '*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
   # Category docs only (the store README mentions the flag as documentation),
   # and `|| true` because grep exits 1 on zero matches — under `set -eo
   # pipefail` that would kill the whole banner.
   REVIEW_COUNT=$(grep -rl 'needs_review: true' tasks/solutions/*/ 2>/dev/null | wc -l | tr -d ' ' || true)
   echo ""
   echo "📚  LEARNING STORE  tasks/solutions — ${DOC_COUNT:-0} documents, ${REVIEW_COUNT:-0} needs_review (grep frontmatter to retrieve)"
+  if [ "$UNMIGRATED" = "1" ]; then
+    echo "⚠️   Partially migrated — old store files remain in tasks/; run the template repo's scripts/migrate-learning-store.py (dry-run first) to fold them in."
+  fi
 else
-  # Old-store detection constructs the retired paths rather than naming them
-  # literally, so the repo-wide retired-reference sweep stays strict.
-  UNMIGRATED=0
-  for OLD_STORE in memory lessons bugs; do
-    [ -f "tasks/${OLD_STORE}.md" ] && UNMIGRATED=1
-  done
   echo ""
   if [ "$UNMIGRATED" = "1" ]; then
-    echo "📚  Unmigrated learning store — run scripts/migrate-learning-store.py (dry-run first) to convert to tasks/solutions/."
+    echo "📚  Unmigrated learning store — run the template repo's scripts/migrate-learning-store.py (dry-run first) to convert to tasks/solutions/."
   else
     echo "📚  No learning store yet — /learn creates tasks/solutions/ on first write."
   fi
@@ -308,7 +316,7 @@ echo "  /auto-push   — /plan (approved) → /build → /wrap-up autonomously"
 echo "  /yolo        — Full-auto loop: /plan → /build → /wrap-up until backlog empty"
 echo "  /auto-improve — Unattended discover→fix→PR loop (daily cloud runs)"
 echo "  /tdd         — Manual TDD loop with user checkpoints"
-echo "  /debug       — Root cause analysis + bug register"
+echo "  /debug       — Root cause analysis + bug-track store docs"
 echo "  /verify      — Evidence-based verification (--scope e2e|deployment)"
 echo "  /quality-gate — 3-phase post-build review: structural, anti-patterns, APOSD"
 echo "  /software-design-expert-review — APOSD design audit (GO/HOLD/STOP)"
@@ -316,7 +324,7 @@ echo "  /software-design-expert-learn  — APOSD design tutorial (end-of-session
 echo "  /receive-review  — Process code review feedback"
 echo "  /security-scan   — OWASP audit on changed files"
 echo "  /learn       — Extract learnings to tasks/solutions/"
-echo "  /memory-maintain — Consolidate, prune, and organize project memory"
+echo "  /memory-maintain — Sweep the typed learning store (resolve, merge, prune)"
 echo "  /checkpoint  — Snapshot progress for handoff"
 echo "  /refresh     — Context reset: snapshot to disk, rebuild clean context"
 echo "  /wrap-up-session — Close session: review, test, push"

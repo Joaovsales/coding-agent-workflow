@@ -2,6 +2,21 @@
 
 > Migrated from the Session History section of tasks/memory.md.
 
+### [2026-08-13] — Typed learning store (M3 + M3-MIG)
+
+- Key changes: Built the typed learning store and cut the harness over to it.
+  New `tasks/solutions/<category>/<slug>.md` schema (`tasks/solutions/README.md`),
+  stdlib-only `scripts/migrate-learning-store.py` (dry-run default, `--apply`,
+  archive-never-delete, conflict diversion to `.migrated.md`), and this repo's own
+  migration applied (15 documents, originals in `tasks/archive/20260811T183743Z/`).
+  Session-start banner reduced to one-line store counts; `/learn`, `/memory-maintain`,
+  `/debug`, `/sync` rewritten for the store; retired-file references swept from both
+  skill trees, hooks, CLAUDE.md, README, install.sh, project-template. New suites:
+  test-migrate-learning-store.sh (78 asserts), test-solutions-schema.sh (31, incl.
+  enum-sync across script/validator/README). Branch `worktree-m3-typed-learning-store`.
+- Learnings captured: tasks/solutions/bugs/grep-zero-matches-aborts-hooks-under-set-e-pipefail.md,
+  tasks/solutions/patterns/construct-retired-paths-at-runtime-to-keep-literal-sweeps-strict.md
+
 ### [2026-08-10] — Compound engineering Tier 2 (review epistemics)
 
 - Key changes: Added `CLAUDE.md` § *Finding Model* (four axes — `severity`,

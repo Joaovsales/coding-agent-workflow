@@ -81,6 +81,8 @@ out2="$(run_migrate --repo "$F2" --apply 2>&1)"
 code2=$?
 assert_eq "0" "$code2" "Scenario 2: 8-column bugs.md migration exits 0"
 bugs2_agg="$(cat "$F2"/tasks/solutions/bugs/*.md 2>/dev/null)"
+assert_contains "$bugs2_agg" 'date: 2026-01-01' "Scenario 2: explicit Date cell lands in frontmatter"
+assert_not_contains "$bugs2_agg" 'date_source' "Scenario 2: explicit date records no inference"
 assert_contains "$bugs2_agg" 'root_cause: Race condition in token refresh' "Scenario 2: root_cause filled"
 assert_contains "$bugs2_agg" 'resolution: Added mutex lock' "Scenario 2: resolution filled"
 assert_contains "$bugs2_agg" '**ID**: BUG-1' "Scenario 2: unmapped ID column carried into body"
@@ -486,5 +488,179 @@ assert_file_contains "$F18/tasks/solutions/patterns/dated-by-git-history.md" "da
 assert_file_contains "$F18/report.txt" "Mode: APPLY" \
   "Scenario 18: --report writes the report file"
 assert_contains "$out18" "date_source=git-log" "Scenario 18: report names the date fallback"
+
+# ---------------------------------------------------------------------------
+# 19. Heading-structured lessons.md — the ##/### parser branch
+# ---------------------------------------------------------------------------
+F19="$(new_fixture)"
+cat > "$F19/tasks/lessons.md" <<'EOF'
+> Template preamble that belongs to no entry.
+
+## Always pin fixture dates
+
+Body of the first lesson.
+
+### Prefer explicit interpreters
+
+Body of the second lesson.
+EOF
+out19="$(run_migrate --repo "$F19" --apply 2>&1)"
+assert_eq "0" "$?" "Scenario 19: heading-structured lessons.md exits 0"
+lessons19_agg="$(cat "$F19"/tasks/solutions/patterns/*.md 2>/dev/null)"
+assert_contains "$lessons19_agg" 'title: Always pin fixture dates' \
+  "Scenario 19: ## heading becomes the document title"
+assert_contains "$lessons19_agg" 'title: Prefer explicit interpreters' \
+  "Scenario 19: ### heading becomes a second document"
+assert_contains "$lessons19_agg" 'Body of the first lesson.' \
+  "Scenario 19: heading body carried into the document"
+assert_not_contains "$lessons19_agg" 'Template preamble' \
+  "Scenario 19: pre-heading preamble produces no document"
+
+# ---------------------------------------------------------------------------
+# 20. Free-form lessons.md with template boilerplate — no junk documents
+# ---------------------------------------------------------------------------
+F20="$(new_fixture)"
+cat > "$F20/tasks/lessons.md" <<'EOF'
+> Self-improvement notes. One lesson per block.
+> Appended by /learn.
+
+<!-- Append entries below -->
+
+The only real lesson in this file.
+EOF
+out20="$(run_migrate --repo "$F20" --apply 2>&1)"
+assert_eq "0" "$?" "Scenario 20: boilerplate lessons.md exits 0"
+count20="$(ls "$F20"/tasks/solutions/patterns/*.md 2>/dev/null | wc -l | tr -d ' ')"
+assert_eq "1" "$count20" "Scenario 20: blockquote + comment preamble yields exactly one document"
+lessons20_agg="$(cat "$F20"/tasks/solutions/patterns/*.md 2>/dev/null)"
+assert_contains "$lessons20_agg" 'The only real lesson' "Scenario 20: the real lesson survives"
+assert_not_contains "$lessons20_agg" 'Append entries below' \
+  "Scenario 20: HTML-comment block produces no document"
+
+# ---------------------------------------------------------------------------
+# 21. memory.md: colon title (yaml quoting), no-Context flag, trailing prose
+# ---------------------------------------------------------------------------
+F21="$(new_fixture)"
+cat > "$F21/tasks/memory.md" <<'EOF'
+# Memory
+
+## Patterns & Lessons
+
+### Bug: colons need yaml quoting
+
+**Pattern**: Titles with colons must be quoted in frontmatter.
+
+## Session History
+
+### [2026-02-02] — Trailing prose session
+
+- Key changes: bullet one
+- Lessons added: none
+
+Closing prose after the bullets.
+EOF
+out21="$(run_migrate --repo "$F21" --apply 2>&1)"
+assert_eq "0" "$?" "Scenario 21: colon-title fixture exits 0"
+pat21_agg="$(cat "$F21"/tasks/solutions/patterns/*.md 2>/dev/null)"
+assert_contains "$pat21_agg" 'title: "Bug: colons need yaml quoting"' \
+  "Scenario 21: colon title is yaml-quoted"
+assert_contains "$pat21_agg" 'needs_review: true' \
+  "Scenario 21: entry without **Context** is flagged needs_review"
+hist21="$(cat "$F21/tasks/history.md" 2>/dev/null)"
+assert_contains "$hist21" "Closing prose after the bullets." \
+  "Scenario 21: trailing prose survives into history"
+bullet_ln="$(grep -n 'bullet one' "$F21/tasks/history.md" | head -1 | cut -d: -f1)"
+prose_ln="$(grep -n 'Closing prose' "$F21/tasks/history.md" | head -1 | cut -d: -f1)"
+assert_eq "after" "$([ "${prose_ln:-0}" -gt "${bullet_ln:-0}" ] && echo after || echo before)" \
+  "Scenario 21: trailing prose renders after the bullets"
+
+# ---------------------------------------------------------------------------
+# 22. Diversion-target collision — refuse instead of clobber
+# ---------------------------------------------------------------------------
+F22="$(new_fixture)"
+cat > "$F22/tasks/memory.md" <<'EOF'
+# Memory
+
+## Project Context
+
+Fixture project context body.
+EOF
+printf '# Existing context\n' > "$F22/tasks/project-context.md"
+printf '# Mid-merge divert file — must not be clobbered\n' > "$F22/tasks/project-context.migrated.md"
+out22="$(run_migrate --repo "$F22" 2>&1)"
+assert_eq "1" "$?" "Scenario 22: existing .migrated.md divert target exits non-zero"
+assert_contains "$out22" "project-context.migrated.md already exists" \
+  "Scenario 22: error names the colliding divert file"
+assert_contains "$(cat "$F22/tasks/project-context.migrated.md")" "must not be clobbered" \
+  "Scenario 22: pending divert file untouched"
+
+F22b="$(new_fixture)"
+cat > "$F22b/tasks/memory.md" <<'EOF'
+# Memory
+
+## Session History
+
+### [2026-03-03] — Session
+
+- Key changes: something
+EOF
+printf '# History\n' > "$F22b/tasks/history.md"
+printf '# Mid-merge history divert — must not be clobbered\n' > "$F22b/tasks/history.migrated.md"
+out22b="$(run_migrate --repo "$F22b" 2>&1)"
+assert_eq "1" "$?" "Scenario 22b: existing history.migrated.md exits non-zero"
+assert_contains "$out22b" "history.migrated.md already exists" \
+  "Scenario 22b: error names the colliding history divert"
+
+# ---------------------------------------------------------------------------
+# 23. Malformed inputs — bad Date cell, separator-less table, no Description
+# ---------------------------------------------------------------------------
+F23="$(new_fixture)"
+cat > "$F23/tasks/bugs.md" <<'EOF'
+# Bug Register
+
+| ID | Date | Description | Root Cause | Fix | Files | Status | RT |
+|----|------|-------------|------------|-----|-------|--------|----|
+| BUG-7 | Jan 5 | Malformed date row | RC | Fixed it | f.py | Fixed | t |
+
+| Foo | Bar |
+|-----|-----|
+| x | y |
+EOF
+out23="$(run_migrate --repo "$F23" --apply 2>&1)"
+assert_eq "0" "$?" "Scenario 23: malformed-date fixture exits 0"
+bugs23_agg="$(cat "$F23"/tasks/solutions/bugs/*.md 2>/dev/null)"
+assert_not_contains "$bugs23_agg" 'date: Jan 5' \
+  "Scenario 23: non-YYYY-MM-DD Date cell is not trusted verbatim"
+assert_contains "$bugs23_agg" 'date_source: today' \
+  "Scenario 23: malformed date falls back with date_source recorded"
+assert_contains "$out23" "bug table without a Description column" \
+  "Scenario 23: description-less table reported, not silently dropped"
+
+F23b="$(new_fixture)"
+cat > "$F23b/tasks/bugs.md" <<'EOF'
+# Bug Register
+
+| ID | Date | Description | Root Cause | Fix | Files | Status | RT |
+| BUG-9 | 2026-01-09 | First row kept | RC | Fix | f.py | Fixed | t |
+EOF
+out23b="$(run_migrate --repo "$F23b" --apply 2>&1)"
+assert_eq "0" "$?" "Scenario 23b: separator-less table exits 0"
+bugs23b_agg="$(cat "$F23b"/tasks/solutions/bugs/*.md 2>/dev/null)"
+assert_contains "$bugs23b_agg" 'symptoms: First row kept' \
+  "Scenario 23b: missing separator row does not eat the first data row"
+
+# ---------------------------------------------------------------------------
+# 24. Symlink source — refused (skipped where symlinks are unavailable)
+# ---------------------------------------------------------------------------
+F24="$(new_fixture)"
+printf 'SECRET OUTSIDE CONTENT\n' > "$F24/outside.txt"
+if ln -s "$F24/outside.txt" "$F24/tasks/lessons.md" 2>/dev/null \
+   && [ -L "$F24/tasks/lessons.md" ]; then
+  out24="$(run_migrate --repo "$F24" 2>&1)"
+  assert_eq "1" "$?" "Scenario 24: symlink source exits non-zero"
+  assert_contains "$out24" "symlink" "Scenario 24: error names the symlink refusal"
+else
+  echo "  note Scenario 24 skipped: symlinks unavailable on this platform"
+fi
 
 finish

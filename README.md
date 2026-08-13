@@ -221,7 +221,7 @@ Invoke with `/skill-name` in any Claude Code session:
 | `/plan` | Interviews you, writes spec to `specs/`, creates TDD task plan in `tasks/todo.md` |
 | `/build` | Autonomous orchestrator: TDD + sub-agents + 2-stage review + parallel dispatch + quality-gate + spec validation |
 | `/tdd` | Manual TDD loop with user checkpoints: failing test → code → pass → refactor → `[x]` |
-| `/debug` | Root cause analysis with architecture questioning after 3 fails, bug register, lessons |
+| `/debug` | Root cause analysis with architecture questioning after 3 fails, bug-track store documents |
 | `/verify` | Evidence-based verification gate — no completion claims without fresh command output |
 | `/quality-gate` | 3-phase post-build review: structural quality, AI anti-patterns, APOSD design |
 | `/receive-review` | Process code review feedback: technical evaluation, pushback protocol, no performative agreement |
@@ -251,7 +251,7 @@ This workflow is built on patterns that prevent common AI agent failure modes:
 
 **Evidence Over Claims** — The `/verify` skill bans phrases like "should work" or "looks correct". Only actual command output counts.
 
-**Memory Across Sessions** — the typed learning store (`tasks/solutions/`) persists one document per learning with grep-first retrieval, so the agent doesn't repeat mistakes or bulk-load stale context. Old-format projects convert with `scripts/migrate-learning-store.py`.
+**Memory Across Sessions** — the typed learning store (`tasks/solutions/`) persists one document per learning with grep-first retrieval, so the agent doesn't repeat mistakes or bulk-load stale context. Old-format projects convert with the template repo's `scripts/migrate-learning-store.py`.
 
 ---
 
