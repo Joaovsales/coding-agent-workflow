@@ -1,7 +1,7 @@
 #!/bin/bash
 # Claude Code Session Start Hook
-# Orients the agent at the beginning of every session by surfacing memory,
-# active tasks, and recent lessons without requiring manual reads.
+# Orients the agent at the beginning of every session by surfacing the learning
+# store counts and active tasks without requiring manual reads.
 
 set -eo pipefail
 
@@ -80,7 +80,7 @@ if [ "$HOOK_SOURCE" = "compact" ]; then
     [ -z "$ACTIVE" ] && ACTIVE=$(grep -E '^[[:space:]]*\[ \]' tasks/todo.md 2>/dev/null | head -1 || true)
     echo "  • Active task: ${ACTIVE:-<none pending>}"
   fi
-  echo "  • tasks/memory.md for project patterns and decisions"
+  echo "  • tasks/solutions/ — grep frontmatter (problem_type, module, tags) for relevant learnings"
   echo ""
   echo "$DIVIDER"
   exit 0
@@ -91,44 +91,38 @@ echo "$DIVIDER"
 echo "  SESSION START — Coding Agent Workflow"
 echo "$DIVIDER"
 
-# ── Memory ──────────────────────────────────────────────────────────────────
-MEMORY_FILE="tasks/memory.md"
-if [ -f "$MEMORY_FILE" ]; then
+# ── Learning Store ───────────────────────────────────────────────────────────
+# One line of counts, never document bodies — the store is grep-retrieved on
+# demand (see tasks/solutions/README.md). An old-store project gets pointed at
+# the migration script instead.
+# Old-store detection constructs the retired paths rather than naming them
+# literally, so the repo-wide retired-reference sweep stays strict. Checked
+# unconditionally: old files alongside tasks/solutions/ mean a HALF-migrated
+# repo (e.g. /learn bootstrapped the store before the migration ran), which
+# must warn too — orphaned learnings are invisible to the grep-first checklist.
+UNMIGRATED=0
+for OLD_STORE in memory lessons bugs; do
+  [ -f "tasks/${OLD_STORE}.md" ] && UNMIGRATED=1
+done
+if [ -d "tasks/solutions" ]; then
+  # `|| true`: find exits non-zero on traversal errors (unreadable subdir) and
+  # pipefail would turn that into a dead banner, same hazard as REVIEW_COUNT.
+  DOC_COUNT=$(find tasks/solutions -mindepth 2 -name '*.md' 2>/dev/null | wc -l | tr -d ' ' || true)
+  # Category docs only (the store README mentions the flag as documentation),
+  # and `|| true` because grep exits 1 on zero matches — under `set -eo
+  # pipefail` that would kill the whole banner.
+  REVIEW_COUNT=$(grep -rl 'needs_review: true' tasks/solutions/*/ 2>/dev/null | wc -l | tr -d ' ' || true)
   echo ""
-  echo "📚  MEMORY  (tasks/memory.md)"
-  echo "────────────────────────────────"
-  # Show just the Patterns & Lessons and Architecture Decisions sections
-  awk '/^## Architecture Decisions/,/^## (Stack|Patterns|Session)/' "$MEMORY_FILE" | head -20 || true
-  echo ""
-  awk '/^## Patterns & Lessons/,/^## Session History/' "$MEMORY_FILE" | head -30 || true
-else
-  # Bootstrap instead of nagging: write the skeleton /learn appends to and
-  # /memory-maintain reorganises. Headings must stay in sync with the section
-  # names those two skills read/write (see their SKILL.md).
-  MEMORY_INITIALISED=0
-  if mkdir -p "$(dirname "$MEMORY_FILE")" 2>/dev/null; then
-    cat > "$MEMORY_FILE" 2>/dev/null <<'MEMORY_SKELETON' || true
-# Project Memory
-
-> Maintained by /learn (appends) and /memory-maintain (consolidates).
-
-## Architecture Decisions
-
-## Patterns & Lessons
-
-## Session History
-
-## Archived
-MEMORY_SKELETON
-    if [ -f "$MEMORY_FILE" ]; then
-      MEMORY_INITIALISED=1
-    fi
+  echo "📚  LEARNING STORE  tasks/solutions — ${DOC_COUNT:-0} documents, ${REVIEW_COUNT:-0} needs_review (grep frontmatter to retrieve)"
+  if [ "$UNMIGRATED" = "1" ]; then
+    echo "⚠️   Partially migrated — old store files remain in tasks/; run the template repo's scripts/migrate-learning-store.py (dry-run first) to fold them in."
   fi
+else
   echo ""
-  if [ "$MEMORY_INITIALISED" = "1" ]; then
-    echo "📚  Initialised tasks/memory.md — /learn will append patterns and session history."
+  if [ "$UNMIGRATED" = "1" ]; then
+    echo "📚  Unmigrated learning store — run the template repo's scripts/migrate-learning-store.py (dry-run first) to convert to tasks/solutions/."
   else
-    echo "📚  No tasks/memory.md found — consider running /learn to initialise it."
+    echo "📚  No learning store yet — /learn creates tasks/solutions/ on first write."
   fi
 fi
 
@@ -136,8 +130,8 @@ fi
 # Count session history entries. Nudge when maintenance is due (every 5 sessions).
 # The /memory-maintain skill is also called every session start via CLAUDE.md
 # step 4 — the skill self-gates, so this nudge is a belt-and-suspenders signal.
-if [ -f "$MEMORY_FILE" ]; then
-  SESSION_COUNT=$(grep -c '^### [0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}' "$MEMORY_FILE" 2>/dev/null || true)
+if [ -f "tasks/history.md" ]; then
+  SESSION_COUNT=$(grep -c '^### \[[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}' tasks/history.md 2>/dev/null || true)
   if [ "${SESSION_COUNT:-0}" -gt 0 ] && [ $(( SESSION_COUNT % 5 )) -eq 0 ]; then
     echo ""
     echo "🔧  MEMORY MAINTENANCE DUE ($SESSION_COUNT sessions) — /memory-maintain will run at session start."
@@ -156,15 +150,6 @@ if [ -f "$TODO_FILE" ]; then
 else
   echo ""
   echo "📋  No tasks/todo.md found."
-fi
-
-# ── Lessons ──────────────────────────────────────────────────────────────────
-LESSONS_FILE="tasks/lessons.md"
-if [ -f "$LESSONS_FILE" ] && [ -s "$LESSONS_FILE" ]; then
-  echo ""
-  echo "📖  RECENT LESSONS  (tasks/lessons.md)"
-  echo "────────────────────────────────"
-  tail -20 "$LESSONS_FILE"
 fi
 
 # ── Git Status ───────────────────────────────────────────────────────────────
@@ -331,15 +316,15 @@ echo "  /auto-push   — /plan (approved) → /build → /wrap-up autonomously"
 echo "  /yolo        — Full-auto loop: /plan → /build → /wrap-up until backlog empty"
 echo "  /auto-improve — Unattended discover→fix→PR loop (daily cloud runs)"
 echo "  /tdd         — Manual TDD loop with user checkpoints"
-echo "  /debug       — Root cause analysis + bug register"
+echo "  /debug       — Root cause analysis + bug-track store docs"
 echo "  /verify      — Evidence-based verification (--scope e2e|deployment)"
 echo "  /quality-gate — 3-phase post-build review: structural, anti-patterns, APOSD"
 echo "  /software-design-expert-review — APOSD design audit (GO/HOLD/STOP)"
 echo "  /software-design-expert-learn  — APOSD design tutorial (end-of-session)"
 echo "  /receive-review  — Process code review feedback"
 echo "  /security-scan   — OWASP audit on changed files"
-echo "  /learn       — Extract patterns to memory.md"
-echo "  /memory-maintain — Consolidate, prune, and organize project memory"
+echo "  /learn       — Extract learnings to tasks/solutions/"
+echo "  /memory-maintain — Sweep the typed learning store (resolve, merge, prune)"
 echo "  /checkpoint  — Snapshot progress for handoff"
 echo "  /refresh     — Context reset: snapshot to disk, rebuild clean context"
 echo "  /wrap-up-session — Close session: review, test, push"

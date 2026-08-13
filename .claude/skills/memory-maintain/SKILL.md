@@ -1,128 +1,103 @@
 ---
 name: memory-maintain
-description: Consolidate, prune, and organize tasks/memory.md and tasks/lessons.md. Invoked at every session start and wrap-up; self-gates on session count.
+description: Sweep the typed learning store (tasks/solutions/) — resolve needs_review documents, merge duplicates, prune stale or contradicted entries. Invoked at every session start and wrap-up; self-gates on session count.
 argument-hint: "[--force]"
 harness: universal
 ---
 
-# /memory-maintain — Memory Maintenance
+# /memory-maintain — Learning Store Maintenance
 
-Keep project memory healthy: deduplicate entries, promote durable lessons, prune stale content, enforce a token budget.
+Keep the typed learning store healthy: resolve `needs_review` documents, merge
+duplicates, prune stale content, correct contradicted claims. The store schema
+and category map live in `tasks/solutions/README.md`.
 
-Invoked at every session start (CLAUDE.md Session Start Checklist step 4) and by /wrap-up-session Step 1.5. Self-gates on session count so it only does real work every 5 sessions. Run manually with /memory-maintain --force at any time.
+Invoked at every session start (CLAUDE.md Session Start Checklist) and by
+/wrap-up-session Step 1.5. Self-gates on session count so it only does real work
+every 5 sessions. Run manually with /memory-maintain --force at any time.
 
 ## When to run
 
 This skill runs two passes at different cadences (a Reflector-style split): a
-cheap lessons pass every session, and the heavy consolidation only every 5.
+cheap light pass every session, and the heavy consolidation only every 5.
 
-### Lessons pass — every session (cheap, continuous decay)
+### Light pass — every session (cheap, continuous decay)
 
-Runs on **every** invocation (session start + wrap-up). Operates only on
-`tasks/lessons.md`:
-- Deduplicate near-identical lessons (>70% overlap) — keep the more specific.
-- Decay: drop lessons explicitly marked resolved/superseded, and demote ones
-  older than 30 days that never recurred.
+Runs on **every** invocation (session start + wrap-up). Bounded work only:
+- Count documents and `needs_review` flags (`grep -rl 'needs_review: true' tasks/solutions/*/` — category dirs only, so the README's literal mention of the flag is not counted).
+- If any document written **this session** duplicates an existing one
+  (same `module` + overlapping `tags` **and** >70% semantic overlap — the
+  migration's generic `module: general` + `migrated` tag alone never qualify),
+  merge into the more specific document and note the merge in its body.
 
-This mirrors a Reflector: continuously merge duplicates and shed low-value
-detail so tactical memory stays dense between heavy passes.
-
-**If `tasks/lessons.md` is absent or empty: silent no-op (exit 0, no output).**
+**If `tasks/solutions/` is absent or empty: silent no-op (exit 0, no output).**
 
 ### Heavy pass — every 5 sessions (gated)
 
-Check tasks/memory.md Session History entry count:
-- Count lines matching `^### \d{4}-\d{2}-\d{2}`
-- Run the full consolidation below (Phases 1–5) if count is a multiple of 5
+Count session entries in `tasks/history.md` (lines matching `^### \[\d{4}-\d{2}-\d{2}`):
+- Run the full sweep below (Phases 1–4) if the count is a multiple of 5
   (5, 10, 15, …) OR --force flag passed
-- If neither condition met: skip the heavy pass (the lessons pass above still ran)
+- If neither condition met: skip the heavy pass (the light pass above still ran)
 
-## Phase 1 — Deduplicate Patterns & Lessons
+## Phase 1 — Resolve `needs_review` Documents
 
-Read the "Patterns & Lessons" section of tasks/memory.md.
+For every document carrying `needs_review: true` (migration output and flagged
+/learn writes):
+- Fill the missing track-required fields from evidence: read the files named in
+  `module`, the PRs cited in the body, and git history. Bug track needs
+  `symptoms` / `root_cause` / `resolution`; knowledge track needs `applies_when`.
+- Repair migration placeholders the same way: replace `module: general` with the
+  real module when evidence names one, replace generic `[migrated, ...]` tags
+  with retrieval-worthy ones, and complete a `derive_title`-truncated title
+  (fix the `title:` field only — the filename slug stays stable so inbound
+  cross-links survive).
+- A claim you can verify against the tree gets cited as `file:line`; one you
+  cannot is softened and attributed (grounding rule, see /learn).
+- When the fields are complete, remove the `needs_review: true` line.
+- If the document cannot be grounded at all (source vanished, no evidence),
+  move it to `tasks/archive/solutions/` — never delete.
 
-For each pair of entries, check for semantic overlap:
-- Same root cause described differently
-- Same pattern expressed with different wording
-- One entry is a subset of another
+## Phase 2 — Deduplicate
 
-For overlapping pairs:
-- Merge into a single entry (keep the more specific/detailed one, incorporate any unique detail from the other)
-- Note the merge: `[merged from session YYYY-MM-DD]`
+For each pair of documents in the same category with overlapping `module`/`tags`,
+check semantic overlap (same problem, same root cause, one a subset of the other).
+Merge only if >70% overlap — keep the more specific document, fold in unique
+detail, note `[merged from <slug>]` in the body, and delete the emptied sibling's
+file only after its content is fully absorbed. Fix any inbound cross-links.
+When in doubt, keep separate.
 
-Deduplication threshold: only merge if >70% semantic overlap. When in doubt, keep separate.
+## Phase 3 — Prune Stale and Contradicted Documents
 
-## Phase 2 — Prune Stale Entries
+For each document:
+- **Stale**: older than 90 days (frontmatter `date`) AND its key terms are
+  referenced by no current spec, task, or source file AND it names deleted
+  files, removed features, or superseded approaches. All three must hold — never
+  prune on age alone. Move stale documents to `tasks/archive/solutions/`.
+- **Contradicted**: the tree no longer behaves as the document claims (spot-check
+  `file:line` citations). Update the document to the current truth and note the
+  correction — never leave a contradicting sibling, never silently drop it.
 
-For each entry in "Patterns & Lessons":
-- Check if it has been referenced in any spec, task, or source file (grep for key terms)
-- Check age: is it from a Session History entry older than 90 days?
-- Check relevance: does it reference deleted files, removed features, or superseded approaches?
+## Phase 4 — Store Hygiene
 
-Mark as stale if: age > 90 days AND no references found AND references deleted artifacts.
-All three conditions must hold — do not prune on age alone.
-
-For stale entries: move to a `## Archived` section at the bottom of tasks/memory.md (do not delete — archive).
-
-## Phase 3 — Promote Durable Lessons
-
-Read tasks/lessons.md (tactical per-session lessons).
-
-For each lesson entry older than 14 days:
-- Check if it appears across 2+ session summaries (same pattern recurred)
-- If yes: promote to tasks/memory.md "Patterns & Lessons" section, remove from tasks/lessons.md
-
-Promoted entry format:
-```
-### [Title from lessons.md]
-**Context**: [when this applies]
-**Pattern**: [what to do or avoid]
-**Evidence**: [what triggered it — cite session date]
-**Promoted**: [YYYY-MM-DD] from tasks/lessons.md
-```
-
-## Phase 4 — Token Budget Enforcement
-
-Count approximate tokens in tasks/memory.md (rough estimate: chars / 4).
-
-If > 8000 tokens:
-1. Archive the oldest 20% of Session History entries to `tasks/memory-archive-YYYY.md` (year-bucketed)
-2. Archive the oldest 20% of "Patterns & Lessons" entries (by session date) to the same archive file
-3. Report: "Archived N entries to tasks/memory-archive-YYYY.md to stay under token budget."
-
-## Phase 5 — Reorganize
-
-After all modifications, ensure tasks/memory.md has this structure:
-
-```markdown
-# Project Memory
-
-> Maintained by /learn (appends) and /memory-maintain (consolidates). Do not edit manually.
-
-## Architecture Decisions
-[entries]
-
-## Patterns & Lessons
-[entries — most recently updated first]
-
-## Session History
-[entries — newest first]
-
-## Archived
-[entries moved here by /memory-maintain — do not delete]
-```
-
-If the file lacks any section, create it. Reorder entries so newest are first within each section.
+- Every document validates against the schema (`tasks/solutions/README.md`):
+  required frontmatter, known `problem_type`, category directory matching the
+  map, no dates in filenames. Fix violations in place.
+- Documents still carrying the migration's `module: general` placeholder — even
+  ones no longer (or never) flagged `needs_review` — get the Phase 1 placeholder
+  repair when evidence names a real module; otherwise leave them and move on.
+- `tasks/history.md` stays a narrative log: any learning prose that leaked into
+  it is extracted to a typed document and cross-linked, matching how the
+  migration handled `- Pattern:` bullets.
 
 ## Output
 
 ```
 ══════════════════════
-  MEMORY MAINTAINED
+  STORE MAINTAINED
 ══════════════════════
-Patterns & Lessons: [N entries] ([N merged], [N pruned → archived], [N promoted from lessons.md])
-Session History: [N entries] ([N archived to memory-archive-YYYY.md])
-Token budget: [estimated tokens] / 8000
-tasks/lessons.md: [N entries promoted, N remaining]
+Documents: [N total across M categories]
+needs_review: [N resolved, N remaining, N archived as ungroundable]
+Duplicates: [N merged]
+Stale/contradicted: [N archived, N corrected]
+Schema violations fixed: [N]
 ══════════════════════
 ```

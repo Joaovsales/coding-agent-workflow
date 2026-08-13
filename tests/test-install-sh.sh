@@ -33,6 +33,22 @@ assert_eq "0" "$(count_matching 'jq .*\.skills.*> /tmp/settings_tmp.json')" \
 assert_contains "$src" '$PI_SETTINGS' \
   "install.sh: Pi skill-path configuration retained"
 
+# M3: the typed store replaces lessons.md/bugs.md as seeded task files.
+assert_contains "$src" 'copy_if_missing "tasks/solutions/README.md"' \
+  "install.sh: seeds tasks/solutions/README.md"
+assert_contains "$src" 'copy_if_missing "tasks/history.md"' \
+  "install.sh: seeds tasks/history.md"
+assert_eq "0" "$(count_matching 'copy_if_missing \"tasks/(bugs|lessons)\.md\"')" \
+  "install.sh: no longer seeds retired lessons.md/bugs.md"
+assert_eq "present" "$([ -e "project-template/tasks/solutions/README.md" ] && echo present || echo missing)" \
+  "project-template: carries the store README seed"
+assert_eq "present" "$([ -e "project-template/tasks/history.md" ] && echo present || echo missing)" \
+  "project-template: carries the history.md seed"
+assert_eq "missing" "$([ -e "project-template/tasks/lessons.md" ] && echo present || echo missing)" \
+  "project-template: lessons.md seed retired"
+assert_eq "missing" "$([ -e "project-template/tasks/bugs.md" ] && echo present || echo missing)" \
+  "project-template: bugs.md seed retired"
+
 # ── Functional harness ───────────────────────────────────────────────────────
 # Run install.sh with an isolated HOME. Plants a user-owned skill first so we can
 # prove it survives. Echoes the temp HOME path; caller inspects it.

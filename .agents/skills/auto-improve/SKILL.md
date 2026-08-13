@@ -34,14 +34,14 @@ The moment you are tempted to bundle a second unrelated fix "while you're here" 
 
 ## Pre-Flight — Load Context & Guard Rails
 
-1. **Read the working memory**: `tasks/memory.md`, `tasks/lessons.md`, `tasks/todo.md`, `tasks/bugs.md`, `tasks/backlog.md`. Skip any that don't exist.
+1. **Read the working state**: `tasks/todo.md`, `tasks/backlog.md`, `tasks/history.md`, and grep `tasks/solutions/` frontmatter (`problem_type`, `module`, `tags`) for learnings relevant to the target area. Skip any that don't exist.
 2. **Branch safety, in a worktree — mandatory**: create `claude/auto-improve-<date>` and check it out **in its own git worktree**, never in the shared clone. Never work on `main`/`master`/`develop`.
 
    This is not optional here the way it is in `/build` Step 0.5. A daily cloud run is unattended by definition, so it is precisely the case where another session or a scheduled job checks out a different branch in the shared clone and rewrites files under a live edit — with nobody watching to notice. It also makes step 3 trivially true: a fresh worktree cannot inherit someone else's uncommitted work, so there is nothing to accidentally sweep into the PR.
 
    Prefer the harness-native `EnterWorktree` tool; this instruction is what authorises it. Otherwise `scripts/bootstrap-worktree.sh claude/auto-improve-<date>`. Never a bare `git worktree add` — no `node_modules`, no `.env*`, and a suite gated on an env file will skip those tests and report green. The Iron Law forbids a PR on a non-green suite; a *falsely* green one defeats it just as thoroughly.
 3. **Clean tree**: `git status --short` **in the worktree**. It should be empty by construction; if it is not, stop — something is wrong with the bootstrap. Uncommitted changes in the parent clone are not your concern and must not enter the PR.
-4. **Green baseline**: run the full test suite (see `tasks/memory.md` for the exact runner — this project uses `/home/joaosouto/venv/bin/pytest tests/`). If the baseline is RED, that failing test *becomes* the improvement to fix. Do not build on top of a broken baseline.
+4. **Green baseline**: run the full test suite (identify the runner from `package.json` / `Makefile` / `pyproject.toml` / `tests/run.sh`). If the baseline is RED, that failing test *becomes* the improvement to fix. Do not build on top of a broken baseline.
 
 If a guard cannot be satisfied and it is not itself the thing to fix, STOP and report — do not proceed.
 
@@ -51,7 +51,7 @@ If a guard cannot be satisfied and it is not itself the thing to fix, STOP and r
 
 First, spend almost nothing deciding whether you even need to discover.
 
-1. **Scan already-flagged work** (read-only, no subagents): from `tasks/backlog.md`, `tasks/bugs.md`, and `tasks/todo.md`, collect every item that is **ready-to-act** — meaning it is triaged, has enough context to implement cold, is unblocked, and is not marked done/wontfix.
+1. **Scan already-flagged work** (read-only, no subagents): from `tasks/backlog.md`, `tasks/todo.md`, and open bug-track documents in `tasks/solutions/` (body status `open`/`investigating`), collect every item that is **ready-to-act** — meaning it is triaged, has enough context to implement cold, is unblocked, and is not marked done/wontfix.
 2. **Determine the deep-sweep day**: check today's date. If it is **Sunday** (the weekly deep-sweep day), you will run full discovery regardless, so debt/design/perf still gets found on a regular cadence.
 3. **Gate**:
    - **Ready item exists AND it is not the deep-sweep day** → **skip discovery entirely.** Go to Phase 2 and select among the ready backlog/bug items. This is the cheap common path.
@@ -117,12 +117,12 @@ No green suite → no PR. This is non-negotiable.
 ## Phase 5 — SHIP
 
 **Normal mode (a change was made):**
-1. Update `tasks/bugs.md` / `tasks/backlog.md` / `tasks/memory.md` to reflect what was fixed and what remains.
+1. Update the affected bug-track documents in `tasks/solutions/` and `tasks/backlog.md` to reflect what was fixed and what remains.
 2. Run `/wrap-up-session` (commit with a conventional message → push branch → open PR).
 3. PR body: what was changed, why it was the highest-value pick, the ranked runner-ups deferred to backlog, and the test/coverage evidence.
 
 **Findings-only mode (nothing safe to change):**
-1. Commit the enriched `backlog.md` / `bugs.md` with newly discovered issues (each with enough context to be fixed cold in a later run).
+1. Commit the enriched `backlog.md` / new bug-track documents in `tasks/solutions/` with newly discovered issues (each with enough context to be fixed cold in a later run).
 2. Open a docs-only PR titled `chore(backlog): triage from auto-improve <date>`.
 3. Never leave the run with zero output — a triaged backlog is a valid, honest result.
 

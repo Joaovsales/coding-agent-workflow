@@ -36,7 +36,7 @@ A reset loses chat history, never disk. Before resetting, confirm everything
 needed to resume lives on disk:
 - `tasks/checkpoint.md` — just written (state + how-to-resume)
 - `tasks/todo.md` — task plan with completion marks
-- `tasks/memory.md` — project patterns and decisions
+- `tasks/solutions/` — typed learnings (grep frontmatter, load only what's relevant)
 - `specs/<feature>.md` — the contract
 
 If any in-flight decision exists only in chat, append it to `tasks/checkpoint.md`
@@ -50,7 +50,7 @@ Emit the minimal resume instruction, then start a clean context:
 🔄 CONTEXT RESET — resume from disk
 1. Read tasks/checkpoint.md (state + how-to-resume)
 2. Read tasks/todo.md; continue from the first [~] (else [ ]) item
-3. Read tasks/memory.md for project context
+3. Grep tasks/solutions/ frontmatter for learnings relevant to the active task
 Do NOT replay prior work — the checkpoint is the source of truth.
 ```
 

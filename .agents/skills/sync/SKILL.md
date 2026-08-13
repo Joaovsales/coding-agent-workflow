@@ -100,7 +100,7 @@ CLAUDE.md             → Shared rules: workflow, principles, skills index (both
 **Never sync** (project-specific state):
 - `AGENTS.md` — Pi project-specific rules (Pi's equivalent of .claude/project.md)
 - `.claude/project.md` — Claude Code project-specific rules, Deployment Targets, team conventions
-- `tasks/memory.md` — project-specific learnings
+- `tasks/solutions/` and `tasks/history.md` — project-specific learnings and session log
 - `CLAUDE.local.md` — personal per-project overrides (gitignored)
 - `tasks/` — project-specific task state
 - `specs/` — project-specific feature specs
@@ -294,6 +294,33 @@ For each applied file, briefly note what changed.
 2. Ask the user if they want to commit the sync:
    - Suggested message: `chore: sync workflow updates from coding-agent-workflow`
 3. Remind the user to review `CLAUDE.md` if it was updated — they may need to merge project-specific customizations back in
+
+### Step 6.5 — Unmigrated Learning Store Check
+
+/sync overwrites `CLAUDE.md` and the skills, so a project can end up with new
+skills pointing at `tasks/solutions/` while its learnings still sit in the old
+monolithic store. Detect and tell the user — never migrate for them:
+
+```bash
+for f in memory lessons bugs; do [ -f "tasks/$f.md" ] && echo "unmigrated: tasks/$f.md"; done
+```
+
+(The paths are constructed, not written literally, so the template repo's
+retired-reference sweep stays strict.)
+
+If any hit **and** `tasks/solutions/` does not exist:
+
+> ⚠ This project still uses the retired monolithic learning store. The synced
+> skills read `tasks/solutions/` instead. Run the converter from your
+> coding-agent-workflow clone —
+> `python3 <template-clone>/scripts/migrate-learning-store.py --repo .`
+> (dry-run by default; `--apply` to convert; originals are archived, never
+> deleted). Where `python3` is not on PATH (Windows, notably), substitute
+> `python` or `py` — the script is plain stdlib and runs on any of the three.
+
+If `tasks/solutions/` exists alongside old files, name the leftover files and
+suggest re-running the migration or archiving them manually. Silent when there
+is nothing to flag.
 
 ### Step 7 — Optional: Re-wire graphify
 
