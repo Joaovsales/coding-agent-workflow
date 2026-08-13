@@ -25,6 +25,7 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 
 
@@ -128,6 +129,7 @@ def utc_timestamp() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
+@lru_cache(maxsize=None)
 def is_git_repo(repo_root: Path) -> bool:
     try:
         result = subprocess.run(
@@ -139,6 +141,7 @@ def is_git_repo(repo_root: Path) -> bool:
     return result.returncode == 0 and result.stdout.strip() == "true"
 
 
+@lru_cache(maxsize=None)
 def git_log_date(source_path: Path, repo_root: Path) -> str | None:
     if not is_git_repo(repo_root):
         return None
@@ -162,24 +165,39 @@ def resolve_date(explicit: str | None, source_path: Path, repo_root: Path) -> tu
     return datetime.now(timezone.utc).strftime("%Y-%m-%d"), "today"
 
 
-def parse_markdown_table(content: str) -> list[list[str]]:
-    """Return [header_cells, data_row_cells, ...] for the first pipe-table
-    found in content, or [] if none is found."""
-    table_lines = []
-    started = False
+def parse_markdown_tables(content: str) -> list[list[list[str]]]:
+    """Return every pipe-table in content, each as
+    [header_cells, data_row_cells, ...]."""
+    blocks: list[list[str]] = []
+    current: list[str] = []
     for line in content.splitlines():
         stripped = line.strip()
         if stripped.startswith("|"):
-            table_lines.append(stripped)
-            started = True
-        elif started:
-            break
-    if len(table_lines) < 2:
-        return []
-    rows = [[c.strip() for c in line.strip("|").split("|")] for line in table_lines]
-    header = rows[0]
-    data_rows = rows[2:]  # rows[1] is the '---' separator row
-    return [header] + data_rows
+            current.append(stripped)
+        elif current:
+            blocks.append(current)
+            current = []
+    if current:
+        blocks.append(current)
+
+    tables = []
+    for block in blocks:
+        if len(block) < 2:
+            continue
+        rows = [[c.strip() for c in line.strip("|").split("|")] for line in block]
+        tables.append([rows[0]] + rows[2:])  # rows[1] is the '---' separator row
+    return tables
+
+
+def parse_markdown_table(content: str) -> list[list[str]]:
+    """Return the first pipe-table in content, or [] if none is found."""
+    tables = parse_markdown_tables(content)
+    return tables[0] if tables else []
+
+
+def header_index(header: list[str], name: str) -> int | None:
+    lowered = [normalize_ws(h).lower() for h in header]
+    return lowered.index(name) if name in lowered else None
 
 
 # --------------------------------------------------------------------------
@@ -200,6 +218,14 @@ class Document:
     migrated_from: str | None = None
     path: Path | None = None
 
+    def resolved_path(self) -> Path:
+        if self.path is None:
+            raise MigrationError(
+                f"internal error: document {self.title!r} used before "
+                "finalize_documents assigned its path"
+            )
+        return self.path
+
 
 @dataclass
 class ProjectContextWrite:
@@ -218,6 +244,7 @@ class Plan:
     unmigrated_sections: list = field(default_factory=list)
     session_entries: list = field(default_factory=list)
     project_context: ProjectContextWrite | None = None
+    history_path: Path | None = None
     used_slugs: set = field(default_factory=set)
 
 
@@ -374,11 +401,14 @@ def handle_patterns(content: str, source_path: Path, repo_root: Path, plan: Plan
         plan.documents.append(doc)
 
 
-def group_bullets(lines: list[str]) -> tuple[list[str], list[dict]]:
+def group_bullets(lines: list[str]) -> tuple[list[str], list[dict], list[str]]:
     """Split a session entry's body lines into a leading run (before any
-    bullet) and a list of bullets, each a dict with a 'lines' list."""
+    bullet), a list of bullets (each a dict with a 'lines' list), and a
+    trailing run (prose after the bullets — kept after them so the entry's
+    original order survives into tasks/history.md)."""
     leading: list[str] = []
     bullets: list[dict] = []
+    trailing: list[str] = []
     current: dict | None = None
     for line in lines:
         if BULLET_START_RE.match(line):
@@ -390,11 +420,14 @@ def group_bullets(lines: list[str]) -> tuple[list[str], list[dict]]:
         elif current is not None and line.strip() == "":
             bullets.append(current)
             current = None
+        elif bullets:
+            if line.strip() or trailing:
+                trailing.append(line)
         else:
             leading.append(line)
     if current is not None:
         bullets.append(current)
-    return leading, bullets
+    return leading, bullets, trailing
 
 
 def build_extracted_pattern_doc(pattern_text: str, entry: dict, source_path: Path, repo_root: Path) -> Document:
@@ -429,7 +462,7 @@ def handle_session_history(content: str, source_path: Path, repo_root: Path, pla
         body = strip_trailing_separator(content[start:end])
         entry = {"date": date, "title": title}
 
-        leading, bullets = group_bullets(body.splitlines())
+        leading, bullets, trailing = group_bullets(body.splitlines())
         for bullet in bullets:
             pattern_match = BULLET_PATTERN_RE.match(bullet["lines"][0])
             if not pattern_match:
@@ -442,7 +475,8 @@ def handle_session_history(content: str, source_path: Path, repo_root: Path, pla
             bullet["cross_link_doc"] = doc
 
         plan.session_entries.append({
-            "date": date, "title": title, "leading": leading, "bullets": bullets,
+            "date": date, "title": title,
+            "leading": leading, "bullets": bullets, "trailing": trailing,
         })
 
 
@@ -501,22 +535,18 @@ def process_lessons(path: Path, repo_root: Path, plan: Plan) -> None:
 
 def process_bugs(path: Path, repo_root: Path, plan: Plan) -> None:
     text = read_text(path)
-    rows = parse_markdown_table(text)
-    if not rows:
-        plan.archives.append(path)
-        return
+    for rows in parse_markdown_tables(text):
+        process_bug_table(rows, path, repo_root, plan)
+    plan.archives.append(path)
 
+
+def process_bug_table(rows: list[list[str]], path: Path, repo_root: Path, plan: Plan) -> None:
     header = rows[0]
-    lower_header = [h.strip().lower() for h in header]
-
-    def col_index(name: str) -> int | None:
-        return lower_header.index(name) if name in lower_header else None
-
-    idx_desc = col_index("description")
-    idx_root = col_index("root cause")
-    idx_fix = col_index("fix")
-    idx_files = col_index("files")
-    idx_date = col_index("date")
+    idx_desc = header_index(header, "description")
+    idx_root = header_index(header, "root cause")
+    idx_fix = header_index(header, "fix")
+    idx_files = header_index(header, "files")
+    idx_date = header_index(header, "date")
     mapped = {i for i in (idx_desc, idx_root, idx_fix, idx_files, idx_date) if i is not None}
 
     for row in rows[1:]:
@@ -551,8 +581,6 @@ def process_bugs(path: Path, repo_root: Path, plan: Plan) -> None:
         )
         plan.documents.append(doc)
 
-    plan.archives.append(path)
-
 
 # --------------------------------------------------------------------------
 # Slug assignment, report, apply
@@ -572,10 +600,32 @@ def next_free_slug(base_dir: Path, slug: str, used: set) -> str:
 
 def finalize_documents(plan: Plan) -> None:
     for doc in plan.documents:
-        category = CATEGORY_MAP[doc.problem_type]
+        category = CATEGORY_MAP.get(doc.problem_type)
+        if category is None:
+            raise MigrationError(
+                f"unknown problem_type {doc.problem_type!r} produced from "
+                f"{doc.migrated_from or 'an unknown source'}"
+            )
         base_dir = plan.repo_root / "tasks" / "solutions" / category
         slug = next_free_slug(base_dir, slugify(doc.title), plan.used_slugs)
         doc.path = base_dir / f"{slug}.md"
+
+
+def finalize_history(plan: Plan) -> None:
+    """Pick the history destination, diverting like project-context when a
+    tasks/history.md already exists (e.g. seeded by install.sh or /learn) —
+    the migration must never overwrite it."""
+    if not plan.session_entries:
+        return
+    target = plan.repo_root / "tasks" / "history.md"
+    if target.exists():
+        plan.history_path = plan.repo_root / "tasks" / "history.migrated.md"
+        plan.conflicts.append(
+            "tasks/history.md already exists; writing tasks/history.migrated.md "
+            "instead — merge manually"
+        )
+    else:
+        plan.history_path = target
 
 
 def render_history(plan: Plan) -> str:
@@ -592,9 +642,13 @@ def render_history(plan: Plan) -> str:
             bullet_lines = list(bullet["lines"])
             doc = bullet.get("cross_link_doc")
             if doc is not None:
-                cross_link = doc.path.relative_to(plan.repo_root).as_posix()
+                cross_link = doc.resolved_path().relative_to(plan.repo_root).as_posix()
                 bullet_lines[-1] = f"{bullet_lines[-1]} (extracted: {cross_link})"
             lines.extend(bullet_lines)
+        trailing = entry.get("trailing") or []
+        if any(l.strip() for l in trailing):
+            lines.append("")
+            lines.extend(trailing)
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 
@@ -611,14 +665,10 @@ def render_report(plan: Plan, apply_mode: bool) -> str:
 
     if plan.project_context is not None:
         pc = plan.project_context
-        rel_path = pc.path.relative_to(repo_root).as_posix()
-        if pc.conflict:
-            lines.append(f"CONFLICT: tasks/project-context.md already exists; {verb_doc} {rel_path} instead")
-        else:
-            lines.append(f"{verb_doc} {rel_path}")
+        lines.append(f"{verb_doc} {pc.path.relative_to(repo_root).as_posix()}")
 
     for doc in plan.documents:
-        rel_path = doc.path.relative_to(repo_root).as_posix()
+        rel_path = doc.resolved_path().relative_to(repo_root).as_posix()
         flags = []
         if doc.needs_review:
             flags.append("needs_review")
@@ -627,8 +677,8 @@ def render_report(plan: Plan, apply_mode: bool) -> str:
         flag_str = f" [{', '.join(flags)}]" if flags else ""
         lines.append(f"{verb_doc} {rel_path} (problem_type: {doc.problem_type}){flag_str}")
 
-    if plan.session_entries:
-        lines.append(f"{verb_doc} tasks/history.md")
+    if plan.history_path is not None:
+        lines.append(f"{verb_doc} {plan.history_path.relative_to(repo_root).as_posix()}")
 
     for source_rel, heading in plan.unmigrated_sections:
         lines.append(f"UNMIGRATED SECTION: '## {heading}' in {source_rel} (preserved verbatim in archive)")
@@ -654,16 +704,17 @@ def render_report(plan: Plan, apply_mode: bool) -> str:
 def apply_plan(plan: Plan) -> None:
     try:
         for doc in plan.documents:
-            doc.path.parent.mkdir(parents=True, exist_ok=True)
-            write_text_file(doc.path, render_document(doc))
+            doc_path = doc.resolved_path()
+            doc_path.parent.mkdir(parents=True, exist_ok=True)
+            write_text_file(doc_path, render_document(doc))
 
         if plan.project_context is not None:
             pc = plan.project_context
             pc.path.parent.mkdir(parents=True, exist_ok=True)
             write_text_file(pc.path, render_project_context(pc.body))
 
-        if plan.session_entries:
-            write_text_file(plan.repo_root / "tasks" / "history.md", render_history(plan))
+        if plan.history_path is not None:
+            write_text_file(plan.history_path, render_history(plan))
 
         if plan.archives:
             archive_dir = plan.repo_root / "tasks" / "archive" / plan.timestamp
@@ -703,12 +754,10 @@ def check_dirty(repo_root: Path, force: bool) -> None:
     if result.returncode != 0:
         raise MigrationError(f"git status failed: {result.stderr.strip()}")
     if result.stdout.strip() and not force:
-        print(
-            "ERROR: repo has uncommitted changes; refusing to run.\n"
-            "Commit or stash your changes, or pass --force to override.",
-            file=sys.stderr,
+        raise MigrationError(
+            "repo has uncommitted changes; refusing to run. "
+            "Commit or stash your changes, or pass --force to override."
         )
-        sys.exit(1)
 
 
 def safe_process(fn, path: Path, repo_root: Path, plan: Plan) -> None:
@@ -753,7 +802,8 @@ def main(argv: list[str] | None = None) -> int:
                 write_text_file(Path(args.report), message + "\n")
             return 0
 
-        check_dirty(repo_root, args.force)
+        if args.apply:
+            check_dirty(repo_root, args.force)
 
         plan = Plan(repo_root=repo_root, timestamp=utc_timestamp())
         if memory_path.exists():
@@ -764,6 +814,7 @@ def main(argv: list[str] | None = None) -> int:
             safe_process(process_bugs, bugs_path, repo_root, plan)
 
         finalize_documents(plan)
+        finalize_history(plan)
 
         if args.apply:
             apply_plan(plan)

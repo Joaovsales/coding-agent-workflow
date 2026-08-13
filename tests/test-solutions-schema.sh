@@ -5,12 +5,12 @@
 # map, track-required fields, and no dates in filenames.
 # Self-tests the validator against bad fixtures, then validates the real store.
 set -uo pipefail
+. "$(dirname "$0")/lib.sh"
 cd "$(dirname "$0")/.."
-source tests/lib.sh
 
 # validate_doc <file> — print one violation per line; silent when valid.
 validate_doc() {
-  local f="$1" base fm pt cat track dir key
+  local f="$1" base fm pt expected_dir track dir key
   base="$(basename "$f" .md)"
   case "$base" in
     *[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]*|[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]*)
@@ -25,18 +25,18 @@ validate_doc() {
   printf '%s\n' "$fm" | grep -Eq '^tags: *\[[^]]+\]' || echo "$f: missing or empty tags"
   pt="$(printf '%s\n' "$fm" | sed -n 's/^problem_type: *//p' | head -1)"
   case "$pt" in
-    bug|build-failure|test-failure|runtime-error) cat=bugs;        track=bug ;;
-    performance)                                  cat=performance; track=bug ;;
-    security)                                     cat=security;    track=bug ;;
-    architecture-decision)                        cat=architecture; track=knowledge ;;
-    pattern)                                      cat=patterns;    track=knowledge ;;
-    convention)                                   cat=conventions; track=knowledge ;;
-    tooling)                                      cat=tooling;     track=knowledge ;;
-    process)                                      cat=process;     track=knowledge ;;
+    bug|build-failure|test-failure|runtime-error) expected_dir=bugs;         track=bug ;;
+    performance)                                  expected_dir=performance;  track=bug ;;
+    security)                                     expected_dir=security;     track=bug ;;
+    architecture-decision)                        expected_dir=architecture; track=knowledge ;;
+    pattern)                                      expected_dir=patterns;     track=knowledge ;;
+    convention)                                   expected_dir=conventions;  track=knowledge ;;
+    tooling)                                      expected_dir=tooling;      track=knowledge ;;
+    process)                                      expected_dir=process;      track=knowledge ;;
     *) echo "$f: unknown problem_type '$pt'"; return ;;
   esac
   dir="$(basename "$(dirname "$f")")"
-  [ "$dir" = "$cat" ] || echo "$f: category dir '$dir' does not match problem_type '$pt' (expected $cat)"
+  [ "$dir" = "$expected_dir" ] || echo "$f: category dir '$dir' does not match problem_type '$pt' (expected $expected_dir)"
   if [ "$track" = bug ]; then
     for key in symptoms root_cause resolution; do
       printf '%s\n' "$fm" | grep -q "^$key:" || echo "$f: bug track missing $key"
@@ -148,6 +148,41 @@ assert_not_contains "$VIOLATIONS" "valid-doc.md" \
   "validator passes a valid knowledge doc"
 assert_not_contains "$VIOLATIONS" "valid-flagged-doc.md" \
   "validator passes a needs_review doc with empty track values"
+
+# --- Enum sync: script CATEGORY_MAP <-> this validator <-> README -----------
+# The problem_type -> category enum exists in three places (the migration
+# script's CATEGORY_MAP, the case statement above, tasks/solutions/README.md).
+# Anchor on the script's map: every pair it defines must validate here and be
+# documented in the README, so drift in any copy fails this file.
+ENUM_PAIRS="$(sed -n '/^CATEGORY_MAP = {/,/^}/p' scripts/migrate-learning-store.py \
+  | grep -oE '"[a-z-]+": "[a-z-]+"' | tr -d '"' | sed 's/: / /')"
+assert_eq "11" "$(printf '%s\n' "$ENUM_PAIRS" | grep -c .)" \
+  "enum sync: extracted the CATEGORY_MAP pairs from the migration script"
+while read -r pt cat; do
+  [ -n "$pt" ] || continue
+  mkdir -p "$FIX/$cat"
+  cat > "$FIX/$cat/enum-probe-$pt.md" <<EOF
+---
+title: Enum probe for $pt
+date: 2026-08-11
+problem_type: $pt
+module: tests
+tags: [fixture]
+symptoms: probe
+root_cause: probe
+resolution: probe
+applies_when: probe
+---
+Body.
+EOF
+  probe="$(validate_doc "$FIX/$cat/enum-probe-$pt.md")"
+  assert_eq "" "$probe" \
+    "enum sync: validator accepts script pair '$pt -> $cat/' (violations: ${probe:-none})"
+  assert_file_contains tasks/solutions/README.md "| \`$pt\` |" \
+    "enum sync: README documents problem_type '$pt'"
+done <<ENUM_EOF
+$ENUM_PAIRS
+ENUM_EOF
 
 # --- Real store: every document in tasks/solutions/ must validate -----------
 if [ -d tasks/solutions ]; then

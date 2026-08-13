@@ -97,7 +97,10 @@ echo "$DIVIDER"
 # the migration script instead.
 if [ -d "tasks/solutions" ]; then
   DOC_COUNT=$(find tasks/solutions -mindepth 2 -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
-  REVIEW_COUNT=$(grep -rl 'needs_review: true' tasks/solutions 2>/dev/null | wc -l | tr -d ' ')
+  # Category docs only (the store README mentions the flag as documentation),
+  # and `|| true` because grep exits 1 on zero matches — under `set -eo
+  # pipefail` that would kill the whole banner.
+  REVIEW_COUNT=$(grep -rl 'needs_review: true' tasks/solutions/*/ 2>/dev/null | wc -l | tr -d ' ' || true)
   echo ""
   echo "📚  LEARNING STORE  tasks/solutions — ${DOC_COUNT:-0} documents, ${REVIEW_COUNT:-0} needs_review (grep frontmatter to retrieve)"
 else

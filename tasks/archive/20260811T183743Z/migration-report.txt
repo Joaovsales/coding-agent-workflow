@@ -1,4 +1,4 @@
-Migration plan for C:\Users\Joao.Souto\coding-agent-workflow\.claude\worktrees\m3-typed-learning-store
+Migration plan for this repository (coding-agent-workflow)
 Mode: APPLY
 
 WROTE tasks/project-context.md

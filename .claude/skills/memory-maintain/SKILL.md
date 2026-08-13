@@ -25,8 +25,9 @@ cheap light pass every session, and the heavy consolidation only every 5.
 Runs on **every** invocation (session start + wrap-up). Bounded work only:
 - Count documents and `needs_review` flags (`grep -rl 'needs_review: true' tasks/solutions`).
 - If any document written **this session** duplicates an existing one
-  (same `module` + overlapping `tags`), merge into the more specific document
-  and note the merge in its body.
+  (same `module` + overlapping `tags` **and** >70% semantic overlap — the
+  migration's generic `module: general` + `migrated` tag alone never qualify),
+  merge into the more specific document and note the merge in its body.
 
 **If `tasks/solutions/` is absent or empty: silent no-op (exit 0, no output).**
 

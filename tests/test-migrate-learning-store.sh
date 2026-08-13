@@ -383,4 +383,108 @@ history13_content="$(cat "$F13/tasks/history.md")"
 extracted_link_count="$(printf '%s' "$history13_content" | grep -c '(extracted: tasks/solutions/patterns/')"
 assert_eq "2" "$extracted_link_count" "Scenario 13: both leaked bullets cross-link to their extracted documents"
 
+# ---------------------------------------------------------------------------
+# 14. (review round) Existing tasks/history.md — divert, never overwrite
+# ---------------------------------------------------------------------------
+F14="$(new_fixture)"
+printf '# Session History\n\nPRE-EXISTING HISTORY THAT MUST NOT VANISH\n' > "$F14/tasks/history.md"
+cat > "$F14/tasks/memory.md" <<'EOF'
+# Project Memory
+
+## Session History
+
+### [2026-02-01] — Some session
+- Key changes: something happened
+EOF
+out14="$(run_migrate --repo "$F14" --apply 2>&1)"
+code14=$?
+assert_eq "0" "$code14" "Scenario 14: history conflict still exits 0"
+assert_file_contains "$F14/tasks/history.md" "PRE-EXISTING HISTORY THAT MUST NOT VANISH" \
+  "Scenario 14: existing tasks/history.md untouched"
+assert_file_contains "$F14/tasks/history.migrated.md" "Some session" \
+  "Scenario 14: migrated entries diverted to tasks/history.migrated.md"
+assert_contains "$out14" "history.migrated.md" "Scenario 14: conflict named in report"
+
+# ---------------------------------------------------------------------------
+# 15. (review round) Multiple tables in bugs.md — all rows migrated
+# ---------------------------------------------------------------------------
+F15="$(new_fixture)"
+cat > "$F15/tasks/bugs.md" <<'EOF'
+# Bug Register
+
+## Open
+
+| ID | Date | Description | Root Cause | Fix | Files | Status | Regression Test |
+|----|------|-------------|------------|-----|-------|--------|-----------------|
+| BUG-1 | 2026-01-01 | First table bug | Cause one | Fix one | src/a.py | Fixed | tests/a.sh |
+
+## Resolved
+
+| ID | Date | Description | Root Cause | Fix | Files | Status | Regression Test |
+|----|------|-------------|------------|-----|-------|--------|-----------------|
+| BUG-2 | 2026-01-02 | Second table bug | Cause two | Fix two | src/b.py | Fixed | tests/b.sh |
+EOF
+out15="$(run_migrate --repo "$F15" --apply 2>&1)"
+assert_file_contains "$F15/tasks/solutions/bugs/first-table-bug.md" "Cause one" \
+  "Scenario 15: first table row migrated"
+assert_file_contains "$F15/tasks/solutions/bugs/second-table-bug.md" "Cause two" \
+  "Scenario 15: second table row migrated (multi-table register)"
+
+# ---------------------------------------------------------------------------
+# 16. (review round) Dry run allowed on a dirty tree; exact no-write proof
+# ---------------------------------------------------------------------------
+F16="$(new_fixture)"
+cat > "$F16/tasks/memory.md" <<'EOF'
+# Project Memory
+
+## Architecture Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| Dry run safety | Preview must never need --force |
+EOF
+git_init "$F16"
+git_commit_all "$F16" "init"
+printf 'scratch\n' > "$F16/scratch.txt"
+before16="$(cd "$F16" && find . -type f | sort)"
+out16="$(run_migrate --repo "$F16" 2>&1)"
+code16=$?
+after16="$(cd "$F16" && find . -type f | sort)"
+assert_eq "0" "$code16" "Scenario 16: dry run on a dirty tree exits 0 (no --force needed)"
+assert_contains "$out16" "WOULD WRITE" "Scenario 16: dirty-tree dry run still prints the plan"
+assert_eq "$before16" "$after16" "Scenario 16: dry run writes nothing (file list unchanged)"
+
+# ---------------------------------------------------------------------------
+# 17. (review round) Failure names the failing source, exits non-zero
+# ---------------------------------------------------------------------------
+F17="$(new_fixture)"
+mkdir -p "$F17/tasks/memory.md"   # a directory where a file is expected
+out17="$(run_migrate --repo "$F17" --apply 2>&1)"
+code17=$?
+assert_eq "1" "$code17" "Scenario 17: unreadable source exits non-zero"
+assert_contains "$out17" "tasks/memory.md" "Scenario 17: failure message names the failing source"
+
+# ---------------------------------------------------------------------------
+# 18. (review round) git-log date fallback + --report file
+# ---------------------------------------------------------------------------
+F18="$(new_fixture)"
+cat > "$F18/tasks/memory.md" <<'EOF'
+# Project Memory
+
+## Patterns & Lessons
+
+### Dated by git history
+**Context**: when no explicit date exists
+**Pattern**: fall back to the source file's last-commit date
+**Evidence**: this fixture
+EOF
+git_init "$F18"
+git_commit_all "$F18" "init"
+out18="$(run_migrate --repo "$F18" --apply --report "$F18/report.txt" 2>&1)"
+assert_file_contains "$F18/tasks/solutions/patterns/dated-by-git-history.md" "date_source: git-log" \
+  "Scenario 18: git-log date fallback recorded in frontmatter"
+assert_file_contains "$F18/report.txt" "Mode: APPLY" \
+  "Scenario 18: --report writes the report file"
+assert_contains "$out18" "date_source=git-log" "Scenario 18: report names the date fallback"
+
 finish

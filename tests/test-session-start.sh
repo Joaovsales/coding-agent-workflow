@@ -59,4 +59,32 @@ assert_eq "false" "$([ -f tasks/memory.md ] && echo true || echo false)" \
 cd "$REPO"
 rm -rf "$tmpS"
 
+# --- M3 regression: a store with ZERO needs_review docs must not kill the ---
+# banner (grep exits 1 on no match; under set -eo pipefail that aborted the
+# hook). Also: the store README's own literal mention of the flag must not be
+# counted as a flagged document.
+tmpZ=$(mktemp -d)
+cd "$tmpZ"
+mkdir -p tasks/solutions/patterns
+printf '`needs_review: true` is documentation, not a flag\n' > tasks/solutions/README.md
+cat > tasks/solutions/patterns/clean-doc.md <<'EOF'
+---
+title: Clean doc
+date: 2026-08-13
+problem_type: pattern
+module: tests
+tags: [fixture]
+applies_when: testing the zero-flag store path
+---
+Body.
+EOF
+out_zero=$(printf '{"source":"startup"}' | CCW_SESSION_GUARD=0 bash "$HOOK" 2>/dev/null)
+ec_zero=$?
+assert_eq "0" "$ec_zero" "M3: zero-flag store does not abort the hook"
+assert_contains "$out_zero" "SKILLS AVAILABLE" "M3: zero-flag store still prints the full banner"
+assert_contains "$out_zero" "1 documents, 0 needs_review" \
+  "M3: zero-flag store counts 0 needs_review (README mention not counted)"
+cd "$REPO"
+rm -rf "$tmpZ"
+
 finish

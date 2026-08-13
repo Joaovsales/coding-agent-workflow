@@ -82,7 +82,7 @@ table first.
 
 | Field | Rule |
 |-------|------|
-| `needs_review: true` | Stamped by the migration script (or `/learn`) on any document with an inferred or missing required field. `/memory-maintain` sweeps these. A flagged document may have empty track-required fields — that is the flag's purpose. |
+| `needs_review: true` | Stamped by the migration script (or `/learn`) on any document with an inferred or missing required *content* field (`module`, `tags`, or the track fields). `/memory-maintain` sweeps these. A flagged document may have empty track-required fields — that is the flag's purpose. An inferred `date` alone does not flag the document; `date_source` records that inference instead. |
 | `date_source` | Where `date` came from when it was not explicit in the source: `git-log` or `today`. Absent when the source carried its own date. |
 | `migrated_from` | Source file path, stamped by the migration script. |
 

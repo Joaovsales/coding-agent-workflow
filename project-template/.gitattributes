@@ -6,8 +6,8 @@
 # collisions on files unrelated to the features being built.
 #
 # Measured on one project, last 200 commits: the old single-file bug register
-# alone accounted for 25% of all commits, with the todo plan and lessons log
-# close behind — all of them files unrelated to the features being built.
+# 51 (25% of all commits), the todo plan 43, the old lessons log 39, and the
+# busiest source file 24 — the registers beat every real source file.
 #
 # `merge=union` keeps both sides with no conflict markers, which is right for a
 # log that only ever grows.
