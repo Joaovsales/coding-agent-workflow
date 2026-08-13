@@ -38,6 +38,9 @@ assert_contains "$src" 'copy_if_missing "tasks/solutions/README.md"' \
   "install.sh: seeds tasks/solutions/README.md"
 assert_contains "$src" 'copy_if_missing "tasks/history.md"' \
   "install.sh: seeds tasks/history.md"
+# M4: the concept glossary is a seeded task file too.
+assert_contains "$src" 'copy_if_missing "tasks/concepts.md"' \
+  "install.sh: seeds tasks/concepts.md"
 assert_eq "0" "$(count_matching 'copy_if_missing \"tasks/(bugs|lessons)\.md\"')" \
   "install.sh: no longer seeds retired lessons.md/bugs.md"
 assert_eq "present" "$([ -e "project-template/tasks/solutions/README.md" ] && echo present || echo missing)" \

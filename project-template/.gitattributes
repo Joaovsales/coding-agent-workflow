@@ -31,6 +31,9 @@ tasks/e2e-log.md     merge=union
 #   tasks/solutions/   one document per learning; concurrent sessions write
 #                      different files, and /memory-maintain curates — union
 #                      would defeat the deduplication that skill performs.
+#   tasks/concepts.md  entries are refined in place, not only appended; union
+#                      would keep both spellings of a refined definition and
+#                      could duplicate the sweep marker line.
 
 # Lockfiles: never merge, always regenerate. A textually merged lockfile can be
 # internally inconsistent while looking clean.

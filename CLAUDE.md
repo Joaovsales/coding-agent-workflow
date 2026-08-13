@@ -14,7 +14,7 @@
 
 ## Session Start Checklist
 
-1. Note the learning-store counts from the session-start banner; grep `tasks/solutions/` frontmatter (`problem_type`, `module`, `tags`) when a task touches a known area — never bulk-load the store. An unmigrated project (old monolithic store) is converted with the template repo's `scripts/migrate-learning-store.py` (dry-run by default; `/sync` Step 6.5 has the invocation)
+1. Note the learning-store counts from the session-start banner; grep `tasks/solutions/` frontmatter (`problem_type`, `module`, `tags`) when a task touches a known area — never bulk-load the store. Consult `tasks/concepts.md` when a task uses project terms you don't recognize, and use its vocabulary when naming things. An unmigrated project (old monolithic store) is converted with the template repo's `scripts/migrate-learning-store.py` (dry-run by default; `/sync` Step 6.5 has the invocation)
 2. Check `tasks/todo.md` for in-progress work
 3. Run `/memory-maintain` (self-gates — only does work every 5 sessions or when overdue)
 
@@ -204,6 +204,7 @@ tasks/backlog.md           → Ordered work items (from /prd)
 tasks/project-context.md   → Compressed agent briefing (auto-generated)
 tasks/solutions/           → Typed learning store: one doc per learning, grep-first retrieval (schema in its README.md)
 tasks/history.md           → Session narrative log (what happened, not learnings)
+tasks/concepts.md          → Concept glossary: project-specific vocabulary (populated once by /memory-maintain's bootstrap sweep, accreted by /learn, pruned by /memory-maintain)
 tasks/checkpoint.md        → Session snapshots
 ```
 

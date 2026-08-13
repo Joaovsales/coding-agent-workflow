@@ -75,6 +75,7 @@ Sets `git config --global init.templateDir ~/.git-templates`. Every time you run
 tasks/todo.md            ← active task plan
 tasks/solutions/         ← typed learning store (schema in its README.md)
 tasks/history.md         ← session narrative log
+tasks/concepts.md        ← concept glossary (swept once by /memory-maintain, then accreted)
 specs/                   ← feature specification directory
 CLAUDE.md           ← project-specific overrides
 ```
@@ -132,6 +133,7 @@ No need to use `newproject`. Just copy the scaffold files manually:
 cp ~/coding-agent-workflow/project-template/tasks/todo.md tasks/
 cp -r ~/coding-agent-workflow/project-template/tasks/solutions tasks/
 cp ~/coding-agent-workflow/project-template/tasks/history.md tasks/
+cp ~/coding-agent-workflow/project-template/tasks/concepts.md tasks/
 cp ~/coding-agent-workflow/project-template/CLAUDE.md .
 mkdir -p specs
 ```
@@ -292,6 +294,7 @@ Claude delegates to these automatically (or you can invoke them via the Agent to
 │   └── tasks/
 │       ├── todo.md
 │       ├── history.md
+│       ├── concepts.md
 │       └── solutions/
 ├── .claude/
 │   ├── AGENTS.md                    ← Agent reference documentation
@@ -304,6 +307,7 @@ Claude delegates to these automatically (or you can invoke them via the Agent to
 ├── tasks/
 │   ├── todo.md                      ← Active task plan
 │   ├── history.md                   ← Session narrative log
+│   ├── concepts.md                  ← Concept glossary (project vocabulary)
 │   └── solutions/                   ← Typed learning store (written via /learn)
 ├── specs/                           ← Feature specifications
 └── tests.md                         ← Project-specific test configuration

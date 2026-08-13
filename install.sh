@@ -288,6 +288,7 @@ copy_if_missing ".ignore"
 copy_if_missing "tasks/todo.md"
 copy_if_missing "tasks/solutions/README.md"
 copy_if_missing "tasks/history.md"
+copy_if_missing "tasks/concepts.md"
 
 if [ ! -d "$REPO_ROOT/specs" ]; then
   mkdir -p "$REPO_ROOT/specs"

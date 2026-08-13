@@ -222,4 +222,63 @@ for f in .claude/skills/wrap-up-session/SKILL.md .agents/skills/wrap-up-session/
   fi
 done
 
+# --- Tier 3.3 (M4): accreting concept glossary --------------------------------
+# tasks/concepts.md is project vocabulary: seeded, populated once by a bootstrap
+# sweep, then accreted by /learn and pruned by /memory-maintain. Pinned tokens:
+# both seeds exist, the repo copy defines the six harness terms, and both carry
+# the Sweep marker that keys the one-time sweep.
+# The template seed must SHIP pending (downstream sweep not yet run); the repo
+# copy dogfooded the sweep, so its marker may read either legal state — but only
+# a legal state. A loose prefix match here would stay green while the marker
+# rots into a spelling the light pass's exact grep no longer recognizes.
+for f in tasks/concepts.md project-template/tasks/concepts.md; do
+  assert_eq "present" "$([ -f "$f" ] && echo present || echo missing)" \
+    "M4: $f exists"
+  assert_eq "1" "$(grep -cE '^> Sweep: (pending|done [0-9]{4}-[0-9]{2}-[0-9]{2})$' "$f" 2>/dev/null || true)" \
+    "M4: $f carries exactly one legal-state sweep marker"
+done
+assert_file_contains "project-template/tasks/concepts.md" "> Sweep: pending" \
+  "M4: template glossary seed ships unswept"
+# Anchored to the bullet form so a term surviving only in prose cannot pass.
+for term in tier gate register drift ceiling store; do
+  for f in tasks/concepts.md project-template/tasks/concepts.md; do
+    assert_file_contains "$f" "- **$term** — " \
+      "M4: $f defines '$term' as a glossary bullet"
+  done
+done
+# /learn accretes the glossary as a side effect (no separate prompt); a file it
+# bootstraps from scratch must still carry the pending marker so the sweep fires.
+for f in .claude/skills/learn/SKILL.md .agents/skills/learn/SKILL.md; do
+  assert_file_contains "$f" "tasks/concepts.md" \
+    "M4: $f captures concepts to the glossary"
+  assert_file_contains "$f" "Sweep: pending" \
+    "M4: $f bootstraps an absent glossary with the sweep marker"
+done
+# /memory-maintain owns both glossary lifecycles: the one-time bootstrap sweep
+# (keyed on the pending marker, fires from the LIGHT pass so a fresh install
+# does not wait 5 sessions) and steady-state pruning in the heavy pass.
+for f in .claude/skills/memory-maintain/SKILL.md .agents/skills/memory-maintain/SKILL.md; do
+  assert_file_contains "$f" "tasks/concepts.md" \
+    "M4: $f maintains the glossary"
+  assert_file_contains "$f" "standard industry meaning" \
+    "M4: $f prunes non-project-specific glossary entries"
+  assert_file_contains "$f" "Phase 0" \
+    "M4: $f defines the bootstrap sweep phase"
+  assert_file_contains "$f" "Sweep: pending" \
+    "M4: $f keys the sweep on the pending marker"
+  assert_file_contains "$f" "Sweep: done" \
+    "M4: $f flips the marker after the sweep"
+  # Pins the fix for the one regression this feature actually shipped with: the
+  # light pass's empty-store no-op swallowing Phase 0 on a fresh install. The
+  # exemption clause is the smallest falsifiable unit that fails if it returns.
+  assert_file_contains "$f" "runs regardless" \
+    "M4: $f exempts the glossary marker check from the empty-store no-op"
+done
+# Registration: the glossary is a listed register in both CLAUDE.md variants.
+keydirs="$(sed -n '/^## Key Directories/,/^## Agents/p' CLAUDE.md)"
+assert_contains "$keydirs" "tasks/concepts.md" \
+  "M4: CLAUDE.md Key Directories lists tasks/concepts.md"
+assert_file_contains "project-template/CLAUDE.md" "concepts.md" \
+  "M4: project-template CLAUDE.md lists the glossary"
+
 finish
