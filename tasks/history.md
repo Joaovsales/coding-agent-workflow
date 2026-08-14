@@ -49,3 +49,27 @@
 
 - Key changes: Added `tasks/concepts.md` (accreting concept glossary) + template seed; `/memory-maintain` Phase 0 one-time bootstrap sweep keyed on a `> Sweep: pending` marker, fired from the light pass; `/learn` Step 7 concept capture; pruning rule in Phase 4; install.sh seed; guards in test-doc-conventions.sh + test-install-sh.sh. Dogfooded the sweep on this repo (10 terms admitted, marker flipped).
 - Learnings captured: tasks/solutions/patterns/first-run-triggers-must-precede-every-early-exit-above-them.md
+
+### [2026-08-14] — Agent registration repair
+
+- Key changes: Three documented personas (`code-reviewer`, `context-document-optimizer`,
+  `frontend-design-validator`) were absent from the harness agent registry despite existing
+  in both trees with correct names and a green suite. Cause was a YAML parse error — their
+  `description:` values were unquoted plain scalars carrying `": "` from auto-generated
+  `<example>` prose. Rewrote all three colon-free (both trees), added `tests/test-agents.sh`
+  § 4 (frontmatter constructs that break registration, with nine negative self-test fixtures)
+  and § 5 (CLAUDE.md § Agents -> counterpart file, with a count floor so the check cannot
+  fail open). Documented the constraint as rule 5 in `.agents/agents/README.md`.
+- Verified live: all three personas registered on the next session start, and the four
+  `/wrap-up-session` review passes dispatched — three of them `code-reviewer`, the exact
+  pass that was broken.
+- Learnings captured: tasks/solutions/bugs/unquoted-yaml-scalar-silently-deregisters-an-agent-persona.md
+- Review: 4 parallel passes (3x code-reviewer, 1x critic), separately dispatched, so
+  corroboration between them is independent. 4 MUST-FIX and 8 SHOULD-FIX raised; the
+  vacuity findings (checks passing when their input vanished) were found independently by
+  three of the four passes and all were fixed. One critic claim was disproven on check —
+  a "lossless" single-quoted restore of the original description raises ParserError on its
+  own apostrophes.
+- Deployment: the broken copies in `~/.claude/agents/` were refreshed by hand the same day.
+  Fixing the repo does not fix the machine - an installed persona has its own copy, so
+  "repo is green" and "harness is fixed" are separate claims.
