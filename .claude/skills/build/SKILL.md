@@ -11,24 +11,23 @@ Bridges the gap between `/plan` (design) and `/wrap-up-session` (close).
 
 ## Model Routing
 
-Sub-agent model assignment for build orchestration. Edit this table to match your provider setup.
+Sub-agent model assignment for build orchestration. The Tier column is canonical; concrete provider model IDs live in `PI_SETUP.md` § Sub-Agent Routing, which is their single source — do not copy them back here.
 
-| Role | Agent | Model ID (OpenRouter) | Claude Code built-in |
-|------|-------|----------------------|---------------------|
-| Planning / architecture / circuit breaker | `planner` | `moonshotai/kimi-k3` | `opus` |
-| Second opinion (advisory) | `oracle` (extension builtin) | `moonshotai/kimi-k3` | `opus` |
-| Coding agents | `backend-developer`, `frontend-developer` | `qwen/qwen3-coder-next` | `sonnet` |
-| Debugger (attempts 1-2) | `code-debugger` | `qwen/qwen3-coder-next` | `sonnet` |
-| Debugger (attempts 3-4, escalation) | `code-debugger` | `z-ai/glm-4.7` | `sonnet` |
-| Highest-stakes review (correctness, security, adversarial) | `code-reviewer`, `security-reviewer`, `critic` | *inherit* | *inherit* |
-| Design review | `software-design-expert-review` | `z-ai/glm-4.7` | `sonnet` |
-| Search / recon | `scout` (extension builtin) | `deepseek/deepseek-v4-flash` | `haiku` |
-| Context / docs | `context-builder` (builtin), `context-document-optimizer` | `deepseek/deepseek-v4-flash` | `haiku` |
+| Role | Agent | Tier | Claude Code |
+|------|-------|------|-------------|
+| Planning / architecture / circuit breaker | `planner` | Planner | `opus` |
+| Second opinion (advisory) | `oracle` (extension builtin) | Planner | `opus` |
+| Coding agents | `backend-developer`, `frontend-developer` | Builder | `sonnet` |
+| Debugger (attempts 1-2) | `code-debugger` | Builder | `sonnet` |
+| Debugger (attempts 3-4, escalation) | `code-debugger` | Reviewer | `sonnet` |
+| Highest-stakes review (correctness, security, design, adversarial) | `code-reviewer`, `security-reviewer`, `software-design-expert-review`, `critic` | Ceiling | *inherit* (`critic`: planner floor) |
+| Search / recon | `scout` (extension builtin) | Scout | `haiku` |
+| Context / docs | `context-builder` (builtin), `context-document-optimizer` | Reviewer | `haiku` |
 
 **Escalation ladder for test regressions:**
-1. 2 attempts with coding/debug model (`qwen3-coder-next` / worker tier)
-2. 2 attempts with escalated model (`glm-4.7` / reasoning tier)
-3. Circuit breaker — `planner` on `kimi-k3` analyzes all 4 attempts; then halt and escalate to user
+1. 2 attempts at builder tier
+2. 2 attempts at reviewer tier
+3. Circuit breaker — `planner` at planner tier analyzes all 4 attempts; then halt and escalate to user
 
 > **For Pi + OpenRouter users:** Session-level routing goes in `~/.pi/agent/presets.json` (see `PI_SETUP.md`). **Sub-agent** routing requires the `pi-subagents` extension (`pi install npm:pi-subagents`) — set `subagents.agentOverrides` in `~/.pi/agent/settings.json` (agent name → model, plus `fallbackModels` for provider failures). Workflow agents live in `.agents/agents/` and are auto-discovered per project. See `PI_SETUP.md` § Sub-Agent Routing.
 
@@ -342,7 +341,7 @@ When `code-debugger` fails on the same regression, escalate through two tiers be
 **Tier 1 — Worker (2 attempts):** Standard debugging with the default coding model.
 **Tier 2 — Escalation (2 attempts):** Upgrade to the reasoning/review model for deeper analysis.
 
-**Tier 3 — Circuit breaker (premium model, e.g. `anthropic/claude-opus-4.8`):**
+**Tier 3 — Circuit breaker (planner tier):**
 
 1. **STOP** fixing symptoms — the design may be the problem.
 2. Spawn a `planner` with: the failing test output (all 4 attempts), the files changed across all attempts, the original spec and task description.

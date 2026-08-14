@@ -15,7 +15,7 @@
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO"
 
-CEILING_AGENTS="code-reviewer security-reviewer critic"
+CEILING_AGENTS="code-reviewer security-reviewer software-design-expert-review critic"
 
 # Reviewer-tier personas that MUST keep their Claude-side pin. This is the mirror
 # of the ceiling assertion and it guards a real, already-observed regression: the
@@ -23,7 +23,7 @@ CEILING_AGENTS="code-reviewer security-reviewer critic"
 # model-agnostic by contract, so copying over a Claude-only `model:` line drops it
 # silently. Parity tests cannot catch it -- the `cp` is what made the two files
 # identical. Pin the line itself.
-PINNED_AGENTS="software-design-expert-review:sonnet"
+PINNED_AGENTS="context-document-optimizer:sonnet"
 
 # --- 1. Ceiling agents carry no model pin in the Claude Code tree -------------
 for agent in $CEILING_AGENTS; do
@@ -99,6 +99,33 @@ for f in CLAUDE.md .agents/skills/build/SKILL.md .claude/skills/build/SKILL.md; 
     else
       assert_eq "unpinned" "unpinned" "ModelTier: $f does not pin $agent in a table"
     fi
+  done
+done
+
+# --- 6. critic never resolves below planner tier ------------------------------
+# Plain ceiling downgrades critic on a sub-planner session, and critic is the
+# adversarial gate of last resort. The floor is a dispatch rule, not frontmatter:
+# a `model: opus` pin would cap the agent at Opus rather than floor it, which is
+# the defect the ceiling tier exists to remove. So the rule text is what gets
+# pinned here, alongside the no-pin assertion above.
+assert_file_contains CLAUDE.md "planner floor"   "ModelTier: CLAUDE.md states critic's planner floor"
+assert_file_matches CLAUDE.md '^\| .critic. \| .?ceiling \(planner floor\)'   "ModelTier: CLAUDE.md Agents table marks critic ceiling (planner floor)"
+
+# --- 7. No concrete provider model IDs in the routing docs -------------------
+# PI_SETUP.md owns them. Three copies of a release-sensitive fact is three
+# chances to go stale, and the tables are the copies nobody updates.
+for f in CLAUDE.md .agents/skills/build/SKILL.md .claude/skills/build/SKILL.md; do
+  for vendor in 'moonshotai/' 'qwen/' 'z-ai/' 'deepseek/' 'anthropic/claude'; do
+    assert_file_not_matches "$f" "$vendor" "ModelTier: $f has no hardcoded $vendor ID"
+  done
+  assert_file_contains "$f" 'PI_SETUP.md` § Sub-Agent Routing'     "ModelTier: $f points at PI_SETUP.md for concrete IDs"
+done
+assert_file_contains PI_SETUP.md "single source of concrete model IDs"   "ModelTier: PI_SETUP.md claims ownership of the concrete IDs"
+
+# --- 8. No skill routes the design reviewer to a concrete model --------------
+for tree in .agents .claude; do
+  for skill in quality-gate software-design-expert-review; do
+    assert_file_not_matches "$tree/skills/$skill/SKILL.md" 'model: .?sonnet'       "ModelTier: $tree $skill no longer pins the design reviewer"
   done
 done
 

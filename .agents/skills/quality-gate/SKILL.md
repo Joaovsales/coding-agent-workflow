@@ -198,7 +198,7 @@ Apply Gate — but it may never report a promoted confidence.
 
 ## Claude Code Enhancements
 
-Dispatch the `software-design-expert-review` skill (invokes `software-design-expert-review` agent, model: sonnet) instead of running inline Phase 3. The agent is read-only — it reports findings only. Apply findings in the main context after the agent returns per the Apply Gate. Run tests after applying fixes. Because this path is a separate dispatch, record it as `dispatched`.
+Dispatch the `software-design-expert-review` skill (invokes the `software-design-expert-review` agent at Ceiling tier — pass no `model`, so it inherits the session model) instead of running inline Phase 3. The agent is read-only — it reports findings only. Apply findings in the main context after the agent returns per the Apply Gate. Run tests after applying fixes. Because this path is a separate dispatch, record it as `dispatched`.
 
 ---
 

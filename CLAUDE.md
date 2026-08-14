@@ -225,9 +225,9 @@ Canonical persona definitions live in `.agents/agents/` (model-agnostic — neve
 | `code-reviewer` | *ceiling* | Post-implementation quality review |
 | `code-debugger` | `sonnet` | Debugging failing tests and runtime errors |
 | `security-reviewer` | *ceiling* | OWASP checks, auth flows, injection vectors |
-| `critic` | *ceiling* | Adversarial quality gate for plans, code, specs |
+| `critic` | *ceiling (planner floor)* | Adversarial quality gate for plans, code, specs |
 | `context-document-optimizer` | `sonnet` | Compress large docs for token efficiency |
-| `software-design-expert-review` | `sonnet` | Read-only APOSD design audit — depth, leakage, error design (dispatched by `/quality-gate`) |
+| `software-design-expert-review` | *ceiling* | Read-only APOSD design audit — depth, leakage, error design (dispatched by `/quality-gate`) |
 
 **Rule**: One focused task per subagent. Resolve each agent's model through the
 tier in *Model Routing* below — on Claude Code pass `model` explicitly for the
@@ -239,15 +239,15 @@ agents so they inherit the session model; on Pi, never pass per-call model param
 
 ## Model Routing
 
-Canonical tiers (concrete model IDs per provider setup live in `/build`'s Model Routing table and `PI_SETUP.md`):
+Canonical tiers. Concrete provider model IDs are deliberately **not** repeated here — `PI_SETUP.md` § Sub-Agent Routing is their single source, so a model release updates one file instead of three:
 
-| Tier | Used for | Claude Code | Pi + OpenRouter (recommended) |
-|------|----------|-------------|-------------------------------|
-| Ceiling | correctness, security, and adversarial review — the highest-stakes judgment | *inherit* | *inherit* |
-| Planner | `/plan`, architecture, oracle, circuit breaker | `opus` | `moonshotai/kimi-k3` |
-| Builder | `/build` coding, debugging (attempts 1–2) | `sonnet` | `qwen/qwen3-coder-next` |
-| Reviewer | design review, doc compression, debugging (attempts 3–4) | `sonnet` | `z-ai/glm-4.7` |
-| Scout | search, recon, context building | `haiku` | `deepseek/deepseek-v4-flash` |
+| Tier | Used for | Claude Code |
+|------|----------|-------------|
+| Ceiling | correctness, security, design, and adversarial review — the highest-stakes judgment | *inherit* |
+| Planner | `/plan`, architecture, oracle, circuit breaker | `opus` |
+| Builder | `/build` coding, debugging (attempts 1–2) | `sonnet` |
+| Reviewer | doc compression, debugging (attempts 3–4) | `sonnet` |
+| Scout | search, recon, context building | `haiku` |
 
 **`Ceiling` means: omit the model override entirely so the sub-agent inherits the
 session model.** It is not a model name and must never be written as one. If the
@@ -261,12 +261,24 @@ the correct cross-harness fallback: where a harness cannot select a model per
 agent, omit the override rather than guessing a name, because a working review on
 the parent model beats a failed dispatch on an unrecognized one.
 
+**`critic` carries a planner floor** — `*ceiling (planner floor)*`. Inheriting is
+right in every direction but down: `critic` is the adversarial gate of last
+resort, and a plain ceiling silently drops it below planner tier on a Builder- or
+Scout-tier session. So omit the override when the session model is planner tier
+or higher, and pass the planner alias when it is lower. The floor is a **dispatch
+rule, not frontmatter**: a `model: opus` pin would satisfy it on a Sonnet session
+but *cap* the agent on any session stronger than Opus — the same defect Ceiling
+exists to remove. Nothing mechanically enforces this; `tests/test-model-tiers.sh`
+pins the rule's presence and the absence of a pin, which is as far as a static
+guard reaches.
+
 Rules:
 - Never use the planner tier for code writing; never use the scout tier for coding
   or planning.
 - **Claude Code**: pass `model` explicitly for the Planner, Builder, Reviewer, and
   Scout tiers. Pass **nothing** for Ceiling — an override there is the regression
-  this tier exists to prevent.
+  this tier exists to prevent. `critic` is the one exception, and only downward,
+  per its floor above.
 - **Pi**: never pass per-call model params; `subagents.agentOverrides` resolves
   them. Leave ceiling-tier agents out of `agentOverrides` so they inherit.
 
