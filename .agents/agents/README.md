@@ -25,3 +25,13 @@ plus a system-prompt body.
    (`scout`, `oracle`, `researcher`, `context-builder`). Overlapping builtins
    (`worker`, `reviewer`, `delegate`, `advisor`) should be disabled in Pi
    settings to keep the fleet unambiguous — see `PI_SETUP.md`.
+5. **Keep `description:` a colon-free single line, and make `name:` match the
+   filename.** Frontmatter values here are unquoted YAML plain scalars, which
+   may not contain `": "` or end in `:` — a violation is a *parse error*, and a
+   persona whose frontmatter fails to parse is dropped from the registry
+   silently: the file still exists, the name still looks right, and dispatch
+   fails with "agent type not found". `name:` is what the harness registers, so
+   a value that drifts from the filename fails the same way while parsing
+   cleanly. Both are enforced by `tests/test-agents.sh` § 4. If a description
+   genuinely needs punctuation, quote the whole value — but prefer rewording,
+   because a half-applied quote is its own parse error.
