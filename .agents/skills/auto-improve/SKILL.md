@@ -74,6 +74,13 @@ Dispatch independent read-only sub-agents **in parallel** (one message, multiple
 alias in this column pins it just as surely as frontmatter would, and pins it for
 exactly the users who chose a stronger session.
 
+The design-review dispatch is a **repo survey**, so it carries the exception in
+`CLAUDE.md` § *Review Dispatch Contract*: there is no session diff, no spec and no
+closed task list to pass. State that rather than omitting it — pass
+`no spec — repo survey, nothing built this run` and `deferrals: none`, plus the
+output format. An omitted line reads as "nobody told me" and puts the reviewer back
+to guessing, which is what the contract exists to stop.
+
 Do **not** fix anything in this phase. Discovery is read-only. Merge these findings with the ready backlog/bug items for ranking in Phase 2.
 
 ---

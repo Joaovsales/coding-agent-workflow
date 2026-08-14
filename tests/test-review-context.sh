@@ -18,11 +18,14 @@
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO"
 
-# The four sites that dispatch a reviewer with session work to review.
-# auto-improve's discovery scan is deliberately absent: it surveys the whole repo
-# for candidates rather than reviewing what a session just built, so it has no
-# spec, no AC list, and no deferral set to pass.
-DISPATCH_SITES="skills/wrap-up-session/SKILL.md skills/quality-gate/SKILL.md skills/software-design-expert-review/SKILL.md"
+# The three skill FILES that dispatch a reviewer. They hold four sites between
+# them -- wrap-up-session carries two (Step 4 and Parallel Code Review), which is
+# why the second one gets its own needle below rather than riding on the file.
+# auto-improve is absent by exception, not by oversight: its discovery scan surveys
+# the whole repo rather than a session's work, so items 2/3/6 have no subject. The
+# contract names that exception explicitly and still requires the empty markers, so
+# the rule stays stated rather than silently dropped.
+DISPATCH_SITE_FILES="skills/wrap-up-session/SKILL.md skills/quality-gate/SKILL.md skills/software-design-expert-review/SKILL.md"
 
 REVIEW_PERSONAS="code-reviewer critic security-reviewer software-design-expert-review"
 
@@ -62,7 +65,7 @@ assert_prose_contains CLAUDE.md 'distinguish **empty** from **absent**' \
 # then count an echo as a witness. The needles name the *reason*, not the slogan:
 # a section that says "share intent" without saying why is one edit from being
 # widened to "share everything".
-assert_prose_contains CLAUDE.md 'Share intent' \
+assert_prose_contains CLAUDE.md '**Share intent** — spec, acceptance criteria' \
   "ReviewContext: contract says intent is shared"
 assert_prose_contains CLAUDE.md 'Withhold conclusions' \
   "ReviewContext: contract says conclusions are withheld"
@@ -89,7 +92,8 @@ assert_prose_contains CLAUDE.md 'must say what stopped the check' \
 # either Independence Accounting forbids a legitimate one-context verification, or
 # "I verified it" licenses promoting on agreement. Both were reachable from the
 # text before this rule existed, so the distinction is pinned, not implied.
-assert_prose_contains CLAUDE.md 'Verification-promotion is not agreement-promotion' \
+assert_prose_contains CLAUDE.md 'agreement-promotion, and *Independence Accounting*
+does not constrain it' \
   "ReviewContext: CLAUDE.md separates the two promotion mechanisms"
 assert_prose_contains CLAUDE.md 'promotes on *evidence*' \
   "ReviewContext: verification promotes on evidence, so one context suffices"
@@ -102,7 +106,7 @@ assert_prose_contains CLAUDE.md 'promotes on *witnesses*' \
 # while the test reads the fixed one. Parity tests catch a diff, not a stale pair
 # that was never re-copied -- so both are named here.
 for tree in .agents .claude; do
-  for site in $DISPATCH_SITES; do
+  for site in $DISPATCH_SITE_FILES; do
     f="$tree/$site"
     # Prose, not literal: the citation is a sentence and wraps. A wrap-fragile
     # needle here would fail on reflow and teach the next author to delete it.
@@ -113,6 +117,11 @@ for tree in .agents .claude; do
     assert_file_contains "$f" 'no spec —' \
       "ReviewContext: $f passes an explicit marker when there is no spec"
   done
+  # wrap-up-session holds two of the four sites, and a per-file needle is satisfied
+  # by either. Pin the second one -- the parallel-dispatch path -- separately: it is
+  # the only path the skill says "licenses confidence promotion", so a payload that
+  # silently stops reaching it degrades exactly the run that promotes on it.
+  assert_prose_contains "$tree/skills/wrap-up-session/SKILL.md"     'carries the *Review Payload* assembled in Step 4'     "ReviewContext: $tree wrap-up parallel dispatch carries the payload too"
 done
 
 # --- 7. Each reviewer persona declares its intake ----------------------------
@@ -126,22 +135,28 @@ for tree in .agents/agents .claude/agents; do
     f="$tree/$p.md"
     assert_file_matches "$f" '^## Context Intake' \
       "ReviewContext: $f declares a Context Intake section"
+    # Anchored at line start. `assert_file_contains` is a substring match and
+    # `**Never out of scope**:` contains `Out of scope`, so the unanchored needle
+    # stayed green with the entire boundary paragraph deleted from the one persona
+    # that also carries a carve-out. Found by probing, not by reading.
+    assert_file_matches "$f" '^\*\*Out of scope\*\*' \
+      "ReviewContext: $f states its boundary"
+    assert_file_matches "$f" '^\*\*Given to you\*\*' \
+      "ReviewContext: $f states what it will be handed"
     assert_file_contains "$f" 'Fetch yourself' \
       "ReviewContext: $f says what to fetch itself"
-    assert_file_contains "$f" 'Out of scope' \
-      "ReviewContext: $f states its boundary"
+    assert_prose_contains "$f" 'CLAUDE.md` § *Review Dispatch Contract*' \
+      "ReviewContext: $f points at the contract it is the receiving end of"
+    assert_file_contains "$f" 'deferrals: none' \
+      "ReviewContext: $f knows an empty deferral list from a missing one"
   done
 done
 
-# --- 8. No Ceiling role pinned in a bare table cell --------------------------
-# test-model-tiers.sh §8 matches `model: <alias>`, which a routing table written
-# as `| Design review | sonnet | ...` walks straight past. That is how
-# auto-improve kept a Ceiling role pinned through the whole of #61. The guard
-# belongs with the tier tests; the assertion here is the regression itself, so
-# deleting it from either file leaves one witness standing.
-for tree in .agents .claude; do
-  assert_file_not_matches "$tree/skills/auto-improve/SKILL.md" '^\| Design review \| .?(sonnet|opus|haiku)' \
-    "ReviewContext: $tree auto-improve does not pin the design reviewer to an alias"
-done
+# The Ceiling-in-a-table-cell rule lives in tests/test-model-tiers.sh section 8b,
+# not here. An earlier draft asserted it in both files and called that redundancy;
+# probing showed this copy was strictly weaker (it required exact single spacing,
+# so `|Design review | sonnet |` walked past it while 8b caught it). Two guards
+# where one is weaker is not two witnesses -- it is one witness and a decoy that
+# makes the pair look stronger than it is.
 
 finish

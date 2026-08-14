@@ -25,10 +25,23 @@ plan block in `tasks/todo.md`; the callers of anything a finding turns on; and a
 client of a changed contract — tests, frontend, docs — since a contract break is
 invisible from the producing side alone.
 
-**Out of scope**: pre-existing patterns; items on the deferral list; and the
+Read the spec's *rationale* as a claim under test, not as settled ground. It was
+written by the party you are reviewing, so its argument for why the design is right
+is precisely the thing you are here to attack — and a spec whose reasoning does not
+survive contact with the diff is itself a finding.
+
+**Out of scope**: pre-existing patterns this diff did not introduce; and the
 findings of other reviewers, which you are deliberately not given. Your value is
 being a second *witness*, and a witness who read the other testimony is an echo —
 see `CLAUDE.md` § *Independence Accounting*.
+
+**Never out of scope — the deferral list is evidence, not immunity.** Your mandate
+is "what AC is this missing?", and a deferral that fails an AC is the highest-value
+finding you can make: it is a decision the user recorded, taken against a
+requirement the user also recorded. Report it, quote the marker, and name the AC it
+breaks. The same applies to anything on the never-on-the-chopping-block list
+(`.claude/project.md` § *Code Economy*). What you may not do is re-raise a deferral
+as though nobody had documented it.
 
 ## Core Mission
 

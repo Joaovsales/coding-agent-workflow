@@ -200,27 +200,43 @@ so there is no third tree to mirror into.
 
 ## Acceptance Criteria
 
-- [ ] `CLAUDE.md` has a § *Review Dispatch Contract* enumerating all seven items
-- [ ] It states the intent-shared / conclusions-withheld split, and why sharing
+- [x] `CLAUDE.md` has a § *Review Dispatch Contract* enumerating all seven items
+- [x] It states the intent-shared / conclusions-withheld split, and why sharing
       conclusions would corrupt Independence Accounting
-- [ ] All four reviewer dispatch sites cite the contract by section name
-- [ ] Each site states the absent-vs-empty rule for spec and deferrals
-- [ ] `CLAUDE.md` § *Finding Model* requires a finding at `75` to name its
+- [x] All four reviewer dispatch sites cite the contract by section name
+- [x] Each site states the absent-vs-empty rule for spec and deferrals
+- [x] `CLAUDE.md` § *Finding Model* requires a finding at `75` to name its
       dependency, and an unnamed dependency reads as `50`
-- [ ] It states the verification path (read the dependency → promote to `100` with
+- [x] It states the verification path (read the dependency → promote to `100` with
       evidence, or drop, or hold and say what stopped it)
-- [ ] It states that verification-promotion is not agreement-promotion and is not
+- [x] It states that verification-promotion is not agreement-promotion and is not
       constrained by Independence Accounting
-- [ ] All four review personas carry a `## Context Intake` section in **both** trees
+- [x] All four review personas carry a `## Context Intake` section in **both** trees
       (8 files), and `tests/test-agents.sh` stays green
-- [ ] `auto-improve` no longer pins the design reviewer to an alias
-- [ ] `tests/test-model-tiers.sh` §8 fails when a Ceiling role is pinned in a table
+- [x] `auto-improve` no longer pins the design reviewer to an alias
+- [x] `tests/test-model-tiers.sh` §8 fails when a Ceiling role is pinned in a table
       cell, not only via `model:`
-- [ ] `tests/test-review-context.sh` fails when any one of: the contract section is
+- [x] `tests/test-review-context.sh` fails when any one of: the contract section is
       deleted, a dispatch site's pointer is removed, a persona's intake section is
       removed, or the anchor-75 rule is deleted — each probed and recorded
-- [ ] `tests/test-skill-parity.sh` green over every edited skill
-- [ ] `bash tests/run.sh` green, with the assertion count recorded against the
+
+### Mutation probes
+
+Run after committing, so the restore step (`git checkout -- .`) could not eat the
+work under test — the failure mode recorded in the project's own lessons.
+
+| Mutation | Guard | Real failures |
+|----------|-------|---------------|
+| Delete § *Review Dispatch Contract* wholesale | `test-review-context` §1–3 | 11 |
+| Drop the contract pointer from `wrap-up-session` (both trees) | §6 | 1 |
+| Rename one persona's `## Context Intake` heading | §7 | 1 |
+| Delete the anchor-75 naming rule | §4 | 2 |
+| Re-pin `auto-improve`'s design reviewer to a bare `sonnet` cell | `test-model-tiers` §8b | 1 |
+
+The single-assertion probes are single by design: each pins one fact in one file,
+and a wider blast radius would mean the needles overlap.
+- [x] `tests/test-skill-parity.sh` green over every edited skill
+- [x] `bash tests/run.sh` green, with the assertion count recorded against the
       baseline
 
 ## Non-Goals

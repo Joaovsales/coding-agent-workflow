@@ -115,8 +115,10 @@ Canonical emission format, so findings stay parseable across harnesses:
 
 ### Resolving an anchor-75 finding
 
-Anchor `75` is a *pending question*, not a resting place. A finding parked there
-is reported and never applied, however cheap the check would have been.
+Anchor `75` is a *pending question*, not a resting place. It is the anchor where a
+`manual` or `advisory` finding waits on a human, and where a `gated_auto` one is
+applied on evidence the reviewer never actually read — so leaving it unresolved
+costs something in both directions.
 
 - A finding at `75` must **name** the specific caller, config key, or runtime value
   its correctness turns on. "Depends on the caller" without naming one is a `50` —
@@ -125,6 +127,10 @@ is reported and never applied, however cheap the check would have been.
   `evidence` line quoting what you found, or drop it. A finding that stays at `75`
   must say what stopped the check — outside the repo, needs runtime, budget spent.
   It is never dropped for being unverifiable.
+
+Promotion this way does not stretch anchor `100`. `100` means reproducible from the
+cited evidence alone, and the second `evidence` line *is* cited — the reader
+reproduces it from two quoted lines instead of one, without re-deriving anything.
 
 **Verification-promotion is not agreement-promotion, and *Independence Accounting*
 does not constrain it.** Agreement promotes on *witnesses*, so it needs separately
@@ -156,23 +162,39 @@ reviewers get the same treatment here, because a reviewer without the spec is
 reviewing what the code *is* against nothing but its own priors about what code
 should be.
 
+This contract governs what crosses a **dispatch boundary**. An inline run already
+holds all of it in context; *Dispatch Disclosure* governs what its agreement is
+worth.
+
 Every dispatch of `code-reviewer`, `critic`, `security-reviewer`, or
 `software-design-expert-review` must carry all seven:
 
 | # | Item | Why the reviewer cannot supply it itself |
 |---|------|------------------------------------------|
-| 1 | The `<base>..HEAD` diff — inline when small, else by path per *Large-Artifact Handoff* | it can run `git diff`, but not know which base this session used |
-| 2 | The spec path **and** the AC list verbatim | nothing in a diff names the spec it implements |
+| 1 | The `<base>...HEAD` diff — inline when small, else truncated-plus-path per *Large-Artifact Handoff* | it can run `git diff`, but not know which base this session used |
+| 2 | The spec path **and** the AC list verbatim, with the checkbox state stripped | nothing in a diff names the spec it implements |
 | 3 | The `tasks/todo.md` entries completed this run | separates "not implemented" from "next task, deliberately" |
 | 4 | The `[AMBIGUITY]` lines emitted this run | a decision already made and recorded reads as a defect |
 | 5 | The `TODO(shortcut):` markers touching changed files | same: a documented limit with an upgrade path is not a finding |
 | 6 | The boundary — review issues **introduced** by this session; pre-existing patterns are out of scope | today this is stated to the orchestrator and never to the agent |
 | 7 | The output format — four axes, `evidence` required at `75` or above | a persona drifts from the gate that consumes it |
 
-**Lists must distinguish **empty** from **absent**.** Pass `deferrals: none` and
-`no spec — <reason>`, never a missing line. A reviewer that cannot tell "nothing
-was deferred" from "nobody told me" has to assume the latter and re-flag
-everything, which is the noise this contract exists to remove.
+**Items 2–5 must distinguish **empty** from **absent**.** Pass `deferrals: none`
+and `no spec — <reason>`, never a missing line. A reviewer that cannot tell
+"nothing was deferred" from "nobody told me" has to assume the latter and re-flag
+everything, which is the noise this contract exists to remove. Items 1, 6 and 7
+have no empty form — a dispatch without them is incomplete, not empty.
+
+Keep items 2–5 bounded the way item 1 is. A 250-line spec pasted verbatim into four
+parallel dispatches costs four times what it reads; truncate-plus-path applies to
+any of them that outgrows the diff it explains.
+
+**A repo-survey dispatch has no session to describe.** `/auto-improve`'s discovery
+scan reviews the whole tree rather than a change, so items 2, 3 and 6 have no
+subject. It passes `no spec — repo survey, nothing built this run` and
+`deferrals: none`, and carries items 1, 4, 5 and 7 unchanged. This is the one
+exception, and it is an exception to the *subject* of the items, never to stating
+them.
 
 ### Share intent, withhold conclusions
 
@@ -185,6 +207,20 @@ any other reviewer's findings. These are judgements about whether the ask was me
 and that judgement is the reviewer's own product. Passing them would import
 exactly those priors that *Independence Accounting* keeps out, and the promotion
 rule would then count a downstream echo as an independent witness.
+
+The split is imperfect in one direction worth naming. A spec written by the builder
+argues for its own design, and an AC list encodes what the builder decided "done"
+means — so intent arrives carrying some of the author's case. Strip the checkbox
+state (item 2), and treat the spec's rationale as a **claim to be tested**, not as
+evidence. A reviewer that finds the spec's argument unsound should say so; that is
+a finding, not a scope violation.
+
+**A shared payload narrows independence to the reading, not the framing.** Four
+passes handed identical intent share a frame by construction, which is exactly the
+property *Independence Accounting* discounts. Their agreement still promotes,
+because each read the diff separately — but a finding that merely restates
+something the payload told all four is not corroboration, and must not be promoted
+on that basis.
 
 The split is why this contract does not simply forward the whole build trace.
 

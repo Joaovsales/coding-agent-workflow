@@ -142,16 +142,23 @@ done
 # auto-improve kept the design reviewer pinned to `sonnet` through all of #61 --
 # the guard existed, matched the wrong syntax, and reported green.
 #
-# Matched on the *role* side rather than the alias side: a row that names a review
-# charter or a Ceiling agent and then puts a bare alias in the next cell. Sweeps
-# every skill in both trees, because the hole was never specific to one file.
+# Matches a table row whose FIRST cell names a review charter and whose later cells
+# carry an alias. Deliberately loose on both sides, because the first draft of this
+# guard was defeated three ways in review: `**sonnet**` (bold), `Sonnet` (capital),
+# and `sonnet (floor)` (trailing token) all evaded a `.?alias.?` cell pattern, and a
+# hardcoded charter list missed `Code review` and `Correctness review`. Matching any
+# first-cell "review"/"critic"/"adversarial"/"audit" against any later alias catches
+# all of those; validated against 8 evasion fixtures and the repo's 6 legitimate
+# alias rows (Coding agents, Debugger, Scout, Test health, Performance, Reviewer).
+#
+# One grep per tree, reusing section 9's shape rather than looping files: the
+# per-file loop this replaces spawned three processes per skill and cost ~35s of
+# suite time on Windows, and a glob that matched nothing would have reported zero
+# assertions as a pass.
 for tree in .agents .claude; do
-  for f in "$tree"/skills/*/SKILL.md; do
-    [ -f "$f" ] || continue
-    assert_file_not_matches "$f" \
-      '^\|.*([Dd]esign review|[Aa]dversarial|code-reviewer|security-reviewer|software-design-expert-review|critic).*\|[[:space:]]*.?(sonnet|opus|haiku).?[[:space:]]*\|' \
-      "ModelTier: $(dirname "$f" | xargs basename) ($tree) pins no review role in a table cell"
-  done
+  hits="$(grep -rlE '^\|[^|]*([Rr]eview|[Aa]dversarial|[Cc]ritic|[Aa]udit)[^|]*\|.*([Ss]onnet|[Oo]pus|[Hh]aiku)' \
+    "$tree/skills" 2>/dev/null || true)"
+  assert_eq "" "$hits" "ModelTier: no review role pinned in a table cell under $tree/skills"
 done
 
 # --- 9. No concrete provider ID anywhere in either skill tree ----------------
