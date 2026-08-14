@@ -195,6 +195,10 @@ Add a `subagents` block to `~/.pi/agent/settings.json` (agent name → model, wi
     "backend-developer":  { "model": "qwen/qwen3-coder-next", "fallbackModels": ["z-ai/glm-4.7"] },
     "frontend-developer": { "model": "qwen/qwen3-coder-next", "fallbackModels": ["z-ai/glm-4.7"] },
     "code-debugger":      { "model": "qwen/qwen3-coder-next", "fallbackModels": ["z-ai/glm-4.7"] },
+    "code-reviewer":      { "model": "z-ai/glm-4.7" },
+    "security-reviewer":  { "model": "z-ai/glm-4.7" },
+    "software-design-expert-review": { "model": "z-ai/glm-4.7" },
+    "critic":             { "model": "moonshotai/kimi-k3" },
     "scout":              { "model": "deepseek/deepseek-v4-flash", "thinking": "off" },
     "context-builder":    { "model": "deepseek/deepseek-v4-flash" },
     "context-document-optimizer": { "model": "deepseek/deepseek-v4-flash" },
@@ -207,11 +211,17 @@ Add a `subagents` block to `~/.pi/agent/settings.json` (agent name → model, wi
 }
 ```
 
-**Four agents are deliberately absent from `agentOverrides`:** `code-reviewer`, `security-reviewer`,
-`software-design-expert-review`, and `critic`. Omitting them is what makes each inherit the session
-model — adding an entry re-caps the reviewer and is precisely the regression the Ceiling tier exists to
-prevent. The one exception is `critic`, which has a planner *floor*: pin it to the planner model only if
-your session model is weaker than planner tier.
+**Ceiling cannot be expressed by omission on Pi — the four review roles stay pinned.** On Claude Code,
+omitting `model` means the sub-agent inherits the session model; that is the whole mechanism. On Pi,
+omitting an agent from `agentOverrides` falls through to `subagents.defaultModel` above — a *fixed*
+model (`qwen/qwen3-coder-next`), not the session model. Deleting these four entries would therefore
+**downgrade** every review to the builder model rather than lifting it: strictly worse than the
+`z-ai/glm-4.7` pin, and it would destroy the different-model-family property that § *Tier rationale*
+below relies on to catch builder blind spots.
+
+`critic` is pinned to the **planner** model rather than the review model because it carries a planner
+*floor*, and a static config cannot make a floor conditional — so it is satisfied unconditionally. If you
+set `defaultModel` to your session model, you may delete all four entries and get true Ceiling behavior.
 
 Dispatch is natural language ("Have backend-developer implement this task") or the `subagent` tool. Do NOT pass per-call model params — `agentOverrides` resolves each agent's model automatically, and `fallbackModels` absorbs provider errors/rate-limits.
 
@@ -242,13 +252,15 @@ Model ID per sub-agent role:
 | Coding agents | `backend-developer`, `frontend-developer` | `qwen/qwen3-coder-next` | $0.11 |
 | Debugger (1-2) | `code-debugger` | `qwen/qwen3-coder-next` | $0.11 |
 | Debugger (3-4) | `code-debugger` | `z-ai/glm-4.7` | $0.40 |
-| Highest-stakes review (Ceiling) | `code-reviewer`, `security-reviewer`, `software-design-expert-review`, `critic` | *inherit — no override* | session model |
+| Highest-stakes review (Ceiling) | `code-reviewer`, `security-reviewer`, `software-design-expert-review` | `z-ai/glm-4.7` on Pi; *inherit* on Claude Code | $0.40 |
+| Adversarial gate (Ceiling, planner floor) | `critic` | `moonshotai/kimi-k3` on Pi; *inherit* on Claude Code | $0.60 |
 | Search / recon | `scout` | `deepseek/deepseek-v4-flash` | $0.14 |
 
 On Claude Code these are passed to the Agent tool when dispatching sub-agents — **except Ceiling-tier
 roles, which take no `model` at all** so they inherit the session model (see `CLAUDE.md` § *Model
-Routing*). On Pi they resolve from `subagents.agentOverrides` (see previous section), and Ceiling roles
-are simply absent from it so they inherit the session model there too. Each sub-agent runs
+Routing*). On Pi they resolve from `subagents.agentOverrides` (see previous section), where Ceiling roles
+stay explicitly pinned, because omission there falls through to `defaultModel` rather than to the
+session model. Each sub-agent runs
 independently with its own model and context.
 
 Ceiling exists because pinning the highest-stakes reviewers *caps* them: an Opus session reviewed by a

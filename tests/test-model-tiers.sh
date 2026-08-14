@@ -134,12 +134,48 @@ done
 assert_file_contains PI_SETUP.md "single source of concrete model IDs" \
   "ModelTier: PI_SETUP.md claims ownership of the concrete IDs"
 
-# --- 8. No skill routes the design reviewer to a concrete model --------------
+# --- 8. No skill pins a Ceiling role to any alias -----------------------------
+# Any alias, not just sonnet. An alias-specific needle is trivially walked around
+# by naming a different one, which is how `model: opus` and `model: haiku`
+# mutations stayed green here.
 for tree in .agents .claude; do
-  for skill in quality-gate software-design-expert-review; do
-    assert_file_not_matches "$tree/skills/$skill/SKILL.md" 'model: .?sonnet' \
-      "ModelTier: $tree $skill no longer pins the design reviewer"
+  for skill in quality-gate software-design-expert-review wrap-up-session build plan; do
+    assert_file_not_matches "$tree/skills/$skill/SKILL.md" 'model: .?(sonnet|opus|haiku)' \
+      "ModelTier: $tree $skill pins no Ceiling role to an alias"
   done
 done
+
+# --- 9. No concrete provider ID anywhere in either skill tree ----------------
+# Section 7 names the two routing tables; this sweeps every skill, because a
+# hardcoded ID goes stale in a prose paragraph exactly as fast as in a table.
+for tree in .agents .claude; do
+  hits="$(grep -rlE 'moonshotai/|qwen/|z-ai/|deepseek/|anthropic/claude' "$tree/skills" 2>/dev/null || true)"
+  assert_eq "" "$hits" "ModelTier: no concrete provider model ID under $tree/skills"
+done
+
+# --- 10. critic's floor is stated where critic is dispatched ------------------
+# The floor lived only in CLAUDE.md while three skills instructed plain ceiling
+# unconditionally — documented and simultaneously negated. Pin it at the sites
+# that actually dispatch, or the rule is not shipped.
+for tree in .agents .claude; do
+  for skill in build plan wrap-up-session; do
+    assert_prose_contains "$tree/skills/$skill/SKILL.md" "planner floor" \
+      "ModelTier: $tree $skill states critic's planner floor at its dispatch"
+  done
+done
+
+# --- 11. Pi keeps explicit pins — omission there downgrades, not inherits -----
+# On Pi, omitting an agent from agentOverrides falls through to
+# subagents.defaultModel, a fixed builder-tier model. Deleting these entries
+# downgrades every review rather than lifting it. Both the config and the rule
+# explaining it are pinned, because the config alone reads as an oversight.
+for agent in code-reviewer security-reviewer software-design-expert-review critic; do
+  assert_file_matches PI_SETUP.md "\"$agent\":" \
+    "ModelTier: PI_SETUP.md keeps an explicit Pi pin for $agent"
+done
+assert_prose_contains PI_SETUP.md "Ceiling cannot be expressed by omission on Pi" \
+  "ModelTier: PI_SETUP.md explains why Pi pins rather than omits"
+assert_prose_contains CLAUDE.md "falls through to \`subagents.defaultModel\`" \
+  "ModelTier: CLAUDE.md states the Pi omission hazard"
 
 finish

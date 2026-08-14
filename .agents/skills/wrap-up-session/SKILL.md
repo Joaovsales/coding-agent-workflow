@@ -432,7 +432,8 @@ Session wrapped up.
 Launch all 4 review passes as parallel agents in a SINGLE message with multiple Agent tool calls.
 
 `code-reviewer` and `critic` are **Ceiling** tier (`CLAUDE.md` § *Model Routing*):
-pass **no** `model` parameter so each inherits the session model. Pinning them
+pass **no** `model` parameter so each inherits the session model. `critic` is the one exception: it carries a **planner floor**, so pass the planner
+alias when the session model is below planner tier and omit `model` otherwise. Pinning them
 downgrades the highest-stakes review for exactly the users running a stronger
 model.
 

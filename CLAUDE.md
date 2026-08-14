@@ -280,7 +280,11 @@ Rules:
   this tier exists to prevent. `critic` is the one exception, and only downward,
   per its floor above.
 - **Pi**: never pass per-call model params; `subagents.agentOverrides` resolves
-  them. Leave ceiling-tier agents out of `agentOverrides` so they inherit.
+  them. Ceiling-tier agents stay **explicitly pinned** there. Omitting an agent
+  from `agentOverrides` falls through to `subagents.defaultModel` — a fixed
+  builder-tier model, not the session model — so omission on Pi *downgrades*
+  rather than inherits. Ceiling-by-omission is a Claude Code property; see
+  `PI_SETUP.md` § Sub-Agent Routing for the Pi equivalent.
 
 ---
 

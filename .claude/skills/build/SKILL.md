@@ -22,7 +22,7 @@ Sub-agent model assignment for build orchestration. The Tier column is canonical
 | Debugger (attempts 3-4, escalation) | `code-debugger` | Reviewer | `sonnet` |
 | Highest-stakes review (correctness, security, design, adversarial) | `code-reviewer`, `security-reviewer`, `software-design-expert-review`, `critic` | Ceiling | *inherit* (`critic`: planner floor) |
 | Search / recon | `scout` (extension builtin) | Scout | `haiku` |
-| Context / docs | `context-builder` (builtin), `context-document-optimizer` | Reviewer | `haiku` |
+| Context / docs | `context-builder` (builtin), `context-document-optimizer` | Scout | `haiku` |
 
 **Escalation ladder for test regressions:**
 1. 2 attempts at builder tier
@@ -374,8 +374,11 @@ On Claude Code, these resolve via built-in model name resolution (`sonnet`, `hai
 On Pi + OpenRouter, explicit model IDs from the Model Routing table are used.
 
 **Ceiling-tier agents take no `model` at all.** `code-reviewer`, `security-reviewer`,
-and `critic` inherit the session model — passing an override caps the highest-stakes
-review below the model the user chose. See `CLAUDE.md` § Model Routing.
+`software-design-expert-review`, and `critic` inherit the session model — passing an
+override caps the highest-stakes review below the model the user chose.
+`critic` is the one exception: it carries a **planner floor**, so pass the planner
+alias when the session model is below planner tier and omit `model` otherwise.
+See `CLAUDE.md` § Model Routing.
 
 ### Pi Dispatch
 
