@@ -108,13 +108,18 @@ done
 # a `model: opus` pin would cap the agent at Opus rather than floor it, which is
 # the defect the ceiling tier exists to remove. So the rule text is what gets
 # pinned here, alongside the no-pin assertion above.
-# Assert on prose unique to the *rule*, not on the phrase "planner floor" -- that
-# phrase also appears in the Agents table cell, so a looser needle stayed green
-# even with the whole explanation deleted. Verified by deleting it: 0 failures
-# before this was tightened.
-assert_prose_contains CLAUDE.md "dispatch rule, not frontmatter"   "ModelTier: CLAUDE.md explains critic's floor as a dispatch rule"
-assert_prose_contains CLAUDE.md "never resolves below planner tier"   "ModelTier: CLAUDE.md states what critic's floor bounds"
-assert_file_matches CLAUDE.md '^\| .critic. \| .?ceiling \(planner floor\)'   "ModelTier: CLAUDE.md Agents table marks critic ceiling (planner floor)"
+#
+# The needles are prose unique to the *rule*, not the phrase "planner floor" --
+# that phrase also appears in the Agents table cell, so a looser needle stayed
+# green even with the whole explanation deleted (verified: 0 failures before this
+# was tightened). assert_prose_contains rather than assert_file_contains because
+# CLAUDE.md hard-wraps, and one of these phrases straddles a line break.
+assert_prose_contains CLAUDE.md "dispatch rule, not frontmatter" \
+  "ModelTier: CLAUDE.md explains critic's floor as a dispatch rule"
+assert_prose_contains CLAUDE.md "never resolves below planner tier" \
+  "ModelTier: CLAUDE.md states what critic's floor bounds"
+assert_file_matches CLAUDE.md '^\| .critic. \| .?ceiling \(planner floor\)' \
+  "ModelTier: CLAUDE.md Agents table marks critic ceiling (planner floor)"
 
 # --- 7. No concrete provider model IDs in the routing docs -------------------
 # PI_SETUP.md owns them. Three copies of a release-sensitive fact is three
@@ -123,14 +128,17 @@ for f in CLAUDE.md .agents/skills/build/SKILL.md .claude/skills/build/SKILL.md; 
   for vendor in 'moonshotai/' 'qwen/' 'z-ai/' 'deepseek/' 'anthropic/claude'; do
     assert_file_not_matches "$f" "$vendor" "ModelTier: $f has no hardcoded $vendor ID"
   done
-  assert_file_contains "$f" 'PI_SETUP.md` § Sub-Agent Routing'     "ModelTier: $f points at PI_SETUP.md for concrete IDs"
+  assert_file_contains "$f" 'PI_SETUP.md` § Sub-Agent Routing' \
+    "ModelTier: $f points at PI_SETUP.md for concrete IDs"
 done
-assert_file_contains PI_SETUP.md "single source of concrete model IDs"   "ModelTier: PI_SETUP.md claims ownership of the concrete IDs"
+assert_file_contains PI_SETUP.md "single source of concrete model IDs" \
+  "ModelTier: PI_SETUP.md claims ownership of the concrete IDs"
 
 # --- 8. No skill routes the design reviewer to a concrete model --------------
 for tree in .agents .claude; do
   for skill in quality-gate software-design-expert-review; do
-    assert_file_not_matches "$tree/skills/$skill/SKILL.md" 'model: .?sonnet'       "ModelTier: $tree $skill no longer pins the design reviewer"
+    assert_file_not_matches "$tree/skills/$skill/SKILL.md" 'model: .?sonnet' \
+      "ModelTier: $tree $skill no longer pins the design reviewer"
   done
 done
 
