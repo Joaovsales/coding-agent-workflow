@@ -24,7 +24,11 @@ source files"* (`build/SKILL.md:132`), plus role-filtered slices of
 `tasks/project-context.md`. Reviewers have no equivalent. The builder therefore
 knows what the code was *for*; the reviewer sees only what it *is*.
 
-Two consequences, both observed rather than theorised:
+Two consequences. Both are reasoned from the mechanism, not measured here — this
+repo has never carried a real `TODO(shortcut):` marker or emitted an `[AMBIGUITY]`
+line, so items 4 and 5 have had no opportunity to fire and are a bet on downstream
+projects. Item 2 is different: it is a gap in the shipped instructions, checkable
+by reading them.
 
 1. **Deliberate decisions get re-litigated.** The repo produces two explicit
    deferral records — `[AMBIGUITY]` lines (`.claude/project.md` § *Ambiguity
@@ -220,24 +224,23 @@ so there is no third tree to mirror into.
       deleted, a dispatch site's pointer is removed, a persona's intake section is
       removed, or the anchor-75 rule is deleted — each probed and recorded
 
-### Mutation probes
-
-Run after committing, so the restore step (`git checkout -- .`) could not eat the
-work under test — the failure mode recorded in the project's own lessons.
-
-| Mutation | Guard | Real failures |
-|----------|-------|---------------|
-| Delete § *Review Dispatch Contract* wholesale | `test-review-context` §1–3 | 11 |
-| Drop the contract pointer from `wrap-up-session` (both trees) | §6 | 1 |
-| Rename one persona's `## Context Intake` heading | §7 | 1 |
-| Delete the anchor-75 naming rule | §4 | 2 |
-| Re-pin `auto-improve`'s design reviewer to a bare `sonnet` cell | `test-model-tiers` §8b | 1 |
-
-The single-assertion probes are single by design: each pins one fact in one file,
-and a wider blast radius would mean the needles overlap.
 - [x] `tests/test-skill-parity.sh` green over every edited skill
-- [x] `bash tests/run.sh` green, with the assertion count recorded against the
-      baseline
+- [x] No persona caps a severity with an `autofix_class` value, and every persona
+      carries a never-out-of-scope clause covering the never-on-the-chopping-block list
+- [x] The anchor-75 text agrees with the Apply Gate about what `75` does
+- [x] Both trees of `wrap-up-session` cite the contract at **both** of their dispatch
+      sites, verified by count rather than presence
+- [x] The alias guard catches a bold, capitalised, or suffixed alias and an
+      unlisted review charter — validated against 8 evasion fixtures
+- [x] `**Given to you**`, the contract pointer, and the boundary heading are each
+      pinned per persona per tree, with the boundary needle anchored so
+      `**Never out of scope**` cannot satisfy it
+- [x] `bash tests/run.sh`: **1250 assertions, 16 of 17 files green**. The one red
+      file, `tests/test-codex-install.sh`, fails identically on pristine
+      `origin/master` @ `23f0d7d` and is recorded at
+      `tasks/solutions/bugs/codex-session-start-hook-emits-nothing.md`. Per-file:
+      `test-review-context` 88 (new), `test-model-tiers` 95 (was 149 before §8b
+      stopped looping per file), `test-agents` 162, `test-skill-parity` 42.
 
 ## Non-Goals
 
@@ -260,3 +263,29 @@ and a wider blast radius would mean the needles overlap.
   decisions. Adopted for intent, deliberately not for conclusions.
 - Industry comparisons of diff-only versus repository-aware reviewers — diff-only
   review is the dominant false-positive source; call-chain verification is the fix.
+
+## Mutation probes
+
+Run after committing, so the restore step (`git checkout -- .`) could not eat the
+work under test — the failure mode this project already recorded once.
+
+Counts are **assertions failed**, and a mutation applied to both trees fails twice
+because every loop here iterates `.agents` and `.claude`. The first table was wrong
+about three of five rows for exactly that reason; review caught it, and the rows
+below were re-measured against the hardened guards rather than adjusted on paper.
+
+| Mutation | Guard | Assertions failed |
+|----------|-------|-------------------|
+| Delete § *Review Dispatch Contract* wholesale | `test-review-context` §1–3 | 11 |
+| Drop the contract citation from the parallel-dispatch site (both trees) | §6 count | 2 |
+| Rename `critic`'s `## Context Intake` heading (both trees) | §7 | 2 |
+| Delete the `**Given to you**` paragraph from one persona (both trees) | §7 | 6 |
+| Delete `security-reviewer`'s boundary paragraph (both trees) | §7 | 2 |
+| Delete the anchor-75 naming rule | §4 | 2 |
+| Re-pin `auto-improve`'s design reviewer as `**Sonnet**` | `test-model-tiers` §8b | 1 |
+
+The last four rows are the ones that matter: each was **green** before review, and
+each is a guard that existed and did not bite. The bold-and-capitalised alias, the
+substring collision between `Out of scope` and `Never out of scope`, the entirely
+unpinned `Given to you`, and a per-file citation needle standing in for a per-site
+AC — four different ways to report success while measuring nothing.
