@@ -113,6 +113,25 @@ Canonical emission format, so findings stay parseable across harnesses:
   read as `50` / `autofix_class: manual`: reported, never auto-applied, never
   discarded.
 
+### Resolving an anchor-75 finding
+
+Anchor `75` is a *pending question*, not a resting place. A finding parked there
+is reported and never applied, however cheap the check would have been.
+
+- A finding at `75` must **name** the specific caller, config key, or runtime value
+  its correctness turns on. "Depends on the caller" without naming one is a `50` —
+  it is a pattern match wearing a higher anchor.
+- Read that dependency and resolve the finding: promote to `100` with a second
+  `evidence` line quoting what you found, or drop it. A finding that stays at `75`
+  must say what stopped the check — outside the repo, needs runtime, budget spent.
+  It is never dropped for being unverifiable.
+
+**Verification-promotion is not agreement-promotion, and *Independence Accounting*
+does not constrain it.** Agreement promotes on *witnesses*, so it needs separately
+dispatched contexts. Verification promotes on *evidence*, so one context reading
+one more line is enough. Conflating them either forbids a legitimate promotion or
+licenses an illegitimate one.
+
 ### Independence Accounting
 
 Corroboration counts **only** when the findings came from separately dispatched
@@ -126,6 +145,48 @@ of promoting on it. Naming the loss is the correct floor, not a failure.
 
 Never claim independent corroboration from a model whose identity was only
 requested rather than verified.
+
+---
+
+## Review Dispatch Contract
+
+A dispatched reviewer knows only what its prompt carries. `/build` already holds
+implementers to a contract (§ *Delegation prompt must include* in `/build`);
+reviewers get the same treatment here, because a reviewer without the spec is
+reviewing what the code *is* against nothing but its own priors about what code
+should be.
+
+Every dispatch of `code-reviewer`, `critic`, `security-reviewer`, or
+`software-design-expert-review` must carry all seven:
+
+| # | Item | Why the reviewer cannot supply it itself |
+|---|------|------------------------------------------|
+| 1 | The `<base>..HEAD` diff — inline when small, else by path per *Large-Artifact Handoff* | it can run `git diff`, but not know which base this session used |
+| 2 | The spec path **and** the AC list verbatim | nothing in a diff names the spec it implements |
+| 3 | The `tasks/todo.md` entries completed this run | separates "not implemented" from "next task, deliberately" |
+| 4 | The `[AMBIGUITY]` lines emitted this run | a decision already made and recorded reads as a defect |
+| 5 | The `TODO(shortcut):` markers touching changed files | same: a documented limit with an upgrade path is not a finding |
+| 6 | The boundary — review issues **introduced** by this session; pre-existing patterns are out of scope | today this is stated to the orchestrator and never to the agent |
+| 7 | The output format — four axes, `evidence` required at `75` or above | a persona drifts from the gate that consumes it |
+
+**Lists must distinguish **empty** from **absent**.** Pass `deferrals: none` and
+`no spec — <reason>`, never a missing line. A reviewer that cannot tell "nothing
+was deferred" from "nobody told me" has to assume the latter and re-flag
+everything, which is the noise this contract exists to remove.
+
+### Share intent, withhold conclusions
+
+**Share intent** — spec, acceptance criteria, task text, constraints, and the
+documented deferrals above. These are facts about what was asked for, and a
+reviewer denied them reviews against its own assumptions instead.
+
+**Withhold conclusions** — the builder's account of why the code is correct, and
+any other reviewer's findings. These are judgements about whether the ask was met,
+and that judgement is the reviewer's own product. Passing them would import
+exactly those priors that *Independence Accounting* keeps out, and the promotion
+rule would then count a downstream echo as an independent witness.
+
+The split is why this contract does not simply forward the whole build trace.
 
 ---
 

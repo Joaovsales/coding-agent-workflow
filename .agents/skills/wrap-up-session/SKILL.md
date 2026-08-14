@@ -126,6 +126,24 @@ Run the 4 review passes. For each pass:
 - Focus on issues **introduced** by this session, not pre-existing patterns
 - Classify every finding on all four axes below
 
+### Review Payload
+
+Every dispatched pass carries all seven items in `CLAUDE.md` § *Review Dispatch
+Contract*. Assemble once, reuse for all four — they differ by lens, not by input:
+
+1. The `<base-branch>...HEAD` diff (by path per *Large-Artifact Handoff* if large)
+2. The spec path and its acceptance criteria verbatim — or `no spec — <reason>`
+3. The `tasks/todo.md` entries closed this session
+4. The `[AMBIGUITY]` batch `/build` surfaced — or `deferrals: none`
+5. The `TODO(shortcut):` markers from Step 3.7 touching changed files — or `deferrals: none`
+6. The boundary from the bullets above, stated **to the agent**, not just here
+7. The four-axis format from *Finding Classification* below
+
+Pass the intent, not the conclusions: no builder rationale, and never one pass's
+findings to another. Both would import the priors *Independence Accounting* exists
+to keep out, and the promotion in *Dispatch Disclosure* would then count an echo as
+a witness.
+
 ### Dispatch Disclosure
 
 These 4 passes run either as separately dispatched agents (see *Claude Code
@@ -440,6 +458,11 @@ model.
 This path is what makes the 4 passes separately dispatched contexts, so it is the
 only path that licenses confidence promotion. Record it as `dispatched` and
 disclose it per *Dispatch Disclosure*.
+
+Every one of the four calls carries the *Review Payload* assembled in Step 4 —
+identical input, different lens. A pass dispatched without it reviews the diff
+against its own priors about what code should look like, which is where
+re-litigated shortcuts come from.
 
 Agent assignments:
 - Agent 1: `code-reviewer` — Codebase Consistency (Pass 1)

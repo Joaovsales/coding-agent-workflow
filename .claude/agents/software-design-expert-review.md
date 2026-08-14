@@ -28,6 +28,23 @@ You care about:
 
 ---
 
+## Context Intake
+
+**Given to you** (per `CLAUDE.md` § *Review Dispatch Contract*): the diff or its
+path, absolute file paths, the spec path plus acceptance criteria, the task entries
+closed this run, the deferral list, and the scope boundary. `deferrals: none` means
+nothing was deferred; a missing deferral line means you were not told.
+
+**Fetch yourself**: every caller of a changed interface — depth versus shallowness
+is a statement about the caller's burden, and you cannot judge it from the module
+alone; the sibling implementations that decide whether a special case should have
+been general-purpose; and the error paths a "defined out of existence" claim rests on.
+
+**Out of scope**: pre-existing structure this diff did not introduce, and design
+debt already recorded on the deferral list — an accepted trade-off with a written
+upgrade path is at most `advisory`, never `MUST-FIX`. Reporting it as new is how a
+design gate loses its authority.
+
 ## Review Process
 
 1. Read the changed files / diff provided in your prompt.

@@ -130,9 +130,27 @@ assert_file_contains PI_SETUP.md "single source of concrete model IDs" \
 # by naming a different one, which is how `model: opus` and `model: haiku`
 # mutations stayed green here.
 for tree in .agents .claude; do
-  for skill in quality-gate software-design-expert-review wrap-up-session build plan; do
+  for skill in quality-gate software-design-expert-review wrap-up-session build plan auto-improve; do
     assert_file_not_matches "$tree/skills/$skill/SKILL.md" 'model: .?(sonnet|opus|haiku)' \
       "ModelTier: $tree $skill pins no Ceiling role to an alias"
+  done
+done
+
+# --- 8b. A table cell pins just as hard as frontmatter -----------------------
+# `model: <alias>` was the whole needle above, so a routing table written as
+# `| Design review | sonnet | ... |` walked past it untouched. That is exactly how
+# auto-improve kept the design reviewer pinned to `sonnet` through all of #61 --
+# the guard existed, matched the wrong syntax, and reported green.
+#
+# Matched on the *role* side rather than the alias side: a row that names a review
+# charter or a Ceiling agent and then puts a bare alias in the next cell. Sweeps
+# every skill in both trees, because the hole was never specific to one file.
+for tree in .agents .claude; do
+  for f in "$tree"/skills/*/SKILL.md; do
+    [ -f "$f" ] || continue
+    assert_file_not_matches "$f" \
+      '^\|.*([Dd]esign review|[Aa]dversarial|code-reviewer|security-reviewer|software-design-expert-review|critic).*\|[[:space:]]*.?(sonnet|opus|haiku).?[[:space:]]*\|' \
+      "ModelTier: $(dirname "$f" | xargs basename) ($tree) pins no review role in a table cell"
   done
 done
 
