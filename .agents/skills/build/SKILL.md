@@ -19,15 +19,17 @@ Sub-agent model assignment for build orchestration. The Tier column is canonical
 | Second opinion (advisory) | `oracle` (extension builtin) | Planner | `opus` |
 | Coding agents | `backend-developer`, `frontend-developer` | Builder | `sonnet` |
 | Debugger (attempts 1-2) | `code-debugger` | Builder | `sonnet` |
-| Debugger (attempts 3-4, escalation) | `code-debugger` | Reviewer | `sonnet` |
+| Debugger (attempts 3-4, escalation) | `code-debugger` | Reviewer | `ceiling (builder floor)` |
 | Highest-stakes review (correctness, security, design, adversarial) | `code-reviewer`, `security-reviewer`, `software-design-expert-review`, `critic` | Ceiling | *inherit* (`critic`: planner floor) |
 | Search / recon | `scout` (extension builtin) | Scout | `haiku` |
 | Context / docs | `context-builder` (builtin), `context-document-optimizer` | Scout | `haiku` |
 
 **Escalation ladder for test regressions:**
 1. 2 attempts at builder tier
-2. 2 attempts at reviewer tier
+2. 2 attempts at reviewer tier — on Claude Code that resolves to `ceiling (builder floor)`, because Reviewer and Builder both map to `sonnet` there, so a plain reviewer-tier retry would re-run the model that just failed twice. The floor makes this rung strictly stronger than step 1 on every session. See `CLAUDE.md` § Model Routing → Floors.
 3. Circuit breaker — `planner` at planner tier analyzes all 4 attempts; then halt and escalate to user
+
+Steps 1 and 2 must never resolve to the same model. If they do, the ladder has no middle rung and the first genuine escalation is the circuit breaker — four failed attempts later than intended.
 
 > **For Pi + OpenRouter users:** Session-level routing goes in `~/.pi/agent/presets.json` (see `PI_SETUP.md`). **Sub-agent** routing requires the `pi-subagents` extension (`pi install npm:pi-subagents`) — set `subagents.agentOverrides` in `~/.pi/agent/settings.json` (agent name → model, plus `fallbackModels` for provider failures). Workflow agents live in `.agents/agents/` and are auto-discovered per project. See `PI_SETUP.md` § Sub-Agent Routing.
 
@@ -338,8 +340,8 @@ Read `.agents/skills/build/references/subagent-resilience.md` before dispatching
 
 When `code-debugger` fails on the same regression, escalate through two tiers before halting:
 
-**Tier 1 — Worker (2 attempts):** Standard debugging with the default coding model.
-**Tier 2 — Escalation (2 attempts):** Upgrade to the reasoning/review model for deeper analysis.
+**Tier 1 — Worker (2 attempts):** Standard debugging at builder tier.
+**Tier 2 — Escalation (2 attempts):** Upgrade to reviewer tier for deeper analysis. On Claude Code that resolves to `ceiling (builder floor)` — inherit the session model, but never at or below builder tier — so the retry genuinely escalates instead of re-running the model that just failed twice. Confirm it resolved to something stronger than Tier 1; if it did not, go straight to Tier 3 rather than burning two identical attempts.
 
 **Tier 3 — Circuit breaker (planner tier):**
 

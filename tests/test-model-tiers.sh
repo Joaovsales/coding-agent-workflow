@@ -26,20 +26,12 @@ CEILING_AGENTS="code-reviewer security-reviewer software-design-expert-review cr
 PINNED_AGENTS="context-document-optimizer:sonnet"
 
 # --- 1. Ceiling agents carry no model pin in the Claude Code tree -------------
+# assert_file_not_matches covers both failure modes this used to hand-roll: a
+# missing file and a present pin. It also treats a missing file as a failure
+# rather than a skip, which is what the hand-rolled version did.
 for agent in $CEILING_AGENTS; do
-  f=".claude/agents/$agent.md"
-  if [ ! -f "$f" ]; then
-    _TESTS=$((_TESTS + 1)); _FAILS=$((_FAILS + 1))
-    printf '  FAIL ModelTier: %s is missing\n' "$f"
-    continue
-  fi
-  if grep -qE '^model:' "$f"; then
-    _TESTS=$((_TESTS + 1)); _FAILS=$((_FAILS + 1))
-    printf '  FAIL ModelTier: %s pins a model (%s) — ceiling agents must inherit\n' \
-      "$f" "$(grep -m1 -E '^model:' "$f")"
-  else
-    assert_eq "unpinned" "unpinned" "ModelTier: $agent inherits the session model"
-  fi
+  assert_file_not_matches ".claude/agents/$agent.md" '^model:' \
+    "ModelTier: $agent inherits the session model (no pin)"
 done
 
 # --- 1b. Reviewer-tier agents keep their Claude-side model pin ----------------
@@ -56,21 +48,20 @@ done
 for f in .agents/agents/*.md; do
   [ -f "$f" ] || continue
   case "$(basename "$f")" in README.md) continue ;; esac
-  if grep -qE '^model:' "$f"; then
-    _TESTS=$((_TESTS + 1)); _FAILS=$((_FAILS + 1))
-    printf '  FAIL ModelTier: canonical %s pins a model\n' "$f"
-  else
-    assert_eq "agnostic" "agnostic" "ModelTier: canonical $(basename "$f") is model-agnostic"
-  fi
+  assert_file_not_matches "$f" '^model:' \
+    "ModelTier: canonical $(basename "$f") is model-agnostic"
 done
 
 # --- 3. Non-ceiling agents still resolve to a tier ---------------------------
 # Guards the opposite mistake: stripping every pin, which would silently promote
 # cheap roles to the session model and inflate cost.
+# The [ -f ] guard is kept deliberately: `scout-unused` names no real file, so
+# this loop skips absent personas rather than failing on them — unlike section 1,
+# where every named agent must exist.
 for agent in backend-developer frontend-developer code-debugger scout-unused; do
   f=".claude/agents/$agent.md"
   [ -f "$f" ] || continue
-  assert_eq "pinned" "$(grep -qE '^model:' "$f" && echo pinned || echo unpinned)" \
+  assert_file_matches "$f" '^model:' \
     "ModelTier: non-ceiling $agent still pins a tier model"
 done
 
@@ -177,5 +168,30 @@ assert_prose_contains PI_SETUP.md "Ceiling cannot be expressed by omission on Pi
   "ModelTier: PI_SETUP.md explains why Pi pins rather than omits"
 assert_prose_contains CLAUDE.md "falls through to \`subagents.defaultModel\`" \
   "ModelTier: CLAUDE.md states the Pi omission hazard"
+
+# --- 12. The debugger escalation ladder has a real middle rung ----------------
+# Reviewer and Builder both resolve to `sonnet` on Claude Code, so a debugger
+# escalation written as plain reviewer tier re-runs the model that just failed
+# twice: the ladder documents three rungs and delivers two. That is invisible at
+# runtime — the retries happen, they just cannot succeed for a new reason — so it
+# needs a mechanical guard. Both the resolution and the rule forbidding a
+# collapsed rung are pinned, because the row alone reads as an arbitrary choice
+# and gets "simplified" back.
+for f in .agents/skills/build/SKILL.md .claude/skills/build/SKILL.md; do
+  assert_file_matches "$f" '^\| Debugger \(attempts 3-4.*ceiling \(builder floor\)' \
+    "ModelTier: $f routes debugger attempts 3-4 to ceiling (builder floor)"
+  assert_prose_contains "$f" "must never resolve to the same model" \
+    "ModelTier: $f forbids a ladder whose first two rungs collapse"
+  assert_prose_contains "$f" "Confirm it resolved to something stronger than Tier 1" \
+    "ModelTier: $f makes the circuit breaker's Tier 2 check its own escalation"
+done
+assert_prose_contains CLAUDE.md "Reviewer and Builder both resolve to" \
+  "ModelTier: CLAUDE.md names why the reviewer rung collapsed on Claude Code"
+# Prose rather than regex: the phrase carries an en dash and an em dash, and a
+# multibyte character does not match `.` under grep -E in the C locale.
+assert_prose_contains CLAUDE.md 'Debugger attempts 3–4 — `ceiling (builder floor)`' \
+  "ModelTier: CLAUDE.md documents the debugger's builder floor"
+assert_file_matches CLAUDE.md '^\| Reviewer \|.*see the floor below' \
+  "ModelTier: CLAUDE.md Reviewer row points at the floor rather than reading as flat sonnet"
 
 finish

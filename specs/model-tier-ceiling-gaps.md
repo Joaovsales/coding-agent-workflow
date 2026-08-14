@@ -1,14 +1,15 @@
 # Spec: Close the gaps the Ceiling tier left open
 
 > Follows PR #53, which shipped the Ceiling tier. This spec covers three things
-> #53 named but did not finish, plus a test-harness hole found while verifying
-> them. It is deliberately narrow: the Ceiling tier itself, its rationale, and its
+> #53 named but did not finish, a test-harness hole found while verifying them,
+> and a pre-existing escalation-ladder no-op the same analysis exposed. It is
+> deliberately narrow: the Ceiling tier itself, its rationale, and its
 > `CLAUDE.md` vocabulary are #53's and are not restated here.
 
 ## Behavior
 
 `Ceiling` means "omit the `model` override so the sub-agent inherits the session
-model". #53 established the tier and applied it to three review roles. Four
+model". #53 established the tier and applied it to three review roles. Five
 things remained.
 
 ### 1. `software-design-expert-review` joins Ceiling
@@ -115,23 +116,33 @@ Read from disk on current `master` (`7c3dc74`), not assumed:
 
 | Path | Change |
 |------|--------|
-| `CLAUDE.md` | design reviewer → `*ceiling*`; `critic` → `*ceiling (planner floor)*`; floor rule added; Pi column dropped, pointer added; Ceiling row covers design |
+| `CLAUDE.md` | design reviewer → `*ceiling*`; `critic` → `*ceiling (planner floor)*`; a generalized `### Floors` section covering both floor-carrying roles; Pi column dropped, pointer added; Ceiling row covers design |
 | `.claude/agents/software-design-expert-review.md` | delete the `model:` line |
-| `.agents/skills/build/SKILL.md` + `.claude/` copy | Tier column replaces Model ID column; ladder and circuit breaker name tiers |
+| `.agents/skills/build/SKILL.md` + `.claude/` copy | Tier column replaces Model ID column; ladder and circuit breaker name tiers; debugger attempts 3–4 → `ceiling (builder floor)`, plus the no-collapsed-rung invariant |
 | `.agents/skills/{quality-gate,software-design-expert-review}/SKILL.md` + copies | dispatch at Ceiling, no `model` |
 | `PI_SETUP.md` | named single source; Ceiling rows; the four Pi pins **kept**, with why omission downgrades on Pi |
 | `tests/lib.sh` | empty-haystack guard; `assert_file_matches`, `assert_file_not_matches`, `assert_prose_contains` |
-| `tests/test-model-tiers.sh` | `CEILING_AGENTS` gains the design reviewer; `PINNED_AGENTS` → `context-document-optimizer`; sections 6–11 added |
+| `tests/test-model-tiers.sh` | `CEILING_AGENTS` gains the design reviewer; `PINNED_AGENTS` → `context-document-optimizer`; sections 6–12 added; §1–3 collapsed onto the new helpers |
+
+### 5. Debugger attempts 3–4 gain a builder floor
+
+Deferred once as out of scope, then pulled in on review. `/build`'s regression
+ladder is 2 attempts at builder tier → 2 at reviewer tier → circuit breaker. On
+Claude Code **Reviewer and Builder both resolve to `sonnet`**, because there is
+no alias between them, so the middle rung re-ran the exact model that had just
+failed twice: three documented rungs, two real ones, and the first genuine
+escalation arriving four attempts later than the ladder claims.
+
+Resolution becomes `ceiling (builder floor)` — the same notation `critic`
+already uses, rather than a second mechanism. A flat `opus` would fix Claude
+Code and reintroduce the cap this whole spec removes on any stronger session.
+
+`/build` also gains the invariant behind it: steps 1 and 2 must never resolve to
+the same model. The row alone reads as an arbitrary choice and gets simplified
+back; the rule explains why it cannot be.
 
 ### Unchanged, deliberately
 
-- Debugger attempts 3–4 stay at Reviewer/`sonnet`. Identical to attempts 1–2, so
-  on Claude Code the escalation ladder still escalates to the model that just
-  failed. Real, pre-existing, and out of scope — noted so it is not mistaken for
-  fixed.
-- Master's hand-rolled `^model:` loops in `tests/test-model-tiers.sh` §1–3 are not
-  collapsed onto the new helpers. The refactor is available but would make this
-  diff read as a rewrite of #53's test rather than an extension.
 - `code-reviewer`, `security-reviewer` get no floor. Only `critic` needs one.
 
 ## Edge Cases
@@ -162,12 +173,14 @@ Read from disk on current `master` (`7c3dc74`), not assumed:
 - [x] `tests/test-skill-parity.sh` green over every edited skill
 - [x] critic's floor is stated at every site that dispatches critic, not only in `CLAUDE.md`
 - [x] Pi keeps explicit review pins; the test fails if any is deleted
+- [x] Debugger attempts 3–4 resolve to `ceiling (builder floor)` in `CLAUDE.md` and both `/build` copies, and the test fails if the rung collapses back onto builder tier
+- [x] `tests/test-model-tiers.sh` §1–3 use the shared helpers rather than hand-rolled `grep` plus raw counter arithmetic
 - [x] Seven mutations that previously stayed green now fail (2–10 assertions each)
 - [x] `bash tests/run.sh` green
 
 ## Non-Goals
 
 - No change to the Ceiling tier's definition or rationale — #53 owns those.
-- No floors beyond `critic`.
-- No fix for the debugger 3–4 escalation no-op.
-- No refactor of #53's existing test loops.
+- No floors beyond `critic` and the debugger's escalation rung.
+- No change to the ladder's *shape* — still 2 + 2 + circuit breaker. Only what
+  the second pair resolves to changes.

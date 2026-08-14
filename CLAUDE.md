@@ -246,7 +246,7 @@ Canonical tiers. Concrete provider model IDs are deliberately **not** repeated h
 | Ceiling | correctness, security, design, and adversarial review — the highest-stakes judgment | *inherit* |
 | Planner | `/plan`, architecture, oracle, circuit breaker | `opus` |
 | Builder | `/build` coding, debugging (attempts 1–2) | `sonnet` |
-| Reviewer | doc compression, debugging (attempts 3–4) | `sonnet` |
+| Reviewer | doc compression, debugging (attempts 3–4 — see the floor below) | `sonnet` |
 | Scout | search, recon, context building | `haiku` |
 
 **`Ceiling` means: omit the model override entirely so the sub-agent inherits the
@@ -261,17 +261,31 @@ the correct cross-harness fallback: where a harness cannot select a model per
 agent, omit the override rather than guessing a name, because a working review on
 the parent model beats a failed dispatch on an unrecognized one.
 
-**`critic` carries a planner floor** — `*ceiling (planner floor)*`, meaning it
-never resolves below planner tier. Inheriting is right in every direction but
-down: `critic` is the adversarial gate of last resort, and a plain ceiling
-silently drops it beneath planner tier on a Builder- or Scout-tier session. So
-omit the override when the session model is planner tier or higher, and pass the
-planner alias when it is lower. The floor is a **dispatch
-rule, not frontmatter**: a `model: opus` pin would satisfy it on a Sonnet session
-but *cap* the agent on any session stronger than Opus — the same defect Ceiling
-exists to remove. Nothing mechanically enforces this; `tests/test-model-tiers.sh`
-pins the rule's presence and the absence of a pin, which is as far as a static
-guard reaches.
+### Floors
+
+`ceiling (<tier> floor)` means: inherit the session model, but never resolve
+*below* `<tier>`. Omit the override when the session model is at `<tier>` or
+above; pass `<tier>`'s alias when it is lower. A floor is always a **dispatch
+rule, not frontmatter** — a `model:` pin would satisfy the floor on a weaker
+session but *cap* the agent on a stronger one, the same defect Ceiling exists to
+remove. Nothing mechanically enforces a floor; `tests/test-model-tiers.sh` pins
+the rule's presence and the absence of a pin, which is as far as a static guard
+reaches. Two roles carry one:
+
+**`critic` — `*ceiling (planner floor)*`, so it never resolves below planner
+tier.** It is the adversarial gate of last resort, and a plain ceiling would
+silently drop it beneath planner tier on a Builder- or Scout-tier session — downgrading the one reviewer whose job is
+catching what the others missed.
+
+**Debugger attempts 3–4 — `ceiling (builder floor)`.** This is the escalation
+rung of the regression ladder, and on Claude Code it had nothing to escalate *to*:
+**Reviewer and Builder both resolve to `sonnet`**, because Claude Code offers no
+alias between them. So attempts 3–4 re-ran the exact model that had just failed
+twice, and "graduated escalation" was a no-op until the circuit breaker. The floor
+makes the rung strictly stronger than attempts 1–2 on every session — planner
+alias on a Builder-or-weaker session, inherited model above that — without
+capping an Opus-or-stronger session at a fixed alias. Pi is unaffected: it has a
+genuine three-model ladder already (see `PI_SETUP.md`).
 
 Rules:
 - Never use the planner tier for code writing; never use the scout tier for coding
