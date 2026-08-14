@@ -42,7 +42,7 @@ Run a focused structural review based on *A Philosophy of Software Design* by Jo
 
 ## Phase 2 — Dispatch APOSD Reviewer Agent
 
-For each changed file (or grouped batch if <5 files), dispatch the `software-design-expert-review` agent (`model: sonnet` — Reviewer tier, not Ceiling; see `CLAUDE.md` § *Model Routing*) in a single tool call. Pass:
+For each changed file (or grouped batch if <5 files), dispatch the `software-design-expert-review` agent (Ceiling tier — pass no `model` at all, so it inherits the session model; see `CLAUDE.md` § *Model Routing*) in a single tool call. Pass:
 - The git diff for the file(s)
 - Absolute paths of the files
 - The instruction: "Review ONLY these changed files. Emit every finding in the canonical four-axis format `[SEVERITY | confidence | autofix_class | owner] file:line — description`, with an `evidence:` line quoting the motivating source line for any finding at anchor `75` or `100`."

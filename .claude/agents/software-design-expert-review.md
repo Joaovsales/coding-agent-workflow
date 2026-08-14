@@ -1,7 +1,6 @@
 ---
 name: software-design-expert-review
 description: Read-only software design expert focused on APOSD principles. Scans changed code for structural red flags from 'A Philosophy of Software Design' by John Ousterhout, including the 10 red flags plus Error Design (R11). Outputs machine-parseable [MUST-FIX] / [SHOULD-FIX] / [NITPICK] findings. Used by /build Phase 3.5 and /software-design-expert-review.
-model: sonnet
 color: blue
 ---
 

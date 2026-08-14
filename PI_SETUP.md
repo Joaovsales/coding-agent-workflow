@@ -198,7 +198,7 @@ Add a `subagents` block to `~/.pi/agent/settings.json` (agent name → model, wi
     "code-reviewer":      { "model": "z-ai/glm-4.7" },
     "security-reviewer":  { "model": "z-ai/glm-4.7" },
     "software-design-expert-review": { "model": "z-ai/glm-4.7" },
-    "critic":             { "model": "z-ai/glm-4.7" },
+    "critic":             { "model": "moonshotai/kimi-k3" },
     "scout":              { "model": "deepseek/deepseek-v4-flash", "thinking": "off" },
     "context-builder":    { "model": "deepseek/deepseek-v4-flash" },
     "context-document-optimizer": { "model": "deepseek/deepseek-v4-flash" },
@@ -211,6 +211,18 @@ Add a `subagents` block to `~/.pi/agent/settings.json` (agent name → model, wi
 }
 ```
 
+**Ceiling cannot be expressed by omission on Pi — the four review roles stay pinned.** On Claude Code,
+omitting `model` means the sub-agent inherits the session model; that is the whole mechanism. On Pi,
+omitting an agent from `agentOverrides` falls through to `subagents.defaultModel` above — a *fixed*
+model (`qwen/qwen3-coder-next`), not the session model. Deleting these four entries would therefore
+**downgrade** every review to the builder model rather than lifting it: strictly worse than the
+`z-ai/glm-4.7` pin, and it would destroy the different-model-family property that § *Tier rationale*
+below relies on to catch builder blind spots.
+
+`critic` is pinned to the **planner** model rather than the review model because it carries a planner
+*floor*, and a static config cannot make a floor conditional — so it is satisfied unconditionally. If you
+set `defaultModel` to your session model, you may delete all four entries and get true Ceiling behavior.
+
 Dispatch is natural language ("Have backend-developer implement this task") or the `subagent` tool. Do NOT pass per-call model params — `agentOverrides` resolves each agent's model automatically, and `fallbackModels` absorbs provider errors/rate-limits.
 
 ### Tier rationale
@@ -220,13 +232,18 @@ Dispatch is natural language ("Have backend-developer implement this task") or t
 | Plan / oracle / circuit breaker | `moonshotai/kimi-k3` | $0.60 | 1M context, strong reasoning, thinking levels low/high/max |
 | Build / debug | `qwen/qwen3-coder-next` | $0.11 | Purpose-built for coding agents, cheapest of the strong coder tier |
 | Review / escalation | `z-ai/glm-4.7` | $0.40 | Flagship reasoning + programming; different model family than the builder — catches builder blind spots |
+| Ceiling (highest-stakes review) | *inherit* | session | Correctness, security, design, and adversarial review run at whatever the session pays for — pinning them caps them |
 | Scout / context / docs | `deepseek/deepseek-v4-flash` | $0.14 | 1M context, very cheap, fast |
 
 Budget alternative for the build tier: `z-ai/glm-4.7-flash` ($0.06/M in) if cost pressure beats quality headroom.
 
 ## How Build Skill Sub-Agent Routing Works
 
-The `/build` skill's Model Routing table assigns explicit model IDs to each sub-agent role:
+**This file is the single source of concrete model IDs.** `CLAUDE.md` and `/build` name tiers
+only and point here, so a model release touches one file instead of three. If you find an
+OpenRouter ID in either of those, delete it rather than updating it.
+
+Model ID per sub-agent role:
 
 | Role | Agent | OpenRouter Model ID | Cost/M in |
 |------|-------|--------------------|-----------|
@@ -235,10 +252,20 @@ The `/build` skill's Model Routing table assigns explicit model IDs to each sub-
 | Coding agents | `backend-developer`, `frontend-developer` | `qwen/qwen3-coder-next` | $0.11 |
 | Debugger (1-2) | `code-debugger` | `qwen/qwen3-coder-next` | $0.11 |
 | Debugger (3-4) | `code-debugger` | `z-ai/glm-4.7` | $0.40 |
-| Reviews | `code-reviewer`, `security-reviewer`, `software-design-expert-review`, `critic` | `z-ai/glm-4.7` | $0.40 |
+| Highest-stakes review (Ceiling) | `code-reviewer`, `security-reviewer`, `software-design-expert-review` | `z-ai/glm-4.7` on Pi; *inherit* on Claude Code | $0.40 |
+| Adversarial gate (Ceiling, planner floor) | `critic` | `moonshotai/kimi-k3` on Pi; *inherit* on Claude Code | $0.60 |
 | Search / recon | `scout` | `deepseek/deepseek-v4-flash` | $0.14 |
 
-On Claude Code, these are passed to the Agent tool when dispatching sub-agents. On Pi, they are resolved from `subagents.agentOverrides` (see previous section). Each sub-agent runs independently with its own model and context.
+On Claude Code these are passed to the Agent tool when dispatching sub-agents — **except Ceiling-tier
+roles, which take no `model` at all** so they inherit the session model (see `CLAUDE.md` § *Model
+Routing*). On Pi they resolve from `subagents.agentOverrides` (see previous section), where Ceiling roles
+stay explicitly pinned, because omission there falls through to `defaultModel` rather than to the
+session model. Each sub-agent runs
+independently with its own model and context.
+
+Ceiling exists because pinning the highest-stakes reviewers *caps* them: an Opus session reviewed by a
+cheaper model is a worse review than the session already paid for. `critic` is the one role with a
+**floor** as well — never below planner tier, since it is the adversarial gate of last resort.
 
 **Escalation:** If a debugger fails 2 times with the build-tier model (`qwen3-coder-next`), it escalates to the review-tier model (`glm-4.7`) for 2 more attempts. If all 4 fail, the circuit breaker trips: `planner` on `kimi-k3` analyzes every attempt before the user is asked to intervene.
 

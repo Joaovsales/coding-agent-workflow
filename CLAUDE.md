@@ -225,9 +225,9 @@ Canonical persona definitions live in `.agents/agents/` (model-agnostic — neve
 | `code-reviewer` | *ceiling* | Post-implementation quality review |
 | `code-debugger` | `sonnet` | Debugging failing tests and runtime errors |
 | `security-reviewer` | *ceiling* | OWASP checks, auth flows, injection vectors |
-| `critic` | *ceiling* | Adversarial quality gate for plans, code, specs |
+| `critic` | *ceiling (planner floor)* | Adversarial quality gate for plans, code, specs |
 | `context-document-optimizer` | `sonnet` | Compress large docs for token efficiency |
-| `software-design-expert-review` | `sonnet` | Read-only APOSD design audit — depth, leakage, error design (dispatched by `/quality-gate`) |
+| `software-design-expert-review` | *ceiling* | Read-only APOSD design audit — depth, leakage, error design (dispatched by `/quality-gate`) |
 
 **Rule**: One focused task per subagent. Resolve each agent's model through the
 tier in *Model Routing* below — on Claude Code pass `model` explicitly for the
@@ -239,15 +239,15 @@ agents so they inherit the session model; on Pi, never pass per-call model param
 
 ## Model Routing
 
-Canonical tiers (concrete model IDs per provider setup live in `/build`'s Model Routing table and `PI_SETUP.md`):
+Canonical tiers. Concrete provider model IDs are deliberately **not** repeated here — `PI_SETUP.md` § Sub-Agent Routing is their single source, so a model release updates one file instead of three:
 
-| Tier | Used for | Claude Code | Pi + OpenRouter (recommended) |
-|------|----------|-------------|-------------------------------|
-| Ceiling | correctness, security, and adversarial review — the highest-stakes judgment | *inherit* | *inherit* |
-| Planner | `/plan`, architecture, oracle, circuit breaker | `opus` | `moonshotai/kimi-k3` |
-| Builder | `/build` coding, debugging (attempts 1–2) | `sonnet` | `qwen/qwen3-coder-next` |
-| Reviewer | design review, doc compression, debugging (attempts 3–4) | `sonnet` | `z-ai/glm-4.7` |
-| Scout | search, recon, context building | `haiku` | `deepseek/deepseek-v4-flash` |
+| Tier | Used for | Claude Code |
+|------|----------|-------------|
+| Ceiling | correctness, security, design, and adversarial review — the highest-stakes judgment | *inherit* |
+| Planner | `/plan`, architecture, oracle, circuit breaker | `opus` |
+| Builder | `/build` coding, debugging (attempts 1–2) | `sonnet` |
+| Reviewer | doc compression, debugging (attempts 3–4 — see the floor below) | `sonnet` |
+| Scout | search, recon, context building | `haiku` |
 
 **`Ceiling` means: omit the model override entirely so the sub-agent inherits the
 session model.** It is not a model name and must never be written as one. If the
@@ -261,14 +261,45 @@ the correct cross-harness fallback: where a harness cannot select a model per
 agent, omit the override rather than guessing a name, because a working review on
 the parent model beats a failed dispatch on an unrecognized one.
 
+### Floors
+
+`ceiling (<tier> floor)` means: inherit the session model, but never resolve
+*below* `<tier>`. Omit the override when the session model is at `<tier>` or
+above; pass `<tier>`'s alias when it is lower. A floor is always a **dispatch
+rule, not frontmatter** — a `model:` pin would satisfy the floor on a weaker
+session but *cap* the agent on a stronger one, the same defect Ceiling exists to
+remove. Nothing mechanically enforces a floor; `tests/test-model-tiers.sh` pins
+the rule's presence and the absence of a pin, which is as far as a static guard
+reaches. Two roles carry one:
+
+**`critic` — `*ceiling (planner floor)*`, so it never resolves below planner
+tier.** It is the adversarial gate of last resort, and a plain ceiling would
+silently drop it beneath planner tier on a Builder- or Scout-tier session — downgrading the one reviewer whose job is
+catching what the others missed.
+
+**Debugger attempts 3–4 — `ceiling (builder floor)`.** This is the escalation
+rung of the regression ladder, and on Claude Code it had nothing to escalate *to*:
+**Reviewer and Builder both resolve to `sonnet`**, because Claude Code offers no
+alias between them. So attempts 3–4 re-ran the exact model that had just failed
+twice, and "graduated escalation" was a no-op until the circuit breaker. The floor
+makes the rung strictly stronger than attempts 1–2 on every session — planner
+alias on a Builder-or-weaker session, inherited model above that — without
+capping an Opus-or-stronger session at a fixed alias. Pi is unaffected: it has a
+genuine three-model ladder already (see `PI_SETUP.md`).
+
 Rules:
 - Never use the planner tier for code writing; never use the scout tier for coding
   or planning.
 - **Claude Code**: pass `model` explicitly for the Planner, Builder, Reviewer, and
   Scout tiers. Pass **nothing** for Ceiling — an override there is the regression
-  this tier exists to prevent.
+  this tier exists to prevent. `critic` is the one exception, and only downward,
+  per its floor above.
 - **Pi**: never pass per-call model params; `subagents.agentOverrides` resolves
-  them. Leave ceiling-tier agents out of `agentOverrides` so they inherit.
+  them. Ceiling-tier agents stay **explicitly pinned** there. Omitting an agent
+  from `agentOverrides` falls through to `subagents.defaultModel` — a fixed
+  builder-tier model, not the session model — so omission on Pi *downgrades*
+  rather than inherits. Ceiling-by-omission is a Claude Code property; see
+  `PI_SETUP.md` § Sub-Agent Routing for the Pi equivalent.
 
 ---
 
