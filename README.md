@@ -1,6 +1,6 @@
 # Coding Agent Workflow
 
-A reusable, project-agnostic configuration system that enforces **spec-driven, TDD-first development** across all your projects — with persistent memory, specialized agents, and a structured session lifecycle. Works with Claude Code, Cursor, and other AI coding tools.
+A reusable, project-agnostic configuration system that enforces **spec-driven, TDD-first development** across all your projects — with persistent memory, specialized agents, and a structured session lifecycle. Works with Claude Code, Codex, Pi, Cursor, and other AI coding tools.
 
 ---
 
@@ -13,6 +13,40 @@ A reusable, project-agnostic configuration system that enforces **spec-driven, T
 | **Agents** (`.claude/agents/`) | 8 specialized subagents for planning, coding, review, debugging, security |
 | **Hooks** (`.claude/hooks/`) | Session start orientation + auto test runner on file save |
 | **Learning store** (`tasks/solutions/`) | Typed per-document learnings, grep-first retrieval, written via `/learn` |
+
+Codex uses the same canonical `.agents/` sources through the explicit adapter
+`bash scripts/install-codex.sh`; no Codex-specific project rules are required.
+
+## Codex Setup
+
+From the workflow repository, install the shared user-level configuration:
+
+```bash
+git clone <this-repo-url> ~/coding-agent-workflow
+cd ~/coding-agent-workflow
+bash scripts/install-codex.sh
+```
+
+The adapter installs skills in `~/.agents/skills/`, renders shared rules into
+`~/.codex/AGENTS.md`, converts canonical Markdown agents into
+`~/.codex/agents/*.toml`, and merges optional lifecycle hooks into
+`~/.codex/hooks.json`. Existing personal content is preserved and rerunning the
+command is idempotent. Review the hook commands with Codex's `/hooks` command
+before enabling them.
+
+For a non-default Codex directory, set `CODEX_HOME` before running the script.
+For an existing project, copy `project-template/AGENTS.md` alongside the
+existing project scaffold files. New `git init` repositories receive the
+neutral `AGENTS.md` seed automatically after the regular installer has set up
+the git template directory.
+
+Update all installed workflow artifacts with:
+
+```bash
+cd ~/coding-agent-workflow
+git pull
+bash scripts/install-codex.sh
+```
 
 ---
 
@@ -77,7 +111,8 @@ tasks/solutions/         ← typed learning store (schema in its README.md)
 tasks/history.md         ← session narrative log
 tasks/concepts.md        ← concept glossary (swept once by /memory-maintain, then accreted)
 specs/                   ← feature specification directory
-CLAUDE.md           ← project-specific overrides
+CLAUDE.md               ← Claude project-specific overrides
+AGENTS.md               ← harness-neutral project-specific overrides
 ```
 
 ### Layer 3 — `newproject` shell function
@@ -86,13 +121,13 @@ CLAUDE.md           ← project-specific overrides
 newproject() {
   local name="${1:?Usage: newproject <project-name>}"
   mkdir -p "$name" && cd "$name"
-  git init                        # triggers post-init hook → copies Claude scaffold
+  git init                        # triggers post-init hook → copies agent scaffold
   echo "# $name" > README.md
-  git add . && git commit -m "chore: init project with Claude workflow scaffold"
+  git add . && git commit -m "chore: init project with coding-agent scaffold"
 }
 ```
 
-Wraps `git init` (which triggers layer 2) and makes an initial commit. One command from zero to a fully scaffolded, Claude-ready project.
+Wraps `git init` (which triggers layer 2) and makes an initial commit. One command from zero to a scaffolded project that can be opened with Claude, Codex, Pi, or another supported harness.
 
 ### Optional — graphify code graph
 
@@ -135,6 +170,7 @@ cp -r ~/coding-agent-workflow/project-template/tasks/solutions tasks/
 cp ~/coding-agent-workflow/project-template/tasks/history.md tasks/
 cp ~/coding-agent-workflow/project-template/tasks/concepts.md tasks/
 cp ~/coding-agent-workflow/project-template/CLAUDE.md .
+cp ~/coding-agent-workflow/project-template/AGENTS.md .
 mkdir -p specs
 ```
 
