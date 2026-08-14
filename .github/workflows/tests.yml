@@ -1,0 +1,22 @@
+name: tests
+
+# Runs the zero-dependency bash test suite on every PR and on master pushes.
+# The suite needs only bash + coreutils + git (all in ubuntu-latest) and
+# python3 for the migration-script fixtures. Backstop for changes committed
+# from a dirty local tree: the local suite reads the working tree, so an
+# untracked-but-load-bearing file keeps local runs green while the pushed
+# commit is broken — CI runs from a clean checkout and catches exactly that.
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run test suite
+        run: bash tests/run.sh
