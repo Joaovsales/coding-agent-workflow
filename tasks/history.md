@@ -44,3 +44,8 @@
 - Pattern: To extend a `/sync`-managed skill's output without editing it, wrap it — a new skill owns a post-processor that operates on the managed skill's OUTPUT. Keeps the managed file untouched so `/sync` never clobbers the work. (extracted: tasks/solutions/patterns/to-extend-a-sync-managed-skill-s-output-without-editing-it-w.md)
 - Pattern: The bash test suite enforces `.agents/` ↔ `.claude/` byte-identical skill parity (`test-skill-parity.sh`) + doc-convention token greps (`test-doc-conventions.sh`). Any new skill must be authored in BOTH trees identically and wired into both tests. (extracted: tasks/solutions/patterns/the-bash-test-suite-enforces-agents-claude-byte-identical-sk.md)
 - Lessons added: none (captured as patterns above)
+
+### [2026-08-13] — M4 concept glossary
+
+- Key changes: Added `tasks/concepts.md` (accreting concept glossary) + template seed; `/memory-maintain` Phase 0 one-time bootstrap sweep keyed on a `> Sweep: pending` marker, fired from the light pass; `/learn` Step 7 concept capture; pruning rule in Phase 4; install.sh seed; guards in test-doc-conventions.sh + test-install-sh.sh. Dogfooded the sweep on this repo (10 terms admitted, marker flipped).
+- Learnings captured: tasks/solutions/patterns/first-run-triggers-must-precede-every-early-exit-above-them.md

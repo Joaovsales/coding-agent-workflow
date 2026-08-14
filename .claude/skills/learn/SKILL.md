@@ -71,14 +71,32 @@ The narrative log records what happened, not learnings:
 - Learnings captured: [links to the tasks/solutions/ documents, or "none"]
 ```
 
-### 7. Confirm
-Reply: "Learnings captured: [N] documents in `tasks/solutions/` ([updated/created]), history entry appended."
+### 7. Capture New Concepts (side effect — never a separate prompt)
+If a learning surfaced project-specific vocabulary — an entity, named process,
+or status term whose meaning is local to this project — add it to
+`tasks/concepts.md` under the matching section, keeping the entry format
+(`- **term** — definition.`, alphabetical). A term that already exists gets its
+definition refined in place, never a duplicate bullet. Standard industry terms
+do not qualify — `/memory-maintain` prunes them.
+
+If `tasks/concepts.md` is absent (project predates the seed), recreate the
+template seed in full — the format header, a `> Sweep: pending` marker line,
+the `## Harness vocabulary` section **with its six entries** (tier, gate,
+register, drift, ceiling, store — Phase 0 sweeps only the project's own
+material and will not refill them), and the `## Project vocabulary` section —
+so the next `/memory-maintain` run still performs its one-time bootstrap sweep
+and later writers find the sections they file under.
+
+Most sessions surface no new vocabulary; write nothing in that case.
+
+### 8. Confirm
+Reply: "Learnings captured: [N] documents in `tasks/solutions/` ([updated/created]), history entry appended[, [M] glossary terms added/refined]."
 
 ---
 
 ## Optional: `--cleanup`
 
-When invoked as `/learn --cleanup`, after completing Steps 1–7, run a folder sweep to surface legacy or unused files for archival.
+When invoked as `/learn --cleanup`, after completing Steps 1–8, run a folder sweep to surface legacy or unused files for archival.
 
 For each directory that has accumulated session artifacts:
 1. List all files and check creation dates via `git log --follow --oneline -- <file>`

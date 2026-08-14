@@ -24,12 +24,18 @@ cheap light pass every session, and the heavy consolidation only every 5.
 
 Runs on **every** invocation (session start + wrap-up). Bounded work only:
 - Count documents and `needs_review` flags (`grep -rl 'needs_review: true' tasks/solutions/*/` — category dirs only, so the README's literal mention of the flag is not counted).
+- Check `tasks/concepts.md` for a `> Sweep: pending` marker line (cheap grep).
+  If present, run **Phase 0** now — the bootstrap sweep fires on the first
+  invocation that sees the marker, never waiting for the heavy-pass gate.
 - If any document written **this session** duplicates an existing one
   (same `module` + overlapping `tags` **and** >70% semantic overlap — the
   migration's generic `module: general` + `migrated` tag alone never qualify),
   merge into the more specific document and note the merge in its body.
 
-**If `tasks/solutions/` is absent or empty: silent no-op (exit 0, no output).**
+**If `tasks/solutions/` is absent or empty: silent no-op (exit 0, no output) —
+but the glossary marker check above runs regardless. A fresh install has an
+empty store and a `pending` glossary at the same time; the empty store must
+not swallow the one sweep that install exists to trigger.**
 
 ### Heavy pass — every 5 sessions (gated)
 
@@ -37,6 +43,28 @@ Count session entries in `tasks/history.md` (lines matching `^### \[\d{4}-\d{2}-
 - Run the full sweep below (Phases 1–4) if the count is a multiple of 5
   (5, 10, 15, …) OR --force flag passed
 - If neither condition met: skip the heavy pass (the light pass above still ran)
+
+## Phase 0 — Glossary Bootstrap Sweep (one-time)
+
+Runs only while `tasks/concepts.md` carries a `> Sweep: pending` marker line.
+If the marker reads `Sweep: done` or is absent entirely, this phase is a no-op —
+never launch a repo-wide sweep on a file that does not ask for one.
+
+1. Sweep the project's own material for vocabulary: README, `specs/`, docs, and
+   domain identifiers (model/schema/module names). Admit a term by the same test
+   pruning uses: project-specific meaning only — an entity, named process, or
+   status term whose meaning is local to this project. Standard industry terms
+   never qualify.
+2. Write the admitted terms in the glossary's entry format
+   (`- **term** — definition.`, alphabetical within section), refining in place
+   any term that already exists — never a duplicate bullet.
+3. Only after the entries land, flip the marker line to `> Sweep: done YYYY-MM-DD`
+   and drop the seed's "(While pending, …)" explanatory note — it describes a
+   state the file is no longer in. An interrupted sweep therefore re-runs whole
+   on the next invocation, and refine-in-place keeps the re-run idempotent.
+
+A near-empty project yields few or no terms; write what qualifies and flip the
+marker anyway — no "nothing found" noise.
 
 ## Phase 1 — Resolve `needs_review` Documents
 
@@ -87,6 +115,10 @@ For each document:
 - `tasks/history.md` stays a narrative log: any learning prose that leaked into
   it is extracted to a typed document and cross-linked, matching how the
   migration handled `- Pattern:` bullets.
+- `tasks/concepts.md` stays a glossary, not a catch-all: prune any entry whose
+  term has a standard industry meaning — a common word stays only if its
+  definition states the local twist. Keep entries alphabetical in the
+  `- **term** — definition.` format.
 
 ## Output
 
@@ -99,5 +131,6 @@ needs_review: [N resolved, N remaining, N archived as ungroundable]
 Duplicates: [N merged]
 Stale/contradicted: [N archived, N corrected]
 Schema violations fixed: [N]
+Glossary: [swept: N terms | N pruned, N kept | no change]
 ══════════════════════
 ```
