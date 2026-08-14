@@ -108,7 +108,12 @@ done
 # a `model: opus` pin would cap the agent at Opus rather than floor it, which is
 # the defect the ceiling tier exists to remove. So the rule text is what gets
 # pinned here, alongside the no-pin assertion above.
-assert_file_contains CLAUDE.md "planner floor"   "ModelTier: CLAUDE.md states critic's planner floor"
+# Assert on prose unique to the *rule*, not on the phrase "planner floor" -- that
+# phrase also appears in the Agents table cell, so a looser needle stayed green
+# even with the whole explanation deleted. Verified by deleting it: 0 failures
+# before this was tightened.
+assert_file_contains CLAUDE.md "dispatch rule, not frontmatter"   "ModelTier: CLAUDE.md explains critic's floor as a dispatch rule"
+assert_file_contains CLAUDE.md "never resolves below planner tier"   "ModelTier: CLAUDE.md states what critic's floor bounds"
 assert_file_matches CLAUDE.md '^\| .critic. \| .?ceiling \(planner floor\)'   "ModelTier: CLAUDE.md Agents table marks critic ceiling (planner floor)"
 
 # --- 7. No concrete provider model IDs in the routing docs -------------------

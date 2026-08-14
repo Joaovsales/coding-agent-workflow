@@ -261,10 +261,10 @@ the correct cross-harness fallback: where a harness cannot select a model per
 agent, omit the override rather than guessing a name, because a working review on
 the parent model beats a failed dispatch on an unrecognized one.
 
-**`critic` carries a planner floor** — `*ceiling (planner floor)*`. Inheriting is
-right in every direction but down: `critic` is the adversarial gate of last
-resort, and a plain ceiling silently drops it below planner tier on a Builder- or
-Scout-tier session. So omit the override when the session model is planner tier
+**`critic` carries a planner floor** — `*ceiling (planner floor)*`, meaning it
+never resolves below planner tier. Inheriting is right in every direction but
+down: `critic` is the adversarial gate of last resort, and a plain ceiling
+silently drops it beneath planner tier on a Builder- or Scout-tier session. So omit the override when the session model is planner tier
 or higher, and pass the planner alias when it is lower. The floor is a **dispatch
 rule, not frontmatter**: a `model: opus` pin would satisfy it on a Sonnet session
 but *cap* the agent on any session stronger than Opus — the same defect Ceiling
