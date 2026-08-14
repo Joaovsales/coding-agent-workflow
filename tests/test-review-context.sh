@@ -121,7 +121,18 @@ for tree in .agents .claude; do
   # by either. Pin the second one -- the parallel-dispatch path -- separately: it is
   # the only path the skill says "licenses confidence promotion", so a payload that
   # silently stops reaching it degrades exactly the run that promotes on it.
-  assert_prose_contains "$tree/skills/wrap-up-session/SKILL.md"     'carries the *Review Payload* assembled in Step 4'     "ReviewContext: $tree wrap-up parallel dispatch carries the payload too"
+  assert_prose_contains "$tree/skills/wrap-up-session/SKILL.md" \
+    'carries the *Review Payload* assembled in Step 4' \
+    "ReviewContext: $tree wrap-up parallel dispatch carries the payload too"
+  # Counted, not merely present. The AC is "all four sites cite the contract", and
+  # a per-file needle is satisfied by the Step 4 citation alone -- probed: dropping
+  # the citation from the parallel-dispatch site left the suite fully green. Two
+  # sites in this file, so two citations.
+  cites="$(tr -s '[:space:]' ' ' < "$tree/skills/wrap-up-session/SKILL.md" \
+    | grep -oF 'CLAUDE.md` § *Review Dispatch Contract*' | wc -l | tr -d ' ')"
+  [ "$cites" -ge 2 ] && cites_ok=yes || cites_ok="no (found $cites)"
+  assert_eq "yes" "$cites_ok" \
+    "ReviewContext: $tree wrap-up cites the contract at both of its dispatch sites"
 done
 
 # --- 7. Each reviewer persona declares its intake ----------------------------
