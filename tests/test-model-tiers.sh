@@ -112,8 +112,8 @@ done
 # phrase also appears in the Agents table cell, so a looser needle stayed green
 # even with the whole explanation deleted. Verified by deleting it: 0 failures
 # before this was tightened.
-assert_file_contains CLAUDE.md "dispatch rule, not frontmatter"   "ModelTier: CLAUDE.md explains critic's floor as a dispatch rule"
-assert_file_contains CLAUDE.md "never resolves below planner tier"   "ModelTier: CLAUDE.md states what critic's floor bounds"
+assert_prose_contains CLAUDE.md "dispatch rule, not frontmatter"   "ModelTier: CLAUDE.md explains critic's floor as a dispatch rule"
+assert_prose_contains CLAUDE.md "never resolves below planner tier"   "ModelTier: CLAUDE.md states what critic's floor bounds"
 assert_file_matches CLAUDE.md '^\| .critic. \| .?ceiling \(planner floor\)'   "ModelTier: CLAUDE.md Agents table marks critic ceiling (planner floor)"
 
 # --- 7. No concrete provider model IDs in the routing docs -------------------

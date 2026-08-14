@@ -45,6 +45,27 @@ assert_file_contains() {
   fi
 }
 
+# assert_prose_contains <file> <phrase> <message>
+# Matches a phrase across line wraps. Markdown prose here is hard-wrapped, so a
+# literal grep for a phrase that happens to straddle a newline fails for a reason
+# unrelated to the assertion's intent -- and picking a needle that fits on one
+# line just defers the problem to the next reflow. Collapses all whitespace in
+# both haystack and needle to single spaces before comparing.
+assert_prose_contains() {
+  _TESTS=$((_TESTS + 1))
+  if [ ! -f "$1" ]; then
+    _FAILS=$((_FAILS + 1)); printf '  FAIL %s\n       file %s is missing\n' "$3" "$1"
+    return
+  fi
+  _hay="$(tr -s '[:space:]' ' ' < "$1")"
+  _need="$(printf '%s' "$2" | tr -s '[:space:]' ' ')"
+  case "$_hay" in
+    *"$_need"*) printf '  ok   %s\n' "$3" ;;
+    *) _FAILS=$((_FAILS + 1))
+       printf '  FAIL %s\n       file %s lacks prose: %s\n' "$3" "$1" "$2" ;;
+  esac
+}
+
 # assert_file_matches <file> <regex> <message>
 # Regex counterpart to assert_file_contains, which is literal-only (grep -qF).
 # Without it, a caller needing an anchored pattern such as '^model:' hand-rolls
