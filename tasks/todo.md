@@ -67,3 +67,20 @@
 - Completed: 8 tasks (M4 Tier 3.3 — glossary, bootstrap sweep, capture/prune hooks, guards, dogfood evidence)
 - Pending: 0 tasks
 - Carry-forward: stacked on unmerged `worktree-m3-typed-learning-store` — M3 PR merges first, then this branch's PR retargets/merges
+
+
+## Plan: Codex Harness Adapter
+> Spec: specs/codex-harness-adapter.md
+> Branch: agent/codex-harness-adapter-pr
+
+[x] TDD: `tests/test-codex-install.sh` covers isolated installation, personal-content preservation, valid rendered agents/hooks, and idempotence -> add the failing integration/static test
+[x] TDD: renderer tests cover shared AGENTS block, Markdown-agent-to-TOML conversion, and hooks JSON merge -> add the stdlib renderer/merger
+[x] TDD: Codex adapter installs canonical skills, agents, hooks, and managed global rules from any working directory -> add `scripts/install-codex.sh` and hook adapters
+[x] TDD: project scaffold test requires neutral `AGENTS.md` -> add template seed and copy it from the git `post-init` hook
+[x] TDD: documentation test requires Codex setup/update instructions and harness-neutral language -> update README and installer help text
+[x] Full validation: `bash tests/run.sh`, shell syntax checks, Python compile/parse checks, and security review of changed scripts
+
+## Session Summary — 2026-08-14
+- Completed: 6 tasks (Codex harness adapter, renderer, hooks, neutral project seed, docs, and validation)
+- Pending: 0
+- Carry-forward: review and merge the draft PR

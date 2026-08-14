@@ -284,6 +284,7 @@ copy_if_missing() {
 }
 
 copy_if_missing "CLAUDE.md"
+copy_if_missing "AGENTS.md"
 copy_if_missing ".ignore"
 copy_if_missing "tasks/todo.md"
 copy_if_missing "tasks/solutions/README.md"
