@@ -264,8 +264,9 @@ the parent model beats a failed dispatch on an unrecognized one.
 **`critic` carries a planner floor** — `*ceiling (planner floor)*`, meaning it
 never resolves below planner tier. Inheriting is right in every direction but
 down: `critic` is the adversarial gate of last resort, and a plain ceiling
-silently drops it beneath planner tier on a Builder- or Scout-tier session. So omit the override when the session model is planner tier
-or higher, and pass the planner alias when it is lower. The floor is a **dispatch
+silently drops it beneath planner tier on a Builder- or Scout-tier session. So
+omit the override when the session model is planner tier or higher, and pass the
+planner alias when it is lower. The floor is a **dispatch
 rule, not frontmatter**: a `model: opus` pin would satisfy it on a Sonnet session
 but *cap* the agent on any session stronger than Opus — the same defect Ceiling
 exists to remove. Nothing mechanically enforces this; `tests/test-model-tiers.sh`

@@ -13,18 +13,28 @@ things remained.
 
 ### 1. `software-design-expert-review` joins Ceiling
 
-#53 left it at Reviewer tier (`sonnet`) with an explicit rationale — its own skill
-read *"`model: sonnet` — Reviewer tier, not Ceiling"* — and `tests/test-model-tiers.sh`
-asserted the pin via `PINNED_AGENTS`.
+The decision this reverses was **#55's, not #53's** (`git log -S"Reviewer tier, not
+Ceiling"` → `a798ce0`). #55 shipped two PRs after Ceiling already existed and wrote
+*"`model: sonnet` — Reviewer tier, not Ceiling"* deliberately, with the tier
+available; `tests/test-model-tiers.sh` then asserted the pin via `PINNED_AGENTS`.
+So this is a reversal of an informed choice, not the completion of an unfinished
+one — which is a higher bar.
 
 **This spec overrides that decision.** An APOSD structural audit is correctness
 work: the defects it finds are the expensive kind, and a design flaw caught late
-costs far more than the token difference. It is the one change here that reverses
-a documented choice rather than completing an unfinished one, so it is the one
-most worth a reviewer's pushback.
+costs far more than the token difference.
 
-`PINNED_AGENTS` keeps a subject — `context-document-optimizer`, also Reviewer
-tier — so the mirror guard #53 added does not go vacuous. That guard protects a
+**The cost is not a flat token difference, and that is the honest counterargument.**
+Unlike the other three Ceiling roles — each dispatched once per run — this agent is
+dispatched *per changed file* at ≥5 files, and its own skill discourages batching
+("Batching files therefore trades corroboration for tool calls"). So Ceiling
+multiplies top-tier spend by the file count, not by one. A 20-file PR on an Opus
+session means ~20 Opus dispatches for design review alone against 4 for everything
+else combined. Whether that is worth it is a spend judgment, not a correctness one,
+and it is the delta most worth dropping if the answer is no.
+
+`PINNED_AGENTS` keeps a subject — `context-document-optimizer` — so the mirror
+guard #53 added does not go vacuous. That guard protects a
 real observed regression: the `.agents/` → `.claude/` parity copy is a plain `cp`
 from a tree that is model-agnostic by contract, so it silently drops a
 Claude-only `model:` line, and parity tests cannot catch it because the `cp` is
@@ -56,9 +66,16 @@ stale, and the two tables are the copies nobody updates.
 `PI_SETUP.md` § Sub-Agent Routing becomes the named single source. Both tables
 carry tiers only.
 
-This also reconciles a contradiction #53 introduced: `CLAUDE.md` gained the rule
-*"leave ceiling-tier agents out of `agentOverrides` so they inherit"* while
-`PI_SETUP.md`'s example config went on pinning all four of them.
+It also corrects a #53 rule that was simply wrong: `CLAUDE.md` said *"leave
+ceiling-tier agents out of `agentOverrides` so they inherit"*. On Pi, omitting an
+agent falls through to `subagents.defaultModel` — a fixed builder-tier model — so
+omission there **downgrades** rather than inherits. Ceiling-by-omission is a
+Claude Code property. Pi expresses the same intent with explicit pins, and `critic`
+pins to the planner model because a static config cannot make a floor conditional.
+
+This was found only because a review challenged it; the first version of this
+branch deleted those four Pi entries and would have had every Pi user's code
+reviewed by the model family that wrote it.
 
 ### 4. `assert_not_contains` no longer passes vacuously
 
@@ -102,9 +119,9 @@ Read from disk on current `master` (`7c3dc74`), not assumed:
 | `.claude/agents/software-design-expert-review.md` | delete the `model:` line |
 | `.agents/skills/build/SKILL.md` + `.claude/` copy | Tier column replaces Model ID column; ladder and circuit breaker name tiers |
 | `.agents/skills/{quality-gate,software-design-expert-review}/SKILL.md` + copies | dispatch at Ceiling, no `model` |
-| `PI_SETUP.md` | named single source; Ceiling row; four roles removed from `agentOverrides` with the reason |
+| `PI_SETUP.md` | named single source; Ceiling rows; the four Pi pins **kept**, with why omission downgrades on Pi |
 | `tests/lib.sh` | empty-haystack guard; `assert_file_matches`, `assert_file_not_matches`, `assert_prose_contains` |
-| `tests/test-model-tiers.sh` | `CEILING_AGENTS` gains the design reviewer; `PINNED_AGENTS` → `context-document-optimizer`; sections 6–8 added |
+| `tests/test-model-tiers.sh` | `CEILING_AGENTS` gains the design reviewer; `PINNED_AGENTS` → `context-document-optimizer`; sections 6–11 added |
 
 ### Unchanged, deliberately
 
@@ -125,9 +142,9 @@ Read from disk on current `master` (`7c3dc74`), not assumed:
 - **Someone re-pins a Ceiling role.** `tests/test-model-tiers.sh` fails, in both
   the agent file and the routing tables. Verified by probing each.
 - **The floor is unenforceable.** Stated in `CLAUDE.md` and in this spec.
-- **Pi cannot express a floor declaratively.** `agentOverrides` omits `critic`, so
-  it inherits; a user on a sub-planner Pi session pins it manually. Documented in
-  `PI_SETUP.md`.
+- **Pi cannot express a floor declaratively.** So `critic` is pinned to the planner
+  model unconditionally on Pi — the floor is satisfied at all times rather than
+  conditionally. Documented in `PI_SETUP.md`.
 - **Markdown reflow.** Prose assertions use `assert_prose_contains`, so rewrapping
   a paragraph does not break the suite.
 
@@ -143,7 +160,10 @@ Read from disk on current `master` (`7c3dc74`), not assumed:
 - [x] No skill routes the design reviewer to a concrete model
 - [x] `assert_not_contains` fails on an empty haystack, with no sibling test broken
 - [x] `tests/test-skill-parity.sh` green over every edited skill
-- [x] `bash tests/run.sh` green — 15 files, 1079 assertions
+- [x] critic's floor is stated at every site that dispatches critic, not only in `CLAUDE.md`
+- [x] Pi keeps explicit review pins; the test fails if any is deleted
+- [x] Seven mutations that previously stayed green now fail (2–10 assertions each)
+- [x] `bash tests/run.sh` green
 
 ## Non-Goals
 
