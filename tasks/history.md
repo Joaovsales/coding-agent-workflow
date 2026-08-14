@@ -70,5 +70,6 @@
   three of the four passes and all were fixed. One critic claim was disproven on check —
   a "lossless" single-quoted restore of the original description raises ParserError on its
   own apostrophes.
-- Open: `~/.claude/agents/` still holds the broken installed copies; the three personas
-  remain unregistered in other projects on this machine until `install.sh` / `/sync` runs.
+- Deployment: the broken copies in `~/.claude/agents/` were refreshed by hand the same day.
+  Fixing the repo does not fix the machine - an installed persona has its own copy, so
+  "repo is green" and "harness is fixed" are separate claims.

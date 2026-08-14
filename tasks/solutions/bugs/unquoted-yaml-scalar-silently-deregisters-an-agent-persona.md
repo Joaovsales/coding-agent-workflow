@@ -94,7 +94,9 @@ file *can* register; only a live session proves it *did*.
 - [grep with zero matches aborts hooks under set -eo pipefail](grep-zero-matches-aborts-hooks-under-set-e-pipefail.md) — the other silent-truncation
   bug in this repo; same lesson about testing the empty path.
 
-**Deployment note**: the fix lands in the repo. `~/.claude/agents/` holds installed
-copies that `install.sh:127` refreshes; until that runs, the three personas remain
-broken in *other* projects on the machine, where no project-level `.claude/agents/`
-shadows them.
+**Deployment note**: fixing the repo does not fix the machine. `~/.claude/agents/`
+holds installed copies that only `install.sh:127` (or `/sync`) refreshes, so the
+three personas stayed broken in *other* projects — where no project-level
+`.claude/agents/` shadows them — even after this repo was green. They were
+refreshed by hand on 2026-08-14. Treat "the repo is fixed" and "the harness is
+fixed" as separate claims whenever a persona, hook, or skill has an installed copy.
