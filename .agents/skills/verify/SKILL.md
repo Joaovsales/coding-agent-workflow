@@ -112,8 +112,60 @@ Unit tests prove functions work. E2E walkthroughs prove features work.
 
 1. Read the active spec from `specs/` and extract **user-facing ACs**
 2. Verify the app is running locally (check dev server, start via `/start-qa` if not)
-3. Verify the browser MCP is available (Playwright or Chrome)
+3. Resolve a browser backend and classify every AC (below)
 4. Load authentication state as a real user would — cookie-based session, not injected tokens
+
+### Backend resolution
+
+Ordered; first available wins. A backend is available when its MCP tools are
+exposed in the session.
+
+| Order | Backend | Fidelity | Eligible ACs |
+|-------|---------|----------|--------------|
+| 1 | Chrome MCP | full | all |
+| 2 | Playwright MCP | full | all |
+| 3 | Lightpanda MCP | DOM only | DOM-FUNCTIONAL only |
+| 4 | none | — | STOP |
+
+Lightpanda's absence is never an error — fall through. Its runbook, including the
+capability ceiling, is `.claude/browsers/lightpanda.md`.
+
+### AC classification
+
+Classify each user-facing AC **before** walking it. The tier decides which
+backends may run it.
+
+**VISUAL** — needs a full-fidelity backend. The AC references appearance, layout,
+alignment, spacing, colour, theme, dark mode, responsiveness or breakpoints;
+"looks like" or "renders correctly"; screenshots or visual regression; canvas,
+charts, maps or drawn output; hover, animation, transition or drag-and-drop;
+print/PDF output; or realtime behaviour depending on WebSockets, Web Workers,
+Service Workers or WebRTC.
+
+**DOM-FUNCTIONAL** — lightpanda-eligible. The AC is satisfied by asserting
+navigation and URL state, redirects and HTTP status, form fill/submit and
+validation messages as text, authentication through the real login flow,
+presence/absence/text of elements, or absence of console errors.
+
+> **Fail closed: when classification is uncertain, the AC is VISUAL.**
+> Uncertainty resolves toward the stricter tier, never the permissive one. A page
+> with broken layout still exposes a correct DOM, so guessing DOM-FUNCTIONAL
+> converts a missing check into a green one — the single failure this tier
+> system exists to prevent.
+
+### Outcome matrix
+
+| Backend available | AC tier | Result |
+|---|---|---|
+| full-fidelity | any | walk through normally |
+| lightpanda only | DOM-FUNCTIONAL | walk through, log as DOM-tier |
+| lightpanda only | VISUAL | `BLOCKED` — **never** `PASS` |
+| none | any | STOP |
+
+A `BLOCKED` AC has not failed — it was never attempted — so it does not halt the
+walkthrough, and the remaining DOM-functional ACs still execute. But any run
+containing a `BLOCKED` AC reports **non-success** to its caller (`/build` Phase 4,
+`/wrap-up-session` Step 6.3). Partial coverage is reported as partial coverage.
 
 ### Walkthrough Protocol
 
@@ -133,6 +185,7 @@ Append to `tasks/e2e-log.md`:
 
 Spec: specs/<feature>.md
 Commit: <full-sha>
+Browser: <backend> <version> (full-fidelity | DOM-tier)
 
 ### AC-1: <criterion text>
 Journey: <plain-language steps>
@@ -142,6 +195,10 @@ Steps executed:
   ✓ Assert session state
 Negative: invalid input rejected with inline error ✓
 Result: PASS
+
+### AC-2: <criterion text>
+Tier: VISUAL (references layout)
+Result: BLOCKED — requires a full-fidelity browser; only lightpanda (DOM-tier) available
 ```
 
 The log is **append-only**. Never overwrite prior walkthroughs — they form the audit trail.
@@ -150,12 +207,20 @@ The log is **append-only**. Never overwrite prior walkthroughs — they form the
 
 - **Step fails**: STOP, report exact step + evidence, hand back to `/build` or `/debug`
 - **MCP browser unavailable**: STOP. Do not fall back to curl or unit tests.
+- **VISUAL AC, only a DOM-tier backend**: record `BLOCKED`, continue with the
+  remaining DOM-functional ACs, report the run as non-success
+- **DOM-tier backend errors on an unimplemented Web API**: treat as a step
+  failure and name the API in evidence. Never re-classify the AC as passing —
+  the gap is real and the feature was not verified
 - **Auth fails twice**: STOP, report to user — this is usually a session misconfiguration
 - **Dev server unreachable**: STOP, invoke `/start-qa`, then resume
 
 ### Iron Laws
 
-1. A real browser must load the real app — no jsdom, no headless emulation bypassing the network
+1. A real browser must load the real app — no jsdom, no headless emulation bypassing the network.
+   A DOM-tier backend satisfies this: lightpanda loads over **libcurl** and makes real HTTP
+   requests, unlike jsdom. "Bypassing the network" is what the law forbids, and it does not.
+   What it cannot do is *see* the result — which the classifier handles, not this law.
 2. Authentication must go through the real login flow — no token injection
 3. Every user-facing AC gets its own walkthrough entry — no batching
 4. A failed step halts the walkthrough — do not cascade to the next AC
