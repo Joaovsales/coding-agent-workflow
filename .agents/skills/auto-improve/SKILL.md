@@ -66,8 +66,20 @@ Dispatch independent read-only sub-agents **in parallel** (one message, multiple
 | Sub-agent | Model | Charter |
 |---|---|---|
 | Test health | sonnet | Run full suite + coverage. Report failing tests, flaky tests, coverage gaps < 80%, slowest tests. |
-| Design review | sonnet | Run `/software-design-expert-review` on recently changed + core files. Report MUST-FIX / SHOULD-FIX APOSD red flags. |
+| Design review | *ceiling* | Run `/software-design-expert-review` on recently changed + core files. Report MUST-FIX / SHOULD-FIX APOSD red flags. |
 | Performance | sonnet | Scan hot paths (pipeline stages, router, encoders) for obvious inefficiencies — redundant work, N+1 subprocess calls, unbounded loops. |
+
+*ceiling* means pass no `model` at all so the agent inherits the session model
+(`CLAUDE.md` § *Model Routing*). The design reviewer is a Ceiling role; naming an
+alias in this column pins it just as surely as frontmatter would, and pins it for
+exactly the users who chose a stronger session.
+
+The design-review dispatch is a **repo survey**, so it carries the exception in
+`CLAUDE.md` § *Review Dispatch Contract*: there is no session diff, no spec and no
+closed task list to pass. State that rather than omitting it — pass
+`no spec — repo survey, nothing built this run` and `deferrals: none`, plus the
+output format. An omitted line reads as "nobody told me" and puts the reviewer back
+to guessing, which is what the contract exists to stop.
 
 Do **not** fix anything in this phase. Discovery is read-only. Merge these findings with the ready backlog/bug items for ranking in Phase 2.
 

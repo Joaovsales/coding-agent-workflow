@@ -130,10 +130,35 @@ assert_file_contains PI_SETUP.md "single source of concrete model IDs" \
 # by naming a different one, which is how `model: opus` and `model: haiku`
 # mutations stayed green here.
 for tree in .agents .claude; do
-  for skill in quality-gate software-design-expert-review wrap-up-session build plan; do
+  for skill in quality-gate software-design-expert-review wrap-up-session build plan auto-improve; do
     assert_file_not_matches "$tree/skills/$skill/SKILL.md" 'model: .?(sonnet|opus|haiku)' \
       "ModelTier: $tree $skill pins no Ceiling role to an alias"
   done
+done
+
+# --- 8b. A table cell pins just as hard as frontmatter -----------------------
+# `model: <alias>` was the whole needle above, so a routing table written as
+# `| Design review | sonnet | ... |` walked past it untouched. That is exactly how
+# auto-improve kept the design reviewer pinned to `sonnet` through all of #61 --
+# the guard existed, matched the wrong syntax, and reported green.
+#
+# Matches a table row whose FIRST cell names a review charter and whose later cells
+# carry an alias. Deliberately loose on both sides, because the first draft of this
+# guard was defeated three ways in review: `**sonnet**` (bold), `Sonnet` (capital),
+# and `sonnet (floor)` (trailing token) all evaded a `.?alias.?` cell pattern, and a
+# hardcoded charter list missed `Code review` and `Correctness review`. Matching any
+# first-cell "review"/"critic"/"adversarial"/"audit" against any later alias catches
+# all of those; validated against 8 evasion fixtures and the repo's 6 legitimate
+# alias rows (Coding agents, Debugger, Scout, Test health, Performance, Reviewer).
+#
+# One grep per tree, reusing section 9's shape rather than looping files: the
+# per-file loop this replaces spawned three processes per skill and cost ~35s of
+# suite time on Windows, and a glob that matched nothing would have reported zero
+# assertions as a pass.
+for tree in .agents .claude; do
+  hits="$(grep -rlE '^\|[^|]*([Rr]eview|[Aa]dversarial|[Cc]ritic|[Aa]udit)[^|]*\|.*([Ss]onnet|[Oo]pus|[Hh]aiku)' \
+    "$tree/skills" 2>/dev/null || true)"
+  assert_eq "" "$hits" "ModelTier: no review role pinned in a table cell under $tree/skills"
 done
 
 # --- 9. No concrete provider ID anywhere in either skill tree ----------------

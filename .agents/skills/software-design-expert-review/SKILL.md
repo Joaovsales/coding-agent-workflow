@@ -42,10 +42,17 @@ Run a focused structural review based on *A Philosophy of Software Design* by Jo
 
 ## Phase 2 — Dispatch APOSD Reviewer Agent
 
-For each changed file (or grouped batch if <5 files), dispatch the `software-design-expert-review` agent (Ceiling tier — pass no `model` at all, so it inherits the session model; see `CLAUDE.md` § *Model Routing*) in a single tool call. Pass:
+For each changed file (or grouped batch if <5 files), dispatch the `software-design-expert-review` agent (Ceiling tier — pass no `model` at all, so it inherits the session model; see `CLAUDE.md` § *Model Routing*) in a single tool call. Pass the seven items in `CLAUDE.md` § *Review Dispatch Contract*, which for this gate means:
 - The git diff for the file(s)
 - Absolute paths of the files
+- The spec path and its acceptance criteria verbatim, or `no spec — <reason>`
+- The `tasks/todo.md` entries closed this run
+- The `[AMBIGUITY]` lines and any `TODO(shortcut):` markers in these files, or `deferrals: none` — an accepted trade-off is not a red flag, and R1–R11 have no way to tell the difference from the diff alone
+- The boundary: review issues **introduced** by this diff; pre-existing structure inside a changed file is out of scope
 - The instruction: "Review ONLY these changed files. Emit every finding in the canonical four-axis format `[SEVERITY | confidence | autofix_class | owner] file:line — description`, with an `evidence:` line quoting the motivating source line for any finding at anchor `75` or `100`."
+
+Withhold conclusions — no prior findings, no builder rationale. Batches are the unit
+of independence here (Phase 3), so an inherited opinion inflates corroboration.
 
 Do **not** ask the agent for the old single-axis `[MUST-FIX]`-only format. The
 persona emits four axes; an instruction to strip them here silently discards the

@@ -126,6 +126,24 @@ Run the 4 review passes. For each pass:
 - Focus on issues **introduced** by this session, not pre-existing patterns
 - Classify every finding on all four axes below
 
+### Review Payload
+
+Every dispatched pass carries all seven items in `CLAUDE.md` § *Review Dispatch
+Contract*. Assemble once, reuse for all four — they differ by lens, not by input:
+
+1. The `<base-branch>...HEAD` diff (truncated-plus-path per *Large-Artifact Handoff* if large)
+2. The spec path and its acceptance criteria verbatim, checkbox state stripped — or `no spec — <reason>`
+3. The `tasks/todo.md` entries closed this session
+4. The `[AMBIGUITY]` batch `/build` surfaced — or `deferrals: none`
+5. The `TODO(shortcut):` markers from Step 3.7 touching changed files — or `deferrals: none`
+6. The boundary from the bullets above, stated **to the agent**, not just here
+7. The four-axis format from *Finding Classification* below
+
+Pass the intent, not the conclusions: no builder rationale, and never one pass's
+findings to another. Both would import the priors *Independence Accounting* exists
+to keep out, and the promotion in *Dispatch Disclosure* would then count an echo as
+a witness.
+
 ### Dispatch Disclosure
 
 These 4 passes run either as separately dispatched agents (see *Claude Code
@@ -178,7 +196,8 @@ survives, its authority does not.
 ```
 [MUST-FIX | confidence: 100 | autofix_class: gated_auto | owner: agent] file.py:42 — Description and impact
   evidence: `except Exception: pass` (file.py:42)
-[SHOULD-FIX | confidence: 75 | autofix_class: manual | owner: human] handler.py:120 — Description and impact
+[SHOULD-FIX | confidence: 75 | autofix_class: manual | owner: human] handler.py:120 — Description and impact. Correctness turns on `settings.CACHE_TTL`.
+  depends-on: `settings.CACHE_TTL` — set at deploy time, not readable from the tree
   evidence: `return cached or {}` (handler.py:120)
 [NITPICK | confidence: 50 | autofix_class: advisory | owner: human] utils.py:30 — Description
 ```
@@ -440,6 +459,14 @@ model.
 This path is what makes the 4 passes separately dispatched contexts, so it is the
 only path that licenses confidence promotion. Record it as `dispatched` and
 disclose it per *Dispatch Disclosure*.
+
+Every one of the four calls carries the *Review Payload* assembled in Step 4, which
+implements `CLAUDE.md` § *Review Dispatch Contract* — including its `deferrals: none`
+and `no spec — <reason>` markers, which are stated even when there is nothing to state.
+Identical input, different lens —
+identical input, different lens. A pass dispatched without it reviews the diff
+against its own priors about what code should look like, which is where
+re-litigated shortcuts come from.
 
 Agent assignments:
 - Agent 1: `code-reviewer` — Codebase Consistency (Pass 1)
