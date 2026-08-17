@@ -25,6 +25,13 @@ DO NOT invoke /plan, /build, /tdd, write any code, scaffold any project, or take
 - Grep tasks/solutions/ frontmatter (architecture-decision, pattern docs) for architectural context and past decisions
 - Understand what already exists before proposing anything new
 
+**Reading prior art on a JS-rendered page.** `WebFetch` returns the empty shell
+for an SPA and gives no signal that it did, so a page can read as "nothing there"
+when the content simply had not run yet. If `lightpanda fetch <url>` is available
+it executes the scripts first and dumps HTML or markdown. It is optional — when
+it is absent, use `WebFetch` and say what you could not read. **A missing
+lightpanda is not an error and never blocks the exploration.**
+
 ### Step 2 — Offer Visual Aids
 If the topic benefits from diagrams, mockups, or flowcharts:
 - Offer to create ASCII diagrams, Mermaid charts, or component trees

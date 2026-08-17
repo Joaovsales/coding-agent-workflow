@@ -281,4 +281,36 @@ assert_contains "$keydirs" "tasks/concepts.md" \
 assert_file_contains "project-template/CLAUDE.md" "concepts.md" \
   "M4: project-template CLAUDE.md lists the glossary"
 
+# --- lightpanda: JS-capable page reads offered as an OPTIONAL research fallback ---
+# WebFetch returns the empty shell for a JS-rendered page and gives no signal that
+# it did, so a research step can silently read nothing and report nothing found.
+# `lightpanda fetch` executes the scripts. It is optional everywhere: the machines
+# running this workflow differ (no Windows build exists), so each mention must say
+# absence is not an error, or a skill turns a missing optional tool into a blocker.
+for f in .agents/skills/prd/SKILL.md .claude/skills/prd/SKILL.md \
+         .agents/skills/brainstorm/SKILL.md .claude/skills/brainstorm/SKILL.md; do
+  assert_file_contains "$f" "lightpanda fetch" \
+    "lightpanda: $f offers the JS-capable fetch fallback"
+  assert_prose_contains "$f" "not an error" \
+    "lightpanda: $f states that its absence is not an error"
+done
+
+# --- lightpanda: the DOM tier must not leak into manual QA -------------------
+# /start-qa launches a browser for a HUMAN to look at. Lightpanda has no
+# rendering path, so routing manual QA to it would hand the user a browser that
+# cannot show them anything. This is not a preference — it is the one place the
+# tier is categorically wrong, so it is pinned rather than left to judgement.
+for f in .agents/skills/start-qa/SKILL.md .claude/skills/start-qa/SKILL.md; do
+  assert_file_not_matches "$f" "lightpanda"     "lightpanda: $f does NOT route manual QA to the DOM tier"
+done
+assert_files_identical .agents/skills/start-qa/SKILL.md .claude/skills/start-qa/SKILL.md   "lightpanda: start-qa stays byte-identical across both trees"
+
+# --- agent-reach was evaluated and declined ----------------------------------
+# Recorded as a guard so a later session does not quietly add the dependency the
+# spec argued its way out of. specs/ is exempt: that is where the decision and
+# its reversal path are written down. tests/ is exempt for the obvious reason
+# that this assertion names the token itself.
+reach_hits="$(grep -rl "agent-reach"   .agents .claude/skills .claude/agents .claude/hooks .claude/browsers   CLAUDE.md install.sh project-template 2>/dev/null | grep -v '.claude/worktrees' || true)"
+assert_eq "" "$reach_hits"   "lightpanda: agent-reach is not a dependency anywhere outside specs/"
+
 finish
