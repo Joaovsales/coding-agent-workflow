@@ -188,6 +188,7 @@ Commit: <full-sha>
 Browser: <backend> <version> (full-fidelity | DOM-tier)
 
 ### AC-1: <criterion text>
+Tier: DOM-FUNCTIONAL (asserts element text)
 Journey: <plain-language steps>
 Steps executed:
   ✓ Navigate /path → 200, element visible

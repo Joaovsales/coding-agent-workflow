@@ -88,6 +88,15 @@ for f in "$CANONICAL" "$COMPAT"; do
   assert_prose_contains "$f" "DOM-tier" \
     "$f: e2e-log template records the fidelity tier"
 
+  # EVERY logged AC carries its tier, not only the blocked ones. A PASS whose
+  # tier is unrecorded is unreadable after the fact: the reader cannot tell
+  # whether the criterion was deliberately classified DOM-FUNCTIONAL or never
+  # classified at all — precisely the judgement the log exists to preserve.
+  assert_file_contains "$f" "Tier: DOM-FUNCTIONAL" \
+    "$f: the PASS example records its tier too"
+  assert_file_contains "$f" "Tier: VISUAL" \
+    "$f: the BLOCKED example records its tier"
+
 done
 
 # --- 7. Both trees agree ------------------------------------------------------
