@@ -53,7 +53,7 @@ does not earn the setup cost.
 skill instructing it is what authorises that tool. Otherwise:
 
 ```bash
-scripts/bootstrap-worktree.sh <branch>
+.agents/skills/build/scripts/bootstrap-worktree.sh <branch>
 ```
 
 Do not use a bare `git worktree add`. A fresh worktree has no `node_modules` and

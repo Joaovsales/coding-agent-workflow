@@ -8,8 +8,9 @@
 # false confidence, which is worse than no worktree at all.
 #
 # Usage:
-#   scripts/bootstrap-worktree.sh <branch> [path]
-#   scripts/bootstrap-worktree.sh --detach-head <path>   # for fixture regeneration
+#   .agents/skills/build/scripts/bootstrap-worktree.sh <branch> [path]
+#   .agents/skills/build/scripts/bootstrap-worktree.sh --detach-head <path>
+#     --detach-head is for fixture regeneration.
 #
 # Defaults path to ../<repo>-<branch-slug>.
 set -euo pipefail
