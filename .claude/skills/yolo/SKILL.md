@@ -52,7 +52,7 @@ files underneath a running edit. Supervised, you notice. Here you do not, and
 the loop keeps building against a tree that silently became something else.
 
 **How:** prefer the harness-native `EnterWorktree` tool; this instruction is what
-authorises it. Otherwise `scripts/bootstrap-worktree.sh <branch>`.
+authorises it. Otherwise `.agents/skills/build/scripts/bootstrap-worktree.sh <branch>`.
 
 Never a bare `git worktree add` — no `node_modules`, no `.env*`, and a suite
 gated on an env file will skip those tests and report green. An unattended loop

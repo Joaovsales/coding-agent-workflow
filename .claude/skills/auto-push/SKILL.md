@@ -32,7 +32,7 @@ clone and rewrites files under a live edit. The user approved a plan; they
 should get that plan, not whatever the tree became.
 
 **How:** prefer the harness-native `EnterWorktree` tool; this instruction is what
-authorises it. Otherwise `scripts/bootstrap-worktree.sh <branch>`.
+authorises it. Otherwise `.agents/skills/build/scripts/bootstrap-worktree.sh <branch>`.
 
 Never a bare `git worktree add` — no `node_modules`, no `.env*`, and a suite
 gated on an env file will skip those tests and report green. Pushing on a false

@@ -42,7 +42,8 @@ pnpm-lock.yaml    -merge
 yarn.lock         -merge
 
 # Committed binary fixtures: no textual merge is meaningful. Regenerate from a
-# detached worktree at HEAD instead (scripts/bootstrap-worktree.sh --detach-head).
+# detached worktree at HEAD instead
+# (.agents/skills/build/scripts/bootstrap-worktree.sh --detach-head).
 *.png binary
 *.jpg binary
 *.pdf binary
