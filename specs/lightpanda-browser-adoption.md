@@ -308,6 +308,42 @@ PASS. That walkthrough is the acceptance evidence; the bash test is the regressi
 AC-4 is the one that matters. If it regresses, the feature is a liability rather than a gap
 closed.
 
+### Verification record
+
+Branch `feat/lightpanda-e2e-tier`, off master @ `25999b1`.
+
+| AC | Evidence |
+|----|----------|
+| AC-1 | `tests/test-browser-runbook.sh` — 26 assertions |
+| AC-2 | `tests/test-e2e-classifier.sh` — resolution table pinned in both trees |
+| AC-3 | same — fail-closed sentence pinned **verbatim**, both trees |
+| AC-4 | `tasks/e2e-log.md` — lightpanda 0.3.6 sole backend, VISUAL AC `BLOCKED` |
+| AC-5 | same entry — DOM-functional AC `PASS`, JS-rendered content resolved |
+| AC-6 | `Browser:` line asserted in both trees' evidence template |
+| AC-7 | `tests/test-skill-parity.sh` green; both `verify/SKILL.md` byte-identical |
+| AC-8 | runbook documents the one-liner; `git diff 25999b1 -- install.sh` empty |
+| AC-9 | `tests/test-syncable-paths.sh` green; 3 enumerations probed red then reverted |
+| AC-10 | `git diff 25999b1 -- .../start-qa` empty; guard pins no lightpanda reference |
+| AC-11 | doc-conventions asserts no `agent-reach` token outside `specs/` |
+
+**Suite**: 20 test files, 19 pass, 1347 assertions (baseline at branch point: 18 files).
+The single failure is `tests/test-codex-install.sh` — pre-existing on master, Windows-only
+(Python 3.13 defaults to cp1252 and dies on the hook banner's non-ASCII before parsing).
+Reproduced at `0064efe` without this branch's commits; CI on Linux is green.
+
+### What the AC-4 run changed
+
+The evidence run did not merely confirm the design — it sharpened it. Geometry APIs are
+**stubbed rather than absent**: `getBoundingClientRect()` returns every element as `5x5`
+with `x == y`, ignoring CSS entirely. So a defensively written visibility check
+(`r.width > 0 && r.x >= 0`) returns *true* for an element positioned 9999px off-screen.
+
+This is materially worse than §1.1's original "no rendering path" framing. A missing API
+throws where its caller notices; a stubbed one answers wrong in silence, leaving no runtime
+signal to fail on. That is the concrete reason the classifier must decide **before**
+execution rather than attempting a visual check and letting it fail. The runbook and
+`tests/test-browser-runbook.sh` both carry this finding.
+
 ---
 
 ## 8. Open risks carried forward
