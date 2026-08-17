@@ -91,4 +91,17 @@ assert_file_contains "$RUNBOOK" "lightpanda mcp" "registration: documents the MC
 PLATFORMS="$(printf '%s\n' "$FRONTMATTER" | sed -n 's/^platforms:[[:space:]]*//p')"
 assert_not_contains "$PLATFORMS" "windows" "frontmatter: platforms omits windows (no upstream build)"
 
+# --- 6. Stubbed geometry is the ceiling's sharpest edge -----------------------
+# getBoundingClientRect() does not throw here — it returns synthetic values
+# (every element 5x5, x==y) that ignore CSS entirely. A missing API would be
+# caught by its caller; a stubbed one silently answers wrong, so the defensive
+# `r.width > 0 && r.x >= 0` visibility check passes for an off-screen element.
+# That is the specific reason VISUAL criteria are refused rather than attempted,
+# so losing this warning removes the justification for the whole fail-closed
+# design while leaving the design in place.
+assert_file_contains "$RUNBOOK" "getBoundingClientRect" \
+  "ceiling: warns that geometry APIs are stubbed, not absent"
+assert_prose_contains "$RUNBOOK" "stubbed" \
+  "ceiling: names the stubbed-not-missing distinction"
+
 finish

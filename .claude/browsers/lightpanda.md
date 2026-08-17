@@ -48,6 +48,34 @@ completely broken layout can still expose a correct DOM.** An assertion that
 button is rendered off-screen, behind a modal, or invisible. Lightpanda cannot
 tell those apart, and neither can a reviewer reading a bare PASS.
 
+### Geometry is stubbed, not absent — this is the dangerous part
+
+`getBoundingClientRect()` and `offsetWidth`/`offsetHeight` **exist and return
+confident, plausible-looking numbers that are fiction.** Measured against 0.3.6
+on a fixture whose button is styled `position:absolute; left:-9999px`:
+
+```
+submit-btn=[110,110,5,5]  total=[130,130,5,5]  checkout=[80,80,5,5]  h1=[65,65,5,5]
+```
+
+Every element reports `5x5`, and `x` always equals `y`. An `<h1>` and a
+`<button>` are not both 5x5 pixels; the CSS offset is ignored entirely. The
+values are synthetic.
+
+A missing API throws, and a caller notices. A **stubbed** API silently returns
+the wrong answer, so the defensive visual assertion a careful engineer would
+write —
+
+```js
+const r = el.getBoundingClientRect();
+if (r.width > 0 && r.x >= 0) { /* "it's visible" */ }
+```
+
+— **passes here for an element 9999px off the left edge.** That is why VISUAL
+criteria are refused rather than attempted-and-checked: there is no runtime
+signal to check against. The classifier has to decide before it runs, which is
+why it fails closed.
+
 That is why `/verify --scope e2e` classifies every AC before choosing a tier and
 **fails closed** — an AC whose wording is ambiguous is treated as VISUAL and
 refuses to run here. See `.agents/skills/verify/SKILL.md` § `--scope e2e`.
