@@ -128,7 +128,8 @@ exposed in the session.
 | 4 | none | — | STOP |
 
 Lightpanda's absence is never an error — fall through. Its runbook, including the
-capability ceiling, is `.claude/browsers/lightpanda.md`.
+capability ceiling, is `.claude/browsers/lightpanda.md` (Claude Code only —
+other harnesses read the same runbook from the template repo).
 
 ### AC classification
 
