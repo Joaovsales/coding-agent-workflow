@@ -119,6 +119,17 @@ else
   assert_eq "0" "1" "hook: SessionStart output validates as Codex JSON"
 fi
 
+# The shared shell hook carries a double-invocation guard for Claude Code, which
+# registers it twice. Codex registers it once, so the guard has nothing to
+# de-duplicate here — and because it keys on the working directory when the
+# payload carries no session_id, leaving it on would silently suppress a second
+# Codex session in the same repo. Pinned statically rather than behaviourally:
+# the end-to-end assertion above is the repo's documented red baseline, so a
+# runtime check would report that failure rather than this property.
+assert_file_contains "$CODEX_HOME/hooks/coding-agent-workflow-session-start.py" \
+  'CCW_SESSION_GUARD' \
+  "hook: the Codex wrapper disables the Claude-Code-only double-invocation guard"
+
 BAD="$BOX/bad-agents"
 mkdir -p "$BAD"
 printf '# malformed\n' > "$BAD/broken.md"

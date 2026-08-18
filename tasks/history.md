@@ -73,3 +73,40 @@
 - Deployment: the broken copies in `~/.claude/agents/` were refreshed by hand the same day.
   Fixing the repo does not fix the machine - an installed persona has its own copy, so
   "repo is green" and "harness is fixed" are separate claims.
+
+### [2026-08-18] — Windows session-guard key collapse
+
+- Fixed a Windows-only defect in `.claude/hooks/session-start.sh`: the double-invocation
+  guard fell back to `$PPID`, which is `1` for bash spawned from a native Windows parent,
+  so every session in every repo shared one sentinel and a second repo opened inside the
+  5-minute window got no banner at all. Confirmed in the wild — `/tmp/.ccw-session-start-1-*`
+  was being rewritten by live sessions. Now keys on `session_id` parsed with sed (the `jq`
+  branch is gone, and `jq` is absent on this machine so it was never the live path), falling
+  back to a `cksum` of `$PWD`.
+- Added seven guard assertions to `tests/test-session-start.sh`. The load-bearing detail is
+  that they redirect to a file instead of capturing with `$(...)`: command substitution forks
+  a fresh subshell per call, so `$PPID` varied per invocation and the old guard was **inert
+  under test** — which is why the defect shipped. Three pre-existing assertions had to take
+  `CCW_SESSION_GUARD=0`; they were green only because the guard never fired.
+- The 4-pass review then found a MUST-FIX **in the fix**: the new `cksum` pipeline had no
+  `|| true`, so under `set -eo pipefail` a missing `cksum` killed the hook at exit 127 with
+  zero output — a worse silent-banner loss than the original bug, with the documented
+  degradation unreachable. All four passes found it independently; reproduced directly.
+  A second MUST-FIX explained why it was invisible: the "stays silent" assertions checked
+  stdout only, and a crash also prints nothing.
+- Also fixed from review: extracted a shared `json_string_field` helper (the sed idiom had
+  been cloned, with two divergent character classes), widened the `session_id` capture to
+  `[^"]*`, bounded the raw-path fallback, added expiry/empty-payload/cksum-absent coverage,
+  and set `CCW_SESSION_GUARD=0` in `codex/hooks/session_start.py` — Codex registers once, and
+  the now-stable cwd key would have suppressed its second session in a repo.
+- Learnings captured: `tasks/solutions/bugs/ppid-is-1-on-windows-so-a-ppid-keyed-guard-collapses.md`,
+  `tasks/solutions/patterns/command-substitution-forks-a-subshell-so-ppid-varies-per-call.md`
+- Review: 4 parallel passes (3x code-reviewer, 1x critic), separately dispatched, so
+  corroboration is independent. 2 MUST-FIX and 13 SHOULD-FIX raised; 1 SHOULD-FIX skipped
+  (`pre-compact.sh` still requires `jq` — pre-existing line, advisory/human).
+- Open, not acted on: the critic argued the fallback should be dropped entirely (no
+  `session_id` -> just print), since the guard suppresses a cosmetic duplicate but fails by
+  losing a functional banner. That deletes several findings rather than fixing them. Left to
+  the user, because the requested fix shape was explicitly a stable-and-distinct *key*.
+- Not fixed, pre-existing: `tests/test-codex-install.sh` red baseline (unchanged, still open);
+  ~290 unreaped `.ccw-session-start-*` sentinels accumulating in `/tmp` since 30 July.
