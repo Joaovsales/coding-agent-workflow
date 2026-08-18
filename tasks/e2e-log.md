@@ -142,3 +142,16 @@ re-obtained by writing results into the DOM, which the dump captures. An empty
 result is not evidence of absence.
 
 Result: PASS (AC-4 and AC-5 both satisfied)
+
+### Addendum — 2026-08-18: commit reference rebased
+
+The `Commit:` line above records `ad475ec82e926db24ee98217bf654ed6db0432d7`, the SHA
+this branch carried when the walkthrough ran. The branch was later rebased onto master
+`8828ba0` to pick up #66/#67/#68, so that SHA is unreachable and `git show` on it fails.
+The same content is now `c91ae4a` ("feat(research): offer lightpanda fetch for
+JS-rendered pages; guard the decisions").
+
+Corrected by addendum rather than by editing the line above: the log is the audit trail,
+and an entry silently rewritten to look as though it always pointed at the right commit
+is worth less than one that shows what moved. Nothing about the run itself changed — same
+fixture, same `lightpanda/browser:0.3.6` image, same observed values.

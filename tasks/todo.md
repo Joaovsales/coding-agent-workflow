@@ -132,7 +132,8 @@
 > Branch: `feat/lightpanda-e2e-tier` off master @ 25999b1 (PR #65 merged, so
 > `tests/test-syncable-paths.sh` is now on master — Task 2's dependency is satisfied
 > and its red-then-green runs normally).
-> Status: In progress
+> Status: Complete — rebased onto master @ 8828ba0 (#66/#67/#68 landed mid-session,
+> which cleared the pre-existing Windows red baseline this plan's Task 8 was blocked on)
 >
 > **Decision:** lightpanda enters as an optional, capability-scoped e2e tier gated by a
 > fail-closed AC classifier. agent-reach declined (spec §2). `/start-qa` and `install.sh`
@@ -171,3 +172,12 @@
 ## Task 8 — Full suite + quality gate
 
 [x] TDD: `bash tests/run.sh` green with a 600s timeout; new test-file count recorded against the Setup baseline -> run, fix fallout, then `/quality-gate`; verify every AC in `specs/lightpanda-browser-adoption.md` including the AC-4 evidence from Task 7
+
+## Session Summary — [2026-08-18] [8828ba0..HEAD]
+- Completed: 8 planned tasks (all of the Lightpanda plan above) + 1 review-driven fix
+- Pending: 0
+- Carry-forward: `.claude/deployments/` has the same syncable-path gap `.claude/browsers/`
+  just closed, and `/verify --scope deployment` names `tasks/deployments/<service>.md`
+  while the directory in this repo is `.claude/deployments/` — a pre-existing mismatch,
+  left alone under the orphan rule rather than folded into this change. Lightpanda `0.3.7`
+  is published upstream; the pin stays at `0.3.6`, the version AC-4 evidence was taken on.

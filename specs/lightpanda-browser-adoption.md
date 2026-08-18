@@ -321,15 +321,21 @@ Branch `feat/lightpanda-e2e-tier`, off master @ `25999b1`.
 | AC-5 | same entry — DOM-functional AC `PASS`, JS-rendered content resolved |
 | AC-6 | `Browser:` line asserted in both trees' evidence template |
 | AC-7 | `tests/test-skill-parity.sh` green; both `verify/SKILL.md` byte-identical |
-| AC-8 | runbook documents the one-liner; `git diff 25999b1 -- install.sh` empty |
+| AC-8 | runbook documents the one-liner; `git diff origin/master...HEAD -- install.sh` empty |
 | AC-9 | `tests/test-syncable-paths.sh` green; 3 enumerations probed red then reverted |
-| AC-10 | `git diff 25999b1 -- .../start-qa` empty; guard pins no lightpanda reference |
+| AC-10 | `git diff origin/master...HEAD -- .../start-qa` empty; guard pins no lightpanda reference |
 | AC-11 | doc-conventions asserts no `agent-reach` token outside `specs/` |
 
-**Suite**: 20 test files, 19 pass, 1347 assertions (baseline at branch point: 18 files).
-The single failure is `tests/test-codex-install.sh` — pre-existing on master, Windows-only
-(Python 3.13 defaults to cp1252 and dies on the hook banner's non-ASCII before parsing).
-Reproduced at `0064efe` without this branch's commits; CI on Linux is green.
+**Suite**: 21 test files, all pass, 1395 assertions, exit 0 — run on master `8828ba0`
+after rebase (baseline at branch point: 18 files).
+
+Earlier runs of this branch reported 20 files / 19 pass / 1347 assertions, with
+`tests/test-codex-install.sh` failing. That failure was pre-existing on master and
+Windows-only, reproduced at `0064efe` without this branch's commits, and is now **resolved
+upstream** by #66 (a `$PPID`-keyed guard collapsing to PID 1 on Windows, then `print()`
+encoding the non-ASCII banner as cp1252) and #67 (explicit UTF-8 at the remaining Python
+IO boundaries). Recorded rather than deleted: this branch was verified against a red
+baseline for most of its life, and that is a fact about the evidence above.
 
 ### What the AC-4 run changed
 
