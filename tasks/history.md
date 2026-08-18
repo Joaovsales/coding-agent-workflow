@@ -74,34 +74,85 @@
   Fixing the repo does not fix the machine - an installed persona has its own copy, so
   "repo is green" and "harness is fixed" are separate claims.
 
+### [2026-08-18] — Windows session-guard key collapse
+
+- Fixed a Windows-only defect in `.claude/hooks/session-start.sh`: the double-invocation
+  guard fell back to `$PPID`, which is `1` for bash spawned from a native Windows parent,
+  so every session in every repo shared one sentinel and a second repo opened inside the
+  5-minute window got no banner at all. Confirmed in the wild — `/tmp/.ccw-session-start-1-*`
+  was being rewritten by live sessions. Now keys on `session_id` parsed with sed (the `jq`
+  branch is gone, and `jq` is absent on this machine so it was never the live path), falling
+  back to a `cksum` of `$PWD`.
+- Added seven guard assertions to `tests/test-session-start.sh`. The load-bearing detail is
+  that they redirect to a file instead of capturing with `$(...)`: command substitution forks
+  a fresh subshell per call, so `$PPID` varied per invocation and the old guard was **inert
+  under test** — which is why the defect shipped. Three pre-existing assertions had to take
+  `CCW_SESSION_GUARD=0`; they were green only because the guard never fired.
+- The 4-pass review then found a MUST-FIX **in the fix**: the new `cksum` pipeline had no
+  `|| true`, so under `set -eo pipefail` a missing `cksum` killed the hook at exit 127 with
+  zero output — a worse silent-banner loss than the original bug, with the documented
+  degradation unreachable. All four passes found it independently; reproduced directly.
+  A second MUST-FIX explained why it was invisible: the "stays silent" assertions checked
+  stdout only, and a crash also prints nothing.
+- Also fixed from review: extracted a shared `json_string_field` helper (the sed idiom had
+  been cloned, with two divergent character classes), widened the `session_id` capture to
+  `[^"]*`, bounded the raw-path fallback, added expiry/empty-payload/cksum-absent coverage,
+  and set `CCW_SESSION_GUARD=0` in `codex/hooks/session_start.py` — Codex registers once, and
+  the now-stable cwd key would have suppressed its second session in a repo.
+- Learnings captured: `tasks/solutions/bugs/ppid-is-1-on-windows-so-a-ppid-keyed-guard-collapses.md`,
+  `tasks/solutions/patterns/command-substitution-forks-a-subshell-so-ppid-varies-per-call.md`
+- Review: 4 parallel passes (3x code-reviewer, 1x critic), separately dispatched, so
+  corroboration is independent. 2 MUST-FIX and 13 SHOULD-FIX raised; 1 SHOULD-FIX skipped
+  (`pre-compact.sh` still requires `jq` — pre-existing line, advisory/human).
+- Open, not acted on: the critic argued the fallback should be dropped entirely (no
+  `session_id` -> just print), since the guard suppresses a cosmetic duplicate but fails by
+  losing a functional banner. That deletes several findings rather than fixing them. Left to
+  the user, because the requested fix shape was explicitly a stable-and-distinct *key*.
+- Merged `origin/master` mid-wrap-up: #66 (`fix(codex): restore SessionStart output on
+  Windows`) landed after this worktree branched and fixed the red baseline that was treated
+  as out of scope here. It made the same `CCW_SESSION_GUARD=0` change to the Codex wrapper,
+  so that edit and its test assertion were dropped in favour of master's -- master's pins the
+  property behaviourally (invokes the adapter twice) rather than statically.
+- Corrected: this session twice reported the Codex guard-disable as absent from the repo.
+  It was absent from *this branch's base*, not from the repo. `master` advances mid-session;
+  check it before concluding something does not exist.
+- Not fixed, pre-existing: ~290 unreaped `.ccw-session-start-*` sentinels accumulating in
+  `/tmp` since 30 July.
+
 ### [2026-08-18] — UTF-8 at every Python IO boundary
 
-- Key changes: A one-line stdin decode fix (`--markdown -` used the platform default
-  codec, cp1252 on Windows) expanded to five instances of one defect class after the
-  review gate swept for siblings. `generate-presentation.py` now uses `utf-8-sig` on
-  both markdown branches and pins stdout; `visual-render.py` decodes its subprocess
-  capture explicitly; `codex/hooks/session_start.py` pins stdout. New
-  `tests/test-html-presentation.sh` (26 assertions) pins the previously untested stdin
-  path.
-- Root cause established for a four-day-old red test: `tests/test-codex-install.sh` had
-  TWO stacked defects sharing the symptom "empty stdout" — the encoding bug above, and
-  `session-start.sh`'s double-invocation guard falling back to `$PPID` when the payload
-  carries no `session_id` (jq is absent on this machine, so that fallback is the only
-  path here). Fixing either alone left the test red, which is why the earlier session
-  recorded `root_cause: not established`. Suite now 19/19, 1309 assertions.
+- Key changes: a one-line stdin decode fix (`--markdown -` used the platform default
+  codec, cp1252 on Windows) expanded to four instances of one defect class after the
+  review gate swept for siblings. `generate-presentation.py` now uses `utf-8-sig` on both
+  markdown branches and pins stdout; `visual-render.py` decodes its subprocess capture
+  explicitly (`text=True` swallows the decode error inside subprocess's reader thread and
+  leaves `result.stderr` as `None` exactly when the child failed). New
+  `tests/test-html-presentation.sh` (26 assertions) pins the previously untested stdin path.
+- Two of the four failed *silently*, which is worse than the loud mojibake that prompted
+  the fix: the BOM case loses the title and every section at exit 0, and the subprocess
+  case discards the child's diagnostics.
+- Superseded mid-wrap-up: this branch also fixed `codex/hooks/session_start.py` and
+  diagnosed the long-red `tests/test-codex-install.sh`. #66 and #68 landed on master first
+  and did both properly, so all Codex- and guard-related changes here were dropped in
+  favour of upstream at merge.
+- **My guard diagnosis was wrong about the mechanism.** I concluded the `$PPID` fallback
+  collided by *PID recycling* inside the 300s sentinel window — which never explained why
+  the failure was deterministic. #66 has the real answer: `$PPID` is **1** for bash spawned
+  from a native Windows parent, so every invocation collapses onto a single sentinel by
+  construction. I had the evidence for this (the same script emitting 2568 bytes under one
+  parent and 0 under another) and read a stochastic story into it instead of measuring
+  `$PPID`. Lesson: when a "race" reproduces deterministically, stop and measure the key.
 - Review: 4 passes separately dispatched (3x code-reviewer, 1x critic), so corroboration
-  between them is independent. The BOM defect was found by three passes independently and
-  the stdout-print defect by three; both were promoted on that basis. Every pass verified
-  its findings by reproduction rather than inspection.
-- Reviewer limits worth recording: two passes confidently root-caused the red test as the
-  encoding bug alone, and both were wrong — each had reproduced `UnicodeEncodeError` in
-  isolation rather than through the installed hook, and neither saw the guard. Agreement
-  between reviewers is evidence about the defect they found, not about the absence of a
-  second one behind the same symptom.
-- Two process traps hit directly: `bash tests/run.sh | tail` reports `tail`'s exit status,
-  so a red suite read as green (exit 0 alongside `RESULT: 1/19 test files FAILED`); and the
-  first full run overlapped tree edits, so it was discarded and re-run on a settled tree
-  with before/after `git status` snapshots as proof.
-- Learnings captured: tasks/solutions/patterns/explicit-encoding-at-every-python-io-boundary.md,
-  tasks/solutions/bugs/codex-session-start-hook-emits-nothing.md (resolved),
-  tasks/solutions/bugs/pid-keyed-hook-guard-suppresses-the-banner.md (open)
+  between them is independent. The BOM defect and the stdout-print defect were each found
+  by three passes independently and promoted on that basis. Every pass verified by
+  reproduction rather than inspection.
+- Reviewer limits worth recording: two passes confidently gave the encoding bug as the
+  whole root cause of the red test. It was half — applying it left the test red. Each had
+  reproduced `UnicodeEncodeError` in isolation rather than through the installed hook, and
+  neither saw the guard. Agreement between reviewers is evidence about the defect they
+  found, not about the absence of a second one behind the same symptom.
+- Two process traps hit directly: `bash tests/run.sh | tail` returns **`tail`'s** exit
+  status, so a red suite reported exit 0 alongside `RESULT: 1/19 test files FAILED`; and the
+  first full suite run overlapped tree edits, so it was discarded and re-run on a settled
+  tree with before/after `git status` snapshots as proof.
+- Learnings captured: `tasks/solutions/patterns/explicit-encoding-at-every-python-io-boundary.md`

@@ -4,23 +4,27 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
 
 
 def main() -> int:
-    # Codex always pipes this hook's stdout, so it defaults to the platform
-    # codec (cp1252 on Windows). The banner it forwards carries box-drawing
-    # rules and emoji, which that codec cannot encode -- print() would raise
-    # UnicodeEncodeError and the hook would emit nothing at all.
-    sys.stdout.reconfigure(encoding="utf-8")
     hook = Path(__file__).with_name("coding-agent-workflow-session-start.sh")
+    # The shell hook's double-invocation guard is a Claude Code workaround: that
+    # harness registers the hook twice (globally and per-project), so the second
+    # firing has to exit silently. Codex registers it exactly once, so here the
+    # guard can only ever suppress the one banner there is. It reliably does on
+    # Windows: the guard keys on $PPID, and bash spawned from a native Windows
+    # process reports PPID 1, so every invocation collides on a single sentinel
+    # and every run inside its 5-minute window emits nothing at all.
     result = subprocess.run(
         ["bash", str(hook)],
         input=sys.stdin.buffer.read(),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        env={**os.environ, "CCW_SESSION_GUARD": "0"},
         check=False,
     )
     if result.stderr:
@@ -33,7 +37,13 @@ def main() -> int:
                 "additionalContext": output,
             }
         }
-        print(json.dumps(payload, ensure_ascii=False))
+        # Written as UTF-8 bytes rather than print()ed. The banner carries box
+        # rules, arrows and em-dashes, while Python encodes stdout with the
+        # platform default — cp1252 on Windows, where print() raises
+        # UnicodeEncodeError and Codex receives no JSON at all.
+        sys.stdout.buffer.write(
+            (json.dumps(payload, ensure_ascii=False) + "\n").encode("utf-8")
+        )
     return result.returncode
 
 

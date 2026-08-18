@@ -100,17 +100,30 @@
 [x] TDD: mutation probes — delete the contract section, remove one site's pointer, remove one persona's intake, delete the anchor-75 rule; each must turn the suite red. Commit first, then probe -> record counts in the spec
 [x] TDD: `bash tests/test-skill-parity.sh` green over every edited skill; `bash tests/run.sh` green with assertion count recorded against the 1108-assertion baseline -> run both, then `/quality-gate`
 
+---
+
+## Session Summary — [2026-08-18] [25999b1..f96255d]
+- Completed: 0 planned tasks (direct bug-fix request; no /plan run this session)
+- Pending: 0 — the plan blocks above belong to earlier worktrees and are all closed
+- Carry-forward: decide whether the no-session_id guard fallback should exist at all
+  (the critic argued for "no session_id -> just print", since the guard suppresses a
+  cosmetic duplicate but fails by losing a functional banner); ~290 unreaped
+  `.ccw-session-start-*` sentinels in /tmp with nothing reaping them
+
+---
+
 ## Plan: UTF-8 at every Python IO boundary
-> No /plan — direct user bug report: generate-presentation.py:39 decoded stdin with the platform default codec.
+> No /plan — direct user bug report: `generate-presentation.py` decoded stdin with the platform default codec.
 > Branch: claude/vibrant-chaum-2cad9b (worktree off master @ 25999b1)
 
-[x] Fix the reported stdin decode in both mirror copies -> `tests/test-html-presentation.sh` pins the `--markdown -` path with non-ASCII markdown, asserting PYTHONIOENCODING took effect so the pin cannot go vacuous
-[x] Review-driven: `utf-8-sig` on both markdown branches -> a BOM defeated the H1 match and silently dropped the title and every section at exit 0
-[x] Review-driven: pin stdout in `generate-presentation.py` and `codex/hooks/session_start.py`; explicit encoding on `visual-render.py`'s subprocess capture (text=True left result.stderr as None on a failing child)
-[x] Establish the root cause of the long-red `tests/test-codex-install.sh` -> two stacked defects sharing one symptom; hook assertion made hermetic + encoding-pinned, and it now counts on both paths
-[x] Learnings: encoding-class pattern doc; codex bug doc moved to resolved; PID-guard bug doc opened
+[x] Fix the reported stdin decode in both mirror copies -> `tests/test-html-presentation.sh` (26 assertions) pins the `--markdown -` path, and asserts PYTHONIOENCODING took effect so the pin cannot go vacuous
+[x] Review-driven: `utf-8-sig` on both markdown branches -> a retained BOM defeated the H1 match and silently dropped the title and every section at exit 0
+[x] Review-driven: pin stdout in `generate-presentation.py`; explicit encoding on `visual-render.py`'s subprocess capture (`text=True` left `result.stderr` as `None` on a failing child)
+[x] Learnings: encoding-class pattern doc
 
-## Session Summary — 2026-08-18 [25999b1..6a04c18]
-- Completed: 5 items (1 as reported, 4 surfaced by the review gate)
+## Session Summary — 2026-08-18 [25999b1..HEAD]
+- Completed: 3 items (1 as reported, 2 surfaced by the review gate)
 - Pending: 0
-- Carry-forward: `tasks/solutions/bugs/pid-keyed-hook-guard-suppresses-the-banner.md` — the guard's keying is a design decision affecting every session, deliberately not changed inside an encoding-scoped branch
+- Carry-forward: none. This branch also fixed the Codex adapter and diagnosed the
+  session guard; both were superseded by #66 and #68, which landed on master first.
+  Taken from upstream at merge — see the history entry for what my diagnosis got wrong.

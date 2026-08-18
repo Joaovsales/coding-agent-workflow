@@ -25,11 +25,22 @@ DIVIDER="═══════════════════════�
 # branch must not vanish on a machine that lacks an optional binary. Older CLIs
 # omit the field — source stays startup, preserving the full banner, no
 # regression. The tty guard keeps a manual run from blocking on empty stdin.
+# Extracts one top-level JSON string field, or empty when absent. `|| true` on
+# every stage: under `set -eo pipefail` a no-match sed plus an empty head would
+# otherwise abort the hook, which is the silent-no-banner failure this file
+# exists to avoid. The capture takes anything up to the closing quote — the
+# caller's key is sanitised at GUARD_FILE below, so a narrower class would only
+# reject legitimate ids without buying safety.
+json_string_field() {  # json_string_field <field-name> <json>
+  printf '%s' "$2" \
+    | sed -n "s/.*\"$1\"[[:space:]]*:[[:space:]]*\"\\([^\"]*\\)\".*/\\1/p" \
+    | head -1 || true
+}
+
 HOOK_SOURCE="startup"
 if [ ! -t 0 ]; then
   HOOK_INPUT=$(cat 2>/dev/null || true)
-  HOOK_SOURCE=$(printf '%s' "$HOOK_INPUT" \
-    | sed -n 's/.*"source"[[:space:]]*:[[:space:]]*"\([A-Za-z]*\)".*/\1/p' | head -1 || true)
+  HOOK_SOURCE=$(json_string_field source "$HOOK_INPUT")
   HOOK_SOURCE="${HOOK_SOURCE:-startup}"
 fi
 
@@ -40,13 +51,44 @@ fi
 # first invocation drops a session-scoped sentinel; the second exits silently.
 # Escape hatch: CCW_SESSION_GUARD=0 (same convention as SKIP_SESSION_START).
 # Reuses HOOK_INPUT above — stdin can only be consumed once.
+#
+# The key must be stable within one session and distinct across sessions. Both
+# halves matter: too broad and a second session inherits the first's sentinel and
+# gets no banner at all.
 if [ "${CCW_SESSION_GUARD:-1}" != "0" ]; then
+  # session_id is exactly that key, and Claude Code puts it in the payload.
+  # Parsed with sed for the same reason `source` above is: jq is optional, and a
+  # guard that reaches for its fallback whenever an optional binary is missing is
+  # a guard that mostly runs on the fallback.
   GUARD_KEY=""
-  if [ -n "${HOOK_INPUT:-}" ] && command -v jq >/dev/null 2>&1; then
-    GUARD_KEY=$(printf '%s' "$HOOK_INPUT" | jq -r '.session_id // empty' 2>/dev/null || true)
+  if [ -n "${HOOK_INPUT:-}" ]; then
+    GUARD_KEY=$(json_string_field session_id "$HOOK_INPUT")
   fi
-  # Without jq (or without a session_id) both registrations still share a parent.
-  GUARD_KEY=${GUARD_KEY:-$PPID}
+  # No session_id (older CLI, manual run): key on the working directory, not
+  # $PPID. Both registrations fire in the same repo, so cwd still collapses them
+  # — and unlike $PPID it stays distinct across repos on Windows, where bash
+  # spawned from a native Windows parent (node, python) reports PPID=1 for every
+  # session. That collapsed the key to one constant, so starting a session in
+  # repo B within the freshness window below silently ate B's whole banner.
+  #
+  # Residual limit, accepted: cwd cannot tell one session's second registration
+  # from a genuinely new session in the same repo, so a second session started
+  # here inside the freshness window is also suppressed. That is strictly
+  # narrower than the every-repo collapse it replaces, it is bounded by the
+  # window, and it is unreachable whenever the payload carries a session_id.
+  #
+  # `|| true` is load-bearing: under `set -eo pipefail` a missing cksum would
+  # otherwise propagate 127 and kill the hook outright — a worse silent banner
+  # loss than the one being fixed, and it would make the raw-path degradation
+  # below unreachable. Hashed because a deep worktree path would crowd the
+  # filename limit; the raw fallback is tail-trimmed for the same reason.
+  if [ -z "$GUARD_KEY" ]; then
+    GUARD_KEY=$(printf '%s' "$PWD" | cksum 2>/dev/null | cut -d' ' -f1 || true)
+    if [ -z "$GUARD_KEY" ]; then
+      GUARD_KEY=$(printf '%s' "$PWD" | tail -c 80 || true)
+    fi
+    GUARD_KEY="cwd-${GUARD_KEY}"
+  fi
   # Key on source as well. One session emits startup and, later, compact/resume/
   # clear. Keying on session_id alone would let the startup sentinel swallow the
   # compaction banner — the one moment re-orientation matters most.

@@ -19,7 +19,9 @@ file and its immediate callers before calling the class closed.
 
 ## The five boundaries found in one sweep
 
-One reported defect (stdin on the generator) turned out to be five:
+One reported defect (stdin on the generator) turned out to be five. Four were
+fixed here; the fifth was fixed independently and better in #66, which landed
+on master while this work was in review:
 
 | Site | Shape | Failure |
 |------|-------|---------|
@@ -27,7 +29,7 @@ One reported defect (stdin on the generator) turned out to be five:
 | same, both markdown branches | `decode("utf-8")` / `encoding="utf-8"` | **silent** -- a BOM defeats the H1 match, so title and every section vanish at exit 0 |
 | `generate-presentation.py` path report | `print(os.path.abspath(...))` | loud or mojibaked -- *after* the artifact was written correctly |
 | `visual-render.py` subprocess capture | `subprocess.run(..., text=True)` | **silent** -- the decode error is swallowed in subprocess's reader thread and `result.stderr` becomes `None`, exactly when the child's message is what you need |
-| `codex/hooks/session_start.py` stdout | `print(json.dumps(...))` | loud, read as silent -- raises, so the hook emits nothing and the caller sees an empty envelope |
+| `codex/hooks/session_start.py` stdout (fixed in #66) | `print(json.dumps(...))` | loud, read as silent -- raises, so the hook emits nothing and the caller sees an empty envelope |
 
 Two of the five fail **silently**, which is worse than the loud mojibake that
 prompted the fix. Prefer `utf-8-sig` when decoding documents whose first
@@ -68,7 +70,12 @@ for a reason unrelated to the fix.
 
 - [[codex-session-start-hook-emits-nothing]] -- one instance, whose root cause
   stayed unestablished for four days because the symptom (empty stdout) is
-  shared by an unrelated guard.
+  shared by an unrelated guard defect. Both are now fixed (#66, #68).
+- [[ppid-is-1-on-windows-so-a-ppid-keyed-guard-collapses]] -- the guard half of
+  that shared symptom, and a caution for this pattern: an encoding bug and a
+  non-encoding bug can present identically as "the process emitted nothing", so
+  confirming one does not clear the other. Fixing the encoding half alone left
+  the test red.
 - `../process/baseline-must-precede-tree-edits.md` -- the same sweep also showed
   that piping `tests/run.sh` into `tail` reports `tail`'s exit status, so a red
   suite reads as green. Read the `RESULT:` line, or run it unpiped.

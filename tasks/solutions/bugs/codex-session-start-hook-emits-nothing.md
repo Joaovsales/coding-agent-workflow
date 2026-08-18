@@ -1,88 +1,98 @@
 ---
 title: Codex SessionStart hook emits nothing so its JSON assertion fails
-date: 2026-08-18
+date: 2026-08-17
 problem_type: test-failure
-module: codex/hooks/session_start.py, .claude/hooks/session-start.sh, tests/test-codex-install.sh
-tags: [codex, hooks, tests, red-baseline, windows, encoding, cp1252]
-symptoms: "tests/test-codex-install.sh -- 1/22 assertions FAILED: `hook: SessionStart output validates as Codex JSON`, with a JSONDecodeError at line 1 column 1 (char 0), i.e. the hook produced no stdout at all"
-root_cause: "Two independent defects with one shared symptom. (1) session-start.sh's double-invocation guard keys on $PPID when the payload carries no session_id, and its sentinels live 300s in a shared TMPDIR, so a recycled PID silently suppresses the banner. (2) session_start.py wrote its JSON with a text-mode print(), which encodes with the platform default (cp1252 on Windows) and raises UnicodeEncodeError on the banner's box-drawing rules and emoji, emitting nothing."
-resolution: "fixed -- 2026-08-18. session_start.py pins sys.stdout.reconfigure(encoding='utf-8'); the test sets CCW_SESSION_GUARD=0 (the guard is not what it checks) and PYTHONIOENCODING=cp1252 so the encoding half is pinned on Linux CI too. Suite green; removing the reconfigure line turns it red again."
+module: codex/hooks/session_start.py
+tags: [codex, hooks, tests, windows, encoding]
+symptoms: "tests/test-codex-install.sh — 1/22 assertions FAILED: `hook: SessionStart output validates as Codex JSON`, with a JSONDecodeError at line 1 column 1 (char 0), i.e. the hook produced no stdout at all"
+root_cause: "Two stacked defects in the Codex adapter, both Windows-only. (1) The shared shell hook's double-invocation guard keys on $PPID, which is 1 for any bash spawned from a native Windows process, so every adapter invocation collides on one sentinel and all but the first in a 5-minute window exit silently. (2) With the guard out of the way, `print()` encoded the banner with the platform default (cp1252), raising UnicodeEncodeError before any JSON reached stdout."
+resolution: "codex/hooks/session_start.py now passes CCW_SESSION_GUARD=0 to the shell hook (Codex registers it once, so the Claude Code de-duplication guard can only suppress) and writes the JSON as explicit UTF-8 bytes to sys.stdout.buffer instead of print()."
 ---
 
 ## Symptoms
 
-`bash tests/run.sh` reported `RESULT: 1/19 test files FAILED` from `23f0d7d`
-(the commit that added the Codex adapter) until 2026-08-18. The failing
-assertion pipes `{"source":"startup"}` into the installed
+`bash tests/run.sh` reported `RESULT: 1/16 test files FAILED`. The failing file
+was `tests/test-codex-install.sh`; every other assertion in it passed.
+
+The assertion pipes `{"source":"startup"}` into the installed
 `$CODEX_HOME/hooks/coding-agent-workflow-session-start.py` and parses the result
-as JSON. The parse failed at `char 0` -- the hook wrote nothing to stdout.
+as JSON. The parse failed at `char 0` — the hook wrote nothing to stdout.
+
+Linux CI passed the full suite throughout, so the red was invisible to everyone
+except Windows contributors.
 
 ## Root cause
 
-Two defects, stacked, both producing *empty stdout*. That shared symptom is why
-this stayed unestablished: fixing either one alone leaves the test red, so each
-fix looks wrong when tested in isolation.
+Two independent defects, stacked so that fixing either alone leaves the test red.
+The second is *masked* by the first: the guard exits before the encode is
+reached, which is why the failure presented as silence rather than a traceback.
 
-**1. The double-invocation guard suppressed the banner.**
-`.claude/hooks/session-start.sh:43-65` exists to stop the banner printing twice
-when the hook is registered both globally and per-project. It derives its key
-from `.session_id`, but only when `jq` is available; otherwise it falls back to
-`$PPID`. The test payload is `{"source":"startup"}` -- it carries no
-`session_id`, so the key is always the PID-based one. Sentinels are written to a
-shared `${TMPDIR:-/tmp}` and honoured for 300 seconds, and that directory holds
-hundreds of them from previous runs. Any recycled PID inside that window makes
-the hook `exit 0` in silence.
+**1 — the double-invocation guard collapses onto one key.**
+`.claude/hooks/session-start.sh:43-65` de-duplicates the banner for Claude Code,
+which registers the hook twice (globally by `install.sh` and per-project by
+`.claude/settings.json`). Without `jq` or a `session_id` it falls back to
+`GUARD_KEY=${GUARD_KEY:-$PPID}` (`session-start.sh:49`).
 
-This is why the failure looked deterministic while actually being
-environment-dependent: it reproduces reliably *just after* another run has
-populated fresh sentinels, and not at all from a cold `/tmp`. Evidence from the
-same box, minutes apart: the shell hook produced `STDOUT bytes: 2568` under one
-parent and zero bytes under another, with no code change between.
+Bash spawned from a native Windows process reports `PPID=1` — verified directly:
 
-**2. The Codex adapter could not encode what the banner contains.**
-`codex/hooks/session_start.py` was already careful with bytes on the paths it
-had fixed -- `sys.stdin.buffer.read()` for input, `sys.stderr.buffer.write()` for
-child stderr -- and then wrote its own payload through a text-mode
-`print(json.dumps(payload, ensure_ascii=False))`. Codex always pipes this hook's
-stdout, so the stream takes the platform default (cp1252 here, confirmed via
-`sys.stdout.encoding`). The banner it wraps carries `=`-rules (U+2550), `->`
-(U+2192) and emoji, none of them cp1252-encodable: the write raises
-`UnicodeEncodeError` and the process emits nothing.
+```
+$ python3 -c "import subprocess;print(subprocess.run(['bash','-c','echo PPID=\$PPID'],capture_output=True,text=True).stdout)"
+PPID=1
+```
 
-The `errors="replace"` on the *decode* at line 23 made this worse rather than
-safer -- it manufactures U+FFFD, which is also unencodable.
+So every Codex invocation writes and reads the single sentinel
+`$TMPDIR/.ccw-session-start-1-startup`, and the 5-minute freshness window at
+`session-start.sh:55-63` silently `exit 0`s every run after the first. Codex
+registers the hook exactly once, so the guard has nothing legitimate to suppress
+there — it can only ever delete the one banner that exists.
+
+This also explains why the failure looked non-deterministic: on a machine with no
+recent sentinel the first run got through, and every run for the next five
+minutes did not.
+
+**2 — `print()` encodes stdout with the platform default.**
+With the guard disabled, the adapter reached its output line and raised:
+
+```
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 79-118
+```
+
+The banner carries box rules, arrows and em-dashes; Python 3.13 on Windows
+encodes stdout as cp1252. `ensure_ascii=False` was already set, so the JSON
+string kept its non-ASCII and `print()` could not encode it.
 
 ## Resolution
 
-- `codex/hooks/session_start.py`: `sys.stdout.reconfigure(encoding="utf-8")` in
-  `main()`, chosen over a `sys.stdout.buffer.write` because the file keeps its
-  `print()` call site readable.
-- `tests/test-codex-install.sh`: the hook invocation sets `CCW_SESSION_GUARD=0`
-  (the documented escape hatch -- this assertion is about the Codex JSON
-  envelope, not about the guard) and `PYTHONIOENCODING=cp1252`, which makes the
-  encoding half a real pin on Linux CI rather than a Windows-only one.
-- Its JSON check now records an assertion on both paths. It previously asserted
-  only inside its `else`, so the suite total moved between 21 and 22 depending on
-  the result.
+Both fixed in `codex/hooks/session_start.py`:
 
-Verified: green on three consecutive runs; deleting the `reconfigure` line
-returns `1/22 assertions FAILED` on the same assertion.
+- `subprocess.run(..., env={**os.environ, "CCW_SESSION_GUARD": "0"})` — the
+  shell hook already documents that escape hatch (`session-start.sh:41`).
+- `sys.stdout.buffer.write((json.dumps(...) + "\n").encode("utf-8"))` in place of
+  `print()`. Chosen over setting `PYTHONIOENCODING` because it holds regardless
+  of how Codex or a test invokes the adapter, rather than depending on the
+  caller's environment.
 
-## What is NOT fixed
+The shell hook itself is unchanged: its guard is correct for the harness it was
+written for.
 
-The guard defect itself. See [[pid-keyed-hook-guard-suppresses-the-banner]] --
-making one test hermetic does not fix the hook for real sessions on a machine
-without `jq`.
+## Verification
 
-## Prevention
+Each fix was mutation-probed separately against
+`tests/test-codex-install.sh` — reverting either one alone reproduces
+`2/23 assertions FAILED`, so neither is redundant. Full suite: 17/17 files pass
+on Windows.
 
-- This is one instance of a class; see
-  [[explicit-encoding-at-every-python-io-boundary]] for the other four found in
-  the same sweep.
-- A first baseline run of the earlier session was worthless because the tree was
-  edited while it ran. See `../process/baseline-must-precede-tree-edits.md`.
-- Two dispatched reviewers independently root-caused defect 2 and both missed
-  defect 1, because each reproduced `UnicodeEncodeError` in isolation rather than
-  through the installed hook. Agreement between reviewers is evidence about the
-  defect they both found, not about the absence of another one behind the same
-  symptom.
+The test now pins both. It asserts the decoded `additionalContext` contains
+non-ASCII (so a return to `print()` fails rather than passing on an
+ASCII-only banner), and it invokes the adapter twice, asserting the second run
+still emits (so a re-enabled guard fails deterministically instead of depending
+on sentinel age).
+
+## Related
+
+- A second-order effect of defect 1 is *not* fixed here and remains open: on
+  Windows the same `PPID=1` collapse means two Claude Code sessions started in
+  different repos within five minutes share the sentinel, so the second gets no
+  banner. That is a defect in the shared hook rather than the Codex adapter.
+- `../process/baseline-must-precede-tree-edits.md` — the earlier session's first
+  baseline run was taken while the tree was being edited and was worthless.

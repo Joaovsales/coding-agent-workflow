@@ -104,30 +104,35 @@ assert_files_identical "$BOX/agents.before" "$CODEX_HOME/AGENTS.md" \
 assert_files_identical "$BOX/hooks.before" "$CODEX_HOME/hooks.json" \
   "install: hook registration is idempotent"
 
-# Two env vars, each closing a way this assertion fails on something other than
-# the Codex JSON envelope it is meant to check:
-#   CCW_SESSION_GUARD=0 -- session-start.sh's double-invocation guard keys on
-#     $PPID when the payload carries no session_id (this one does not), and its
-#     sentinels live 300s in a shared TMPDIR. A recycled PID from any unrelated
-#     recent invocation silently suppresses the banner, leaving an empty envelope.
-#   PYTHONIOENCODING -- the banner carries box-drawing rules and emoji, and Codex
-#     pipes this stdout, so a text-mode write encodes with the platform default
-#     and emits nothing. Forcing it makes that a real pin on Linux CI, not just
-#     on Windows.
 HOOK_RESULT="$(printf '%s\n' '{"source":"startup"}' | HOME="$HOME_DIR" CODEX_HOME="$CODEX_HOME" \
-  CCW_SESSION_GUARD=0 PYTHONIOENCODING=cp1252 python3 "$CODEX_HOME/hooks/coding-agent-workflow-session-start.py")"
+  python3 "$CODEX_HOME/hooks/coding-agent-workflow-session-start.py")"
+# Run it a second time before asserting anything. The shell hook's
+# double-invocation guard is a Claude Code workaround that the adapter disables,
+# because it keys on $PPID — which is 1 for every bash spawned from a native
+# Windows process, collapsing all invocations onto one sentinel. Left enabled,
+# only the very first run in a 5-minute window carries a banner, so a
+# single-shot assertion passes on a clean machine and fails on a busy one.
+HOOK_RESULT_AGAIN="$(printf '%s\n' '{"source":"startup"}' | HOME="$HOME_DIR" CODEX_HOME="$CODEX_HOME" \
+  python3 "$CODEX_HOME/hooks/coding-agent-workflow-session-start.py")"
 if python3 - "$HOOK_RESULT" <<'PY'
 import json
 import sys
 data = json.loads(sys.argv[1])
 assert data["hookSpecificOutput"]["hookEventName"] == "SessionStart"
-assert "additionalContext" in data["hookSpecificOutput"]
+context = data["hookSpecificOutput"]["additionalContext"]
+assert "SESSION START" in context, context[:200]
+# The banner is non-ASCII, which is why the adapter must not let Python encode
+# stdout with the platform default (cp1252 on Windows raises UnicodeEncodeError
+# there and emits nothing). Asserting only on shape would not catch that.
+assert any(ord(character) > 127 for character in context)
 PY
-then HOOK_JSON_OK="valid"; else HOOK_JSON_OK="invalid"; fi
-# Counted on both paths. Asserting only inside `else` (the surrounding
-# convention in this file) records nothing when the check passes, so the
-# suite total silently moves depending on the result.
-assert_eq "valid" "$HOOK_JSON_OK" "hook: SessionStart output validates as Codex JSON"
+then
+  :
+else
+  assert_eq "0" "1" "hook: SessionStart output validates as Codex JSON"
+fi
+assert_contains "$HOOK_RESULT_AGAIN" '"hookEventName": "SessionStart"' \
+  "hook: repeat invocation still emits context"
 
 BAD="$BOX/bad-agents"
 mkdir -p "$BAD"
