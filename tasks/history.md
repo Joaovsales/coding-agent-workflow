@@ -73,3 +73,35 @@
 - Deployment: the broken copies in `~/.claude/agents/` were refreshed by hand the same day.
   Fixing the repo does not fix the machine - an installed persona has its own copy, so
   "repo is green" and "harness is fixed" are separate claims.
+
+### [2026-08-18] — UTF-8 at every Python IO boundary
+
+- Key changes: A one-line stdin decode fix (`--markdown -` used the platform default
+  codec, cp1252 on Windows) expanded to five instances of one defect class after the
+  review gate swept for siblings. `generate-presentation.py` now uses `utf-8-sig` on
+  both markdown branches and pins stdout; `visual-render.py` decodes its subprocess
+  capture explicitly; `codex/hooks/session_start.py` pins stdout. New
+  `tests/test-html-presentation.sh` (26 assertions) pins the previously untested stdin
+  path.
+- Root cause established for a four-day-old red test: `tests/test-codex-install.sh` had
+  TWO stacked defects sharing the symptom "empty stdout" — the encoding bug above, and
+  `session-start.sh`'s double-invocation guard falling back to `$PPID` when the payload
+  carries no `session_id` (jq is absent on this machine, so that fallback is the only
+  path here). Fixing either alone left the test red, which is why the earlier session
+  recorded `root_cause: not established`. Suite now 19/19, 1309 assertions.
+- Review: 4 passes separately dispatched (3x code-reviewer, 1x critic), so corroboration
+  between them is independent. The BOM defect was found by three passes independently and
+  the stdout-print defect by three; both were promoted on that basis. Every pass verified
+  its findings by reproduction rather than inspection.
+- Reviewer limits worth recording: two passes confidently root-caused the red test as the
+  encoding bug alone, and both were wrong — each had reproduced `UnicodeEncodeError` in
+  isolation rather than through the installed hook, and neither saw the guard. Agreement
+  between reviewers is evidence about the defect they found, not about the absence of a
+  second one behind the same symptom.
+- Two process traps hit directly: `bash tests/run.sh | tail` reports `tail`'s exit status,
+  so a red suite read as green (exit 0 alongside `RESULT: 1/19 test files FAILED`); and the
+  first full run overlapped tree edits, so it was discarded and re-run on a settled tree
+  with before/after `git status` snapshots as proof.
+- Learnings captured: tasks/solutions/patterns/explicit-encoding-at-every-python-io-boundary.md,
+  tasks/solutions/bugs/codex-session-start-hook-emits-nothing.md (resolved),
+  tasks/solutions/bugs/pid-keyed-hook-guard-suppresses-the-banner.md (open)

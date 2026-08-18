@@ -99,3 +99,18 @@
 [x] TDD: `tests/test-model-tiers.sh` §8 widened to fail when a Ceiling role is pinned in a bare table cell -> widen the guard, then unpin `auto-improve`'s design-review charter to *ceiling* (both trees)
 [x] TDD: mutation probes — delete the contract section, remove one site's pointer, remove one persona's intake, delete the anchor-75 rule; each must turn the suite red. Commit first, then probe -> record counts in the spec
 [x] TDD: `bash tests/test-skill-parity.sh` green over every edited skill; `bash tests/run.sh` green with assertion count recorded against the 1108-assertion baseline -> run both, then `/quality-gate`
+
+## Plan: UTF-8 at every Python IO boundary
+> No /plan — direct user bug report: generate-presentation.py:39 decoded stdin with the platform default codec.
+> Branch: claude/vibrant-chaum-2cad9b (worktree off master @ 25999b1)
+
+[x] Fix the reported stdin decode in both mirror copies -> `tests/test-html-presentation.sh` pins the `--markdown -` path with non-ASCII markdown, asserting PYTHONIOENCODING took effect so the pin cannot go vacuous
+[x] Review-driven: `utf-8-sig` on both markdown branches -> a BOM defeated the H1 match and silently dropped the title and every section at exit 0
+[x] Review-driven: pin stdout in `generate-presentation.py` and `codex/hooks/session_start.py`; explicit encoding on `visual-render.py`'s subprocess capture (text=True left result.stderr as None on a failing child)
+[x] Establish the root cause of the long-red `tests/test-codex-install.sh` -> two stacked defects sharing one symptom; hook assertion made hermetic + encoding-pinned, and it now counts on both paths
+[x] Learnings: encoding-class pattern doc; codex bug doc moved to resolved; PID-guard bug doc opened
+
+## Session Summary — 2026-08-18 [25999b1..6a04c18]
+- Completed: 5 items (1 as reported, 4 surfaced by the review gate)
+- Pending: 0
+- Carry-forward: `tasks/solutions/bugs/pid-keyed-hook-guard-suppresses-the-banner.md` — the guard's keying is a design decision affecting every session, deliberately not changed inside an encoding-scoped branch
