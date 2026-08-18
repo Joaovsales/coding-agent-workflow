@@ -109,3 +109,21 @@
   (the critic argued for "no session_id -> just print", since the guard suppresses a
   cosmetic duplicate but fails by losing a functional banner); ~290 unreaped
   `.ccw-session-start-*` sentinels in /tmp with nothing reaping them
+
+---
+
+## Plan: UTF-8 at every Python IO boundary
+> No /plan — direct user bug report: `generate-presentation.py` decoded stdin with the platform default codec.
+> Branch: claude/vibrant-chaum-2cad9b (worktree off master @ 25999b1)
+
+[x] Fix the reported stdin decode in both mirror copies -> `tests/test-html-presentation.sh` (26 assertions) pins the `--markdown -` path, and asserts PYTHONIOENCODING took effect so the pin cannot go vacuous
+[x] Review-driven: `utf-8-sig` on both markdown branches -> a retained BOM defeated the H1 match and silently dropped the title and every section at exit 0
+[x] Review-driven: pin stdout in `generate-presentation.py`; explicit encoding on `visual-render.py`'s subprocess capture (`text=True` left `result.stderr` as `None` on a failing child)
+[x] Learnings: encoding-class pattern doc
+
+## Session Summary — 2026-08-18 [25999b1..HEAD]
+- Completed: 3 items (1 as reported, 2 surfaced by the review gate)
+- Pending: 0
+- Carry-forward: none. This branch also fixed the Codex adapter and diagnosed the
+  session guard; both were superseded by #66 and #68, which landed on master first.
+  Taken from upstream at merge — see the history entry for what my diagnosis got wrong.

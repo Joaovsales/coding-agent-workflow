@@ -145,7 +145,11 @@ def run_generator(generator: Path, args: argparse.Namespace, out_path: Path) -> 
         cmd += ["--title", args.title]
     if args.subtitle:
         cmd += ["--subtitle", args.subtitle]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    # Decode the child explicitly: text=True uses the platform default codec
+    # with errors="strict", and a decode failure there is swallowed inside
+    # subprocess's reader thread, leaving result.stderr as None exactly when
+    # the generator failed and its message is what the caller needs.
+    result = subprocess.run(cmd, capture_output=True, encoding="utf-8", errors="replace")
     if result.returncode != 0:
         raise RuntimeError(
             f"generate-presentation.py failed (exit {result.returncode}):\n"

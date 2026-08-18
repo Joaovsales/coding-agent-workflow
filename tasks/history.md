@@ -118,3 +118,41 @@
   check it before concluding something does not exist.
 - Not fixed, pre-existing: ~290 unreaped `.ccw-session-start-*` sentinels accumulating in
   `/tmp` since 30 July.
+
+### [2026-08-18] — UTF-8 at every Python IO boundary
+
+- Key changes: a one-line stdin decode fix (`--markdown -` used the platform default
+  codec, cp1252 on Windows) expanded to four instances of one defect class after the
+  review gate swept for siblings. `generate-presentation.py` now uses `utf-8-sig` on both
+  markdown branches and pins stdout; `visual-render.py` decodes its subprocess capture
+  explicitly (`text=True` swallows the decode error inside subprocess's reader thread and
+  leaves `result.stderr` as `None` exactly when the child failed). New
+  `tests/test-html-presentation.sh` (26 assertions) pins the previously untested stdin path.
+- Two of the four failed *silently*, which is worse than the loud mojibake that prompted
+  the fix: the BOM case loses the title and every section at exit 0, and the subprocess
+  case discards the child's diagnostics.
+- Superseded mid-wrap-up: this branch also fixed `codex/hooks/session_start.py` and
+  diagnosed the long-red `tests/test-codex-install.sh`. #66 and #68 landed on master first
+  and did both properly, so all Codex- and guard-related changes here were dropped in
+  favour of upstream at merge.
+- **My guard diagnosis was wrong about the mechanism.** I concluded the `$PPID` fallback
+  collided by *PID recycling* inside the 300s sentinel window — which never explained why
+  the failure was deterministic. #66 has the real answer: `$PPID` is **1** for bash spawned
+  from a native Windows parent, so every invocation collapses onto a single sentinel by
+  construction. I had the evidence for this (the same script emitting 2568 bytes under one
+  parent and 0 under another) and read a stochastic story into it instead of measuring
+  `$PPID`. Lesson: when a "race" reproduces deterministically, stop and measure the key.
+- Review: 4 passes separately dispatched (3x code-reviewer, 1x critic), so corroboration
+  between them is independent. The BOM defect and the stdout-print defect were each found
+  by three passes independently and promoted on that basis. Every pass verified by
+  reproduction rather than inspection.
+- Reviewer limits worth recording: two passes confidently gave the encoding bug as the
+  whole root cause of the red test. It was half — applying it left the test red. Each had
+  reproduced `UnicodeEncodeError` in isolation rather than through the installed hook, and
+  neither saw the guard. Agreement between reviewers is evidence about the defect they
+  found, not about the absence of a second one behind the same symptom.
+- Two process traps hit directly: `bash tests/run.sh | tail` returns **`tail`'s** exit
+  status, so a red suite reported exit 0 alongside `RESULT: 1/19 test files FAILED`; and the
+  first full suite run overlapped tree edits, so it was discarded and re-run on a settled
+  tree with before/after `git status` snapshots as proof.
+- Learnings captured: `tasks/solutions/patterns/explicit-encoding-at-every-python-io-boundary.md`
