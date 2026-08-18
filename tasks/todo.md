@@ -127,3 +127,57 @@
 - Carry-forward: none. This branch also fixed the Codex adapter and diagnosed the
   session guard; both were superseded by #66 and #68, which landed on master first.
   Taken from upstream at merge — see the history entry for what my diagnosis got wrong.
+## Plan: Lightpanda Optional E2E Browser Tier
+> Spec: specs/lightpanda-browser-adoption.md
+> Branch: `feat/lightpanda-e2e-tier` off master @ 25999b1 (PR #65 merged, so
+> `tests/test-syncable-paths.sh` is now on master — Task 2's dependency is satisfied
+> and its red-then-green runs normally).
+> Status: Complete — rebased onto master @ 8828ba0 (#66/#67/#68 landed mid-session,
+> which cleared the pre-existing Windows red baseline this plan's Task 8 was blocked on)
+>
+> **Decision:** lightpanda enters as an optional, capability-scoped e2e tier gated by a
+> fail-closed AC classifier. agent-reach declined (spec §2). `/start-qa` and `install.sh`
+> unmodified.
+
+[x] Setup: branch `feat/lightpanda-e2e-tier` created off master @ 25999b1
+
+## Task 1 — Runbook: `.claude/browsers/lightpanda.md` (AC-1)
+
+[x] TDD: new `tests/test-browser-runbook.sh` asserts `.claude/browsers/lightpanda.md` exists; frontmatter carries `name`, `display_name`, `fidelity`, `detect_command`, `mcp_command`, `platforms`, `license`; `name` equals the filename stem; `fidelity` is `dom` or `full`; body contains the capability-ceiling tokens (`screenshot`, `Canvas`, `Flexbox`, `Service Worker`), the Windows gap, `AGPL-3.0`, the pinned release tag, and the MCP registration one-liner -> write the runbook per spec §4.6: per-platform install (Homebrew, AUR, `.deb`, pinned `0.3.6` binary, Docker), registration command, ceiling from §1.1, Windows→WSL2/Docker note, AGPL unmodified-binary constraint, troubleshooting
+
+## Task 2 — Declare `.claude/browsers/` syncable (AC-9)
+
+[x] TDD: `tests/test-syncable-paths.sh` green with `.claude/browsers/` present in all seven enumerations, and red when any single one is perturbed (demonstrate by temporary edit + revert, capture output); INVARIANT 2 resolves the runbook to a declared syncable path -> add `.claude/browsers/` to the § Syncable Paths doc block, the `git diff --stat` arg list, and the full `git diff` arg list in `.agents/skills/sync/SKILL.md`; copy byte-identical into `.claude/skills/sync/SKILL.md`; add it to the drift-check arg list in `.claude/hooks/session-start.sh`
+
+## Task 3 — Tier resolution + fail-closed classifier in `/verify --scope e2e` (AC-2, AC-3, AC-4 static)
+
+[x] TDD: new `tests/test-e2e-classifier.sh` asserts BOTH tree copies of `verify/SKILL.md` contain the four-row resolution-order table (Chrome MCP, Playwright MCP, Lightpanda, none→STOP), both tier definitions (VISUAL, DOM-FUNCTIONAL), the fail-closed sentence **verbatim** (`when classification is uncertain, the AC is VISUAL`), the `BLOCKED` outcome row, and the Iron Law 1 cross-reference; `tests/test-skill-parity.sh` green -> edit `.agents/skills/verify/SKILL.md` Pre-Flight + Failure Handling per spec §4.1–§4.4, then copy byte-identical to `.claude/skills/verify/SKILL.md`
+
+## Task 4 — Evidence records the backend and fidelity (AC-6)
+
+[x] TDD: `tests/test-e2e-classifier.sh` asserts both tree copies' Evidence Format block includes a `Browser:` line carrying backend and fidelity tier -> add the line to the `tasks/e2e-log.md` template in § Evidence Format, both trees byte-identical
+
+## Task 5 — `lightpanda fetch` as an optional research fallback (spec §3.6)
+
+[x] TDD: `tests/test-doc-conventions.sh` asserts both tree copies of `prd/SKILL.md` and `brainstorm/SKILL.md` name `lightpanda fetch` as an optional fallback for JS-heavy pages AND state that its absence is not an error -> add one paragraph to each skill's research step; four files, parity-copied
+
+## Task 6 — Guards: agent-reach absent, `/start-qa` untouched (AC-10, AC-11)
+
+[x] TDD: `tests/test-doc-conventions.sh` asserts no `agent-reach` token outside `specs/`, and that `.agents/skills/start-qa/SKILL.md` is byte-identical to its `.claude/` copy (base-commit check done via git diff, not encoded as a test — "base" has no meaning post-merge; the durable pin is that start-qa never routes to the DOM tier) -> assertions only; no implementation
+
+## Task 7 — Behavioural evidence for AC-4 (the one static tests cannot cover)
+
+[x] TDD: `tasks/e2e-log.md` gains an entry with `Browser: lightpanda 0.3.6 (DOM-tier)` showing one VISUAL AC as `BLOCKED` and one DOM-functional AC as `PASS`, run with lightpanda as the only available backend -> run against a throwaway two-AC spec via the pinned Docker image (no Windows binary exists). **If lightpanda cannot be run in this environment, mark this task BLOCKED and report it — do not mark AC-4 satisfied on static assertions alone**
+
+## Task 8 — Full suite + quality gate
+
+[x] TDD: `bash tests/run.sh` green with a 600s timeout; new test-file count recorded against the Setup baseline -> run, fix fallout, then `/quality-gate`; verify every AC in `specs/lightpanda-browser-adoption.md` including the AC-4 evidence from Task 7
+
+## Session Summary — [2026-08-18] [8828ba0..HEAD]
+- Completed: 8 planned tasks (all of the Lightpanda plan above) + 1 review-driven fix
+- Pending: 0
+- Carry-forward: `.claude/deployments/` has the same syncable-path gap `.claude/browsers/`
+  just closed, and `/verify --scope deployment` names `tasks/deployments/<service>.md`
+  while the directory in this repo is `.claude/deployments/` — a pre-existing mismatch,
+  left alone under the orphan rule rather than folded into this change. Lightpanda `0.3.7`
+  is published upstream; the pin stays at `0.3.6`, the version AC-4 evidence was taken on.

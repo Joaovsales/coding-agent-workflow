@@ -251,7 +251,8 @@ fi
 
 # ── Workflow Template Drift Check ────────────────────────────────────────────
 # Notifies if the coding-agent-workflow template has new commits affecting
-# syncable paths (.claude/skills, .claude/agents, .claude/hooks, settings.json).
+# syncable paths (.claude/skills, .claude/agents, .claude/hooks, .claude/browsers,
+# settings.json).
 # Silent when in sync (observability discipline: loud only on actionable state).
 #
 # Preconditions:
@@ -288,7 +289,7 @@ if [ ! -f ".claude/sync-check-dismissed" ] \
 
     if timeout 5 git fetch workflow "$WORKFLOW_BRANCH" &>/dev/null; then
       DRIFT_COUNT=$(git diff --name-only "workflow/$WORKFLOW_BRANCH" -- \
-        .agents/skills .agents/agents .claude/skills .claude/agents .claude/hooks .claude/settings.json CLAUDE.md 2>/dev/null \
+        .agents/skills .agents/agents .claude/skills .claude/agents .claude/hooks .claude/browsers .claude/settings.json CLAUDE.md 2>/dev/null \
         | wc -l | tr -d ' ')
       printf '%s\n%s\n' "$DRIFT_COUNT" "$WORKFLOW_BRANCH" > "$WORKFLOW_CHECK_CACHE"
     fi

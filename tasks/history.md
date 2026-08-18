@@ -156,3 +156,47 @@
   first full suite run overlapped tree edits, so it was discarded and re-run on a settled
   tree with before/after `git status` snapshots as proof.
 - Learnings captured: `tasks/solutions/patterns/explicit-encoding-at-every-python-io-boundary.md`
+
+### [2026-08-18] — Lightpanda optional e2e browser tier
+
+- Key changes: Evaluated two candidate repos and adopted one. Lightpanda enters as an
+  optional, capability-scoped e2e backend behind a **fail-closed AC classifier**;
+  `agent-reach` was declined outright (spec §2) rather than adopted partially. New
+  `.claude/browsers/lightpanda.md` adapter runbook mirroring the `.claude/deployments/`
+  frontmatter-plus-troubleshooting precedent; `.claude/browsers/` declared syncable across
+  all 7 enumerations in 3 files; `/verify --scope e2e` gained backend resolution, the
+  VISUAL / DOM-FUNCTIONAL tiers, and the `BLOCKED` outcome; `/prd` and `/brainstorm` gained
+  `lightpanda fetch` as an optional research fallback that never blocks when absent.
+  `/start-qa` and `install.sh` deliberately untouched (AC-10, AC-11).
+- Design decision worth keeping: the load-bearing element is a single sentence —
+  "when classification is uncertain, the AC is VISUAL". Reverse it and the gate inverts
+  from *refuse to guess* to *guess and pass*, silently, with every test still green,
+  because nothing else in the suite reads it. `tests/test-e2e-classifier.sh` therefore
+  pins that sentence **verbatim in both skill trees** rather than paraphrasing it.
+- Why a routing gate and not a runtime check: lightpanda's `getBoundingClientRect()` is
+  *stubbed*, not absent — it returns plausible constants, so the standard visibility guard
+  passes for an element 9999px off-screen. A capability gap that lies cannot be caught by
+  the caller's feature detection, so it has to be refused before dispatch. Captured as
+  `tasks/solutions/patterns/a-stubbed-web-api-is-more-dangerous-than-an-absent-one.md`.
+- Investigation error worth recording: the first geometry probe returned nothing, which
+  supported the tidy and wrong conclusion "the API is absent". A control run showed
+  `console.log` never reaches stdout in `fetch` mode. Re-probing through the DOM inverted
+  the finding. The method note stayed in `tasks/e2e-log.md` rather than being tidied away.
+  Captured as `tasks/solutions/patterns/a-null-probe-result-needs-a-control-run.md`.
+- Review: 4 passes run **inline**, not dispatched — the session operated under a standing
+  no-subagent constraint. Per `CLAUDE.md` § *Independence Accounting* that forfeits
+  corroboration-based promotion, so no finding here was promoted on agreement; naming the
+  loss is the floor. Two real defects found and fixed: passing walkthroughs were not
+  recording their tier (only blocked ones were), and a `harness: universal` skill pointed
+  at a Claude-only `.claude/browsers/` path that `scripts/install-codex.sh:50` never copies.
+- Process failure, self-caught: I argued the >6-task worktree trigger did not apply and
+  worked in the shared clone. A `git add tasks/todo.md` then swept a parallel session's
+  plans into my commit, which had to be rebuilt with `--amend`. The trigger was right and
+  my exception was wrong; the shared register is exactly what the worktree isolates.
+- AC-4 could not be satisfied by static assertions, and was not claimed on them. It needed
+  a real lightpanda run, no Windows binary exists, and Docker Desktop was down — repaired
+  first (stale AF_UNIX socket at `%LOCALAPPDATA%\Docker\run\dockerInference`, unremovable
+  by `Remove-Item`, `del`, or `fsutil reparsepoint delete`; fixed by rotating the directory)
+  and the walkthrough then ran container-to-container.
+- Learnings captured: `tasks/solutions/patterns/a-stubbed-web-api-is-more-dangerous-than-an-absent-one.md`,
+  `tasks/solutions/patterns/a-null-probe-result-needs-a-control-run.md`

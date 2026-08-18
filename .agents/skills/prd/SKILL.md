@@ -43,6 +43,13 @@ and the backlog is generated.
   - If PRD exists: ask "Update the existing PRD or create a new one?"
   - If backlog exists with completed items: warn that regenerating will need to preserve `[x]` items
 
+**Researching an external product or competitor.** `WebFetch` returns the empty
+shell for a JS-rendered page without signalling that it did, which reads as an
+absence of information rather than a failure to read. Where `lightpanda fetch
+<url>` is installed it runs the page's scripts first and dumps HTML or markdown.
+It is optional — fall back to `WebFetch` and record what you could not read.
+**A missing lightpanda is not an error and never blocks the interview.**
+
 ### Step 2 — Hybrid Draft + Interview
 
 From the user's initial prompt and any existing context:

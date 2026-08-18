@@ -68,3 +68,90 @@ Result: PASS
 this commit. Cause: Python 3.13 on Windows defaults to cp1252, so `json.loads` raises
 `UnicodeEncodeError` on the hook banner's non-ASCII characters before parsing. CI (Linux)
 reports the full suite green for this commit.
+
+---
+
+## E2E Walkthrough — Lightpanda DOM tier — 2026-08-17 ad475ec
+
+Spec: specs/lightpanda-browser-adoption.md (AC-4, AC-5)
+Commit: ad475ec82e926db24ee98217bf654ed6db0432d7
+Browser: lightpanda 0.3.6 (DOM-tier) — Docker `lightpanda/browser:0.3.6`, sole backend
+
+**AC-4/AC-5** — with only a DOM-tier backend available, a VISUAL AC yields BLOCKED
+and never PASS, while DOM-functional ACs still execute.
+
+### Fixture
+
+A checkout page served by nginx over a private Docker network (real HTTP, no host
+port). Two deliberate properties:
+
+- `#total` is filled in by JavaScript after load.
+- `#submit-btn` is present and correctly labelled, but styled
+  `position:absolute; left:-9999px; top:-9999px` — **DOM-correct, visually absent.**
+
+### AC-1: "the order total is displayed on the checkout page"
+Tier: DOM-FUNCTIONAL (element text content)
+Journey: load the page, assert the total resolves after scripts run.
+
+Raw HTTP, i.e. what `WebFetch` sees:
+```
+<p id="total">loading…</p>
+```
+
+Lightpanda `fetch --dump html`:
+```
+<p id="total">Order total: $42.00</p>
+```
+
+The scripts ran against a real network fetch — the distinction Iron Law 1 turns
+on. Result: **PASS**
+
+### AC-2: "the submit button is visible on the checkout form"
+Tier: VISUAL (visibility is a rendering property)
+Result: **BLOCKED** — requires a full-fidelity browser; only lightpanda (DOM-tier) available
+
+Not attempted. Recorded as BLOCKED, so the run reports non-success while AC-1's
+coverage is kept.
+
+### Why BLOCKED rather than attempted-and-checked
+
+The reflex is to attempt it defensively and let the check fail. Probing the
+backend shows why that does not work — geometry is **stubbed, not missing**:
+
+```
+submit-btn=[110,110,5,5]  total=[130,130,5,5]  checkout=[80,80,5,5]  h1=[65,65,5,5]
+```
+
+Every element reports 5x5 with x == y; an `<h1>` and a `<button>` are not the same
+size, and the `left:-9999px` offset is ignored entirely. So the careful assertion
+
+```js
+const r = el.getBoundingClientRect();
+if (r.width > 0 && r.x >= 0) { /* "visible" */ }
+```
+
+**returns true for an element 9999px off the left edge.** A missing API throws and
+its caller notices; a stubbed one answers wrong in silence. There is no runtime
+signal to fail on, so the tier must be decided before execution — which is what
+fail-closed classification does.
+
+Method note: the first geometry probe returned nothing and could have been read
+as "API absent". A control run showed `console.log` output does not reach stdout
+in `fetch` mode — the probe was faulty, not the API. The values above were
+re-obtained by writing results into the DOM, which the dump captures. An empty
+result is not evidence of absence.
+
+Result: PASS (AC-4 and AC-5 both satisfied)
+
+### Addendum — 2026-08-18: commit reference rebased
+
+The `Commit:` line above records `ad475ec82e926db24ee98217bf654ed6db0432d7`, the SHA
+this branch carried when the walkthrough ran. The branch was later rebased onto master
+`8828ba0` to pick up #66/#67/#68, so that SHA is unreachable and `git show` on it fails.
+The same content is now `c91ae4a` ("feat(research): offer lightpanda fetch for
+JS-rendered pages; guard the decisions").
+
+Corrected by addendum rather than by editing the line above: the log is the audit trail,
+and an entry silently rewritten to look as though it always pointed at the right commit
+is worth less than one that shows what moved. Nothing about the run itself changed — same
+fixture, same `lightpanda/browser:0.3.6` image, same observed values.
