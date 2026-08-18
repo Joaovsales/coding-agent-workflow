@@ -108,5 +108,13 @@
   `session_id` -> just print), since the guard suppresses a cosmetic duplicate but fails by
   losing a functional banner. That deletes several findings rather than fixing them. Left to
   the user, because the requested fix shape was explicitly a stable-and-distinct *key*.
-- Not fixed, pre-existing: `tests/test-codex-install.sh` red baseline (unchanged, still open);
-  ~290 unreaped `.ccw-session-start-*` sentinels accumulating in `/tmp` since 30 July.
+- Merged `origin/master` mid-wrap-up: #66 (`fix(codex): restore SessionStart output on
+  Windows`) landed after this worktree branched and fixed the red baseline that was treated
+  as out of scope here. It made the same `CCW_SESSION_GUARD=0` change to the Codex wrapper,
+  so that edit and its test assertion were dropped in favour of master's -- master's pins the
+  property behaviourally (invokes the adapter twice) rather than statically.
+- Corrected: this session twice reported the Codex guard-disable as absent from the repo.
+  It was absent from *this branch's base*, not from the repo. `master` advances mid-session;
+  check it before concluding something does not exist.
+- Not fixed, pre-existing: ~290 unreaped `.ccw-session-start-*` sentinels accumulating in
+  `/tmp` since 30 July.

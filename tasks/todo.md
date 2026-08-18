@@ -107,5 +107,5 @@
 - Pending: 0 — the plan blocks above belong to earlier worktrees and are all closed
 - Carry-forward: decide whether the no-session_id guard fallback should exist at all
   (the critic argued for "no session_id -> just print", since the guard suppresses a
-  cosmetic duplicate but fails by losing a functional banner); `tests/test-codex-install.sh`
-  red baseline still open; ~290 unreaped `.ccw-session-start-*` sentinels in /tmp
+  cosmetic duplicate but fails by losing a functional banner); ~290 unreaped
+  `.ccw-session-start-*` sentinels in /tmp with nothing reaping them

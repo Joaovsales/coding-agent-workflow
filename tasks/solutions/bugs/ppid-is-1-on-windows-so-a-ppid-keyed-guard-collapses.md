@@ -72,5 +72,14 @@ the constant it replaced, and only reachable on a CLI that omits `session_id`.
 
 - The guard was inert under test for a separate reason — see
   [[command-substitution-forks-a-subshell-so-ppid-varies-per-call]].
-- Not the same defect as [[codex-session-start-hook-emits-nothing]], which
-  remains open; `CCW_SESSION_GUARD=0` was verified NOT to fix that one.
+- Not the same defect as [[codex-session-start-hook-emits-nothing]], which was
+  fixed independently on master by #66 while this branch was in flight.
+
+  Worth knowing *why* probing that one came back negative here: setting
+  `CCW_SESSION_GUARD=0` alone did not make its test pass, which looked like
+  evidence the guard was unrelated to it. It was not. Two defects were stacked --
+  clearing the guard let the banner through, and then `print()` encoded it with
+  the platform default, so cp1252 on Windows raised `UnicodeEncodeError` and
+  Codex still received nothing. The second defect masked the fix for the first.
+  A negative result from fixing one of two stacked causes is not evidence that
+  cause was innocent.

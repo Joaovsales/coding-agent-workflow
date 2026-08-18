@@ -106,29 +106,33 @@ assert_files_identical "$BOX/hooks.before" "$CODEX_HOME/hooks.json" \
 
 HOOK_RESULT="$(printf '%s\n' '{"source":"startup"}' | HOME="$HOME_DIR" CODEX_HOME="$CODEX_HOME" \
   python3 "$CODEX_HOME/hooks/coding-agent-workflow-session-start.py")"
+# Run it a second time before asserting anything. The shell hook's
+# double-invocation guard is a Claude Code workaround that the adapter disables,
+# because it keys on $PPID — which is 1 for every bash spawned from a native
+# Windows process, collapsing all invocations onto one sentinel. Left enabled,
+# only the very first run in a 5-minute window carries a banner, so a
+# single-shot assertion passes on a clean machine and fails on a busy one.
+HOOK_RESULT_AGAIN="$(printf '%s\n' '{"source":"startup"}' | HOME="$HOME_DIR" CODEX_HOME="$CODEX_HOME" \
+  python3 "$CODEX_HOME/hooks/coding-agent-workflow-session-start.py")"
 if python3 - "$HOOK_RESULT" <<'PY'
 import json
 import sys
 data = json.loads(sys.argv[1])
 assert data["hookSpecificOutput"]["hookEventName"] == "SessionStart"
-assert "additionalContext" in data["hookSpecificOutput"]
+context = data["hookSpecificOutput"]["additionalContext"]
+assert "SESSION START" in context, context[:200]
+# The banner is non-ASCII, which is why the adapter must not let Python encode
+# stdout with the platform default (cp1252 on Windows raises UnicodeEncodeError
+# there and emits nothing). Asserting only on shape would not catch that.
+assert any(ord(character) > 127 for character in context)
 PY
 then
   :
 else
   assert_eq "0" "1" "hook: SessionStart output validates as Codex JSON"
 fi
-
-# The shared shell hook carries a double-invocation guard for Claude Code, which
-# registers it twice. Codex registers it once, so the guard has nothing to
-# de-duplicate here — and because it keys on the working directory when the
-# payload carries no session_id, leaving it on would silently suppress a second
-# Codex session in the same repo. Pinned statically rather than behaviourally:
-# the end-to-end assertion above is the repo's documented red baseline, so a
-# runtime check would report that failure rather than this property.
-assert_file_contains "$CODEX_HOME/hooks/coding-agent-workflow-session-start.py" \
-  'CCW_SESSION_GUARD' \
-  "hook: the Codex wrapper disables the Claude-Code-only double-invocation guard"
+assert_contains "$HOOK_RESULT_AGAIN" '"hookEventName": "SessionStart"' \
+  "hook: repeat invocation still emits context"
 
 BAD="$BOX/bad-agents"
 mkdir -p "$BAD"

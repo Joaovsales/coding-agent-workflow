@@ -12,19 +12,19 @@ from pathlib import Path
 
 def main() -> int:
     hook = Path(__file__).with_name("coding-agent-workflow-session-start.sh")
-    # Codex registers this hook exactly once, so the shared script's
-    # double-invocation guard has nothing to de-duplicate here. Leaving it on is
-    # not merely redundant: the guard keys on the working directory whenever the
-    # payload carries no session_id, and Codex's payload is not known to carry
-    # one -- so a second Codex session in the same repo inside the guard's
-    # freshness window would be silently suppressed and emit no banner at all.
-    env = {**os.environ, "CCW_SESSION_GUARD": "0"}
+    # The shell hook's double-invocation guard is a Claude Code workaround: that
+    # harness registers the hook twice (globally and per-project), so the second
+    # firing has to exit silently. Codex registers it exactly once, so here the
+    # guard can only ever suppress the one banner there is. It reliably does on
+    # Windows: the guard keys on $PPID, and bash spawned from a native Windows
+    # process reports PPID 1, so every invocation collides on a single sentinel
+    # and every run inside its 5-minute window emits nothing at all.
     result = subprocess.run(
         ["bash", str(hook)],
         input=sys.stdin.buffer.read(),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        env=env,
+        env={**os.environ, "CCW_SESSION_GUARD": "0"},
         check=False,
     )
     if result.stderr:
@@ -37,7 +37,13 @@ def main() -> int:
                 "additionalContext": output,
             }
         }
-        print(json.dumps(payload, ensure_ascii=False))
+        # Written as UTF-8 bytes rather than print()ed. The banner carries box
+        # rules, arrows and em-dashes, while Python encodes stdout with the
+        # platform default — cp1252 on Windows, where print() raises
+        # UnicodeEncodeError and Codex receives no JSON at all.
+        sys.stdout.buffer.write(
+            (json.dumps(payload, ensure_ascii=False) + "\n").encode("utf-8")
+        )
     return result.returncode
 
 
