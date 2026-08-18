@@ -104,8 +104,18 @@ assert_files_identical "$BOX/agents.before" "$CODEX_HOME/AGENTS.md" \
 assert_files_identical "$BOX/hooks.before" "$CODEX_HOME/hooks.json" \
   "install: hook registration is idempotent"
 
+# Two env vars, each closing a way this assertion fails on something other than
+# the Codex JSON envelope it is meant to check:
+#   CCW_SESSION_GUARD=0 -- session-start.sh's double-invocation guard keys on
+#     $PPID when the payload carries no session_id (this one does not), and its
+#     sentinels live 300s in a shared TMPDIR. A recycled PID from any unrelated
+#     recent invocation silently suppresses the banner, leaving an empty envelope.
+#   PYTHONIOENCODING -- the banner carries box-drawing rules and emoji, and Codex
+#     pipes this stdout, so a text-mode write encodes with the platform default
+#     and emits nothing. Forcing it makes that a real pin on Linux CI, not just
+#     on Windows.
 HOOK_RESULT="$(printf '%s\n' '{"source":"startup"}' | HOME="$HOME_DIR" CODEX_HOME="$CODEX_HOME" \
-  python3 "$CODEX_HOME/hooks/coding-agent-workflow-session-start.py")"
+  CCW_SESSION_GUARD=0 PYTHONIOENCODING=cp1252 python3 "$CODEX_HOME/hooks/coding-agent-workflow-session-start.py")"
 if python3 - "$HOOK_RESULT" <<'PY'
 import json
 import sys
@@ -113,11 +123,11 @@ data = json.loads(sys.argv[1])
 assert data["hookSpecificOutput"]["hookEventName"] == "SessionStart"
 assert "additionalContext" in data["hookSpecificOutput"]
 PY
-then
-  :
-else
-  assert_eq "0" "1" "hook: SessionStart output validates as Codex JSON"
-fi
+then HOOK_JSON_OK="valid"; else HOOK_JSON_OK="invalid"; fi
+# Counted on both paths. Asserting only inside `else` (the surrounding
+# convention in this file) records nothing when the check passes, so the
+# suite total silently moves depending on the result.
+assert_eq "valid" "$HOOK_JSON_OK" "hook: SessionStart output validates as Codex JSON"
 
 BAD="$BOX/bad-agents"
 mkdir -p "$BAD"

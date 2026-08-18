@@ -10,6 +10,11 @@ from pathlib import Path
 
 
 def main() -> int:
+    # Codex always pipes this hook's stdout, so it defaults to the platform
+    # codec (cp1252 on Windows). The banner it forwards carries box-drawing
+    # rules and emoji, which that codec cannot encode -- print() would raise
+    # UnicodeEncodeError and the hook would emit nothing at all.
+    sys.stdout.reconfigure(encoding="utf-8")
     hook = Path(__file__).with_name("coding-agent-workflow-session-start.sh")
     result = subprocess.run(
         ["bash", str(hook)],

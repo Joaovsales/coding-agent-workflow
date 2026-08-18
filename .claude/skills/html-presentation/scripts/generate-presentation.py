@@ -36,7 +36,14 @@ def load_input(args: argparse.Namespace) -> dict[str, Any]:
         with open(args.input, "r", encoding="utf-8") as fh:
             data = json.load(fh)
     elif args.markdown:
-        text = sys.stdin.read() if args.markdown == "-" else open(args.markdown, encoding="utf-8").read()
+        # Decode explicitly, and as utf-8-sig on both branches: sys.stdin uses the
+        # platform default encoding (cp1252 on Windows), which mangles or rejects
+        # UTF-8 markdown, and a retained BOM defeats the H1 match in
+        # markdown_to_structured — losing the title and every section silently.
+        if args.markdown == "-":
+            text = sys.stdin.buffer.read().decode("utf-8-sig")
+        else:
+            text = open(args.markdown, encoding="utf-8-sig").read()
         data = markdown_to_structured(text, title=args.title)
     else:
         sys.exit("error: must pass --input <json> or --markdown <file|->")
@@ -645,6 +652,11 @@ def render_html(data: dict[str, Any], mode: str) -> str:
 # ---------------------------------------------------------------------------
 
 def main() -> None:
+    # The reported path is this script's contract with its callers
+    # (visual-render.py captures stdout), so it must not depend on the
+    # platform codec -- which would mangle or reject a non-ASCII path after
+    # the HTML itself had already been written correctly.
+    sys.stdout.reconfigure(encoding="utf-8")
     p = argparse.ArgumentParser(description="Generate a self-contained HTML presentation.")
     src = p.add_mutually_exclusive_group(required=True)
     src.add_argument("--input", help="Structured JSON input file.")
