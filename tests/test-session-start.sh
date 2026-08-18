@@ -5,19 +5,24 @@ REPO="$(cd "$(dirname "$0")/.." && pwd)"
 HOOK="$REPO/.claude/hooks/session-start.sh"
 cd "$REPO"
 
+# These three exercise `source` parsing, not the double-invocation guard, and
+# run back-to-back in one repo — which is indistinguishable from the double
+# registration the guard exists to collapse. CCW_SESSION_GUARD=0 isolates them,
+# as every store test below already does; the guard has its own block at the end.
+
 # --- source=compact -> lightweight restore, NO full banner ---
-out_compact=$(printf '{"source":"compact"}' | bash "$HOOK" 2>/dev/null)
+out_compact=$(printf '{"source":"compact"}' | CCW_SESSION_GUARD=0 bash "$HOOK" 2>/dev/null)
 assert_contains "$out_compact" "Context was just compacted" "P1: compact source prints restore block"
 assert_not_contains "$out_compact" "SKILLS AVAILABLE" "P1: compact source skips full skills banner"
 assert_not_contains "$out_compact" "tasks/memory.md" "M3: compact restore no longer points at memory.md"
 assert_contains "$out_compact" "tasks/solutions" "M3: compact restore points at the typed store"
 
 # --- source=startup -> full banner ---
-out_startup=$(printf '{"source":"startup"}' | bash "$HOOK" 2>/dev/null)
+out_startup=$(printf '{"source":"startup"}' | CCW_SESSION_GUARD=0 bash "$HOOK" 2>/dev/null)
 assert_contains "$out_startup" "SKILLS AVAILABLE" "P1: startup source prints full banner"
 
 # --- empty/absent stdin -> defaults to full banner (no regression) ---
-out_empty=$(printf '' | bash "$HOOK" 2>/dev/null)
+out_empty=$(printf '' | CCW_SESSION_GUARD=0 bash "$HOOK" 2>/dev/null)
 assert_contains "$out_empty" "SKILLS AVAILABLE" "P1: empty stdin defaults to full banner"
 
 # --- M3 store cutover: one-line counts, no bodies, no retired files ---------
@@ -140,5 +145,122 @@ assert_not_contains "$out_six" "MEMORY MAINTENANCE DUE" \
   "M3: nudge stays silent off the multiple of 5"
 cd "$REPO"
 rm -rf "$tmpM"
+
+# --- Double-invocation guard: key stable per session, distinct across them ---
+# The guard exists because the hook is registered twice per session. Its key has
+# to be narrow enough to still collapse those two, and wide enough that a
+# *different* session never inherits the sentinel — a key that is too broad eats
+# the second session's banner entirely.
+#
+# The $PPID fallback failed the second half on Windows: bash spawned from a
+# native Windows parent (node, python) reports PPID=1, so every session in every
+# repo keyed to one constant sentinel and the second repo's banner vanished.
+tmpG=$(mktemp -d)
+mkdir -p "$tmpG"/repo-{a,b,c,d} "$tmpG/tmp"
+
+# Output is redirected to a file rather than captured with $(...) — that detail
+# is load-bearing. A command substitution forks a fresh subshell per call, so
+# each invocation would see a *different* $PPID and the old key would look
+# session-distinct here even on Windows, where it is not. Redirected, every
+# invocation shares this script's shell as its parent, reproducing the collision
+# Windows produces for real on every platform. (This is why the old guard was
+# inert under test and the defect went uncaught.)
+#
+# TMPDIR/CLAUDE_SESSION_SENTINEL are set per-invocation, never exported, so the
+# fixture's sentinels stay out of the ones a live session is using AND the
+# environment cannot leak into whatever test is appended after this block.
+guard_rc=0
+guard_run() {  # guard_run <cwd> <hook-json> <outfile>
+  cd "$1"
+  printf '%s' "$2" \
+    | TMPDIR="$tmpG/tmp" CLAUDE_SESSION_SENTINEL="$tmpG/tmp/active" \
+      bash "$HOOK" > "$3" 2> "$3.err"
+  guard_rc=$?
+  cd "$REPO"
+}
+
+# "Silent" must mean exited 0 having printed nothing — not "produced no stdout".
+# A hook that dies before printing also produces no stdout, so asserting stdout
+# alone lets a crash pass as correct suppression. That is exactly how a fatal
+# `set -e` abort in the guard's own fallback once shipped under a green suite.
+assert_guard_silent() {  # assert_guard_silent <outfile> <message>
+  assert_eq "0" "$guard_rc" "$2 — exited 0 rather than crashing"
+  assert_eq "" "$(cat "$1")" "$2"
+  assert_eq "" "$(cat "$1.err")" "$2 — nothing on stderr"
+}
+
+# Two repos, no session_id in the payload -> each gets its own banner.
+guard_run "$tmpG/repo-a" '{"source":"startup"}' "$tmpG/a.out"
+guard_run "$tmpG/repo-b" '{"source":"startup"}' "$tmpG/b.out"
+assert_contains "$(cat "$tmpG/a.out")" "SKILLS AVAILABLE" "guard: first repo prints the banner"
+assert_contains "$(cat "$tmpG/b.out")" "SKILLS AVAILABLE" \
+  "guard: a second repo inside the freshness window still gets its own banner"
+
+# Same repo, no session_id -> the second registration is de-duplicated. This
+# also pins the accepted residual: the cwd key cannot tell this from a genuinely
+# new session in the same repo, so that one is suppressed too until the window
+# expires (asserted below).
+guard_run "$tmpG/repo-a" '{"source":"startup"}' "$tmpG/a2.out"
+assert_guard_silent "$tmpG/a2.out" "guard: the repo's second registration stays silent"
+
+# An absent payload (tty / empty stdin) must take the same cwd branch, not crash.
+guard_run "$tmpG/repo-c" '' "$tmpG/e.out"
+assert_contains "$(cat "$tmpG/e.out")" "SKILLS AVAILABLE" \
+  "guard: an empty payload still keys on cwd and prints"
+
+# The freshness window is the ONLY escape from a per-checkout key, so pin it.
+# -t with a fixed old stamp is the portable form (GNU and BSD both take it).
+touch -t 200101010000 "$tmpG/tmp"/.ccw-session-start-* 2>/dev/null || true
+guard_run "$tmpG/repo-a" '{"source":"startup"}' "$tmpG/a3.out"
+assert_contains "$(cat "$tmpG/a3.out")" "SKILLS AVAILABLE" \
+  "guard: a stale sentinel expires rather than wedging the hook permanently"
+
+# session_id is the primary key. Running the pair from DIFFERENT cwds is what
+# makes this discriminating: the cwd fallback alone cannot explain the collapse,
+# so only an actually-parsed session_id can — and it is parsed without jq.
+guard_run "$tmpG/repo-b" '{"source":"startup","session_id":"aaaa-1111"}' "$tmpG/s1.out"
+guard_run "$tmpG/repo-d" '{"source":"startup","session_id":"aaaa-1111"}' "$tmpG/s2.out"
+assert_contains "$(cat "$tmpG/s1.out")" "SKILLS AVAILABLE" "guard: session_id's first registration prints"
+assert_guard_silent "$tmpG/s2.out" \
+  "guard: one session_id collapses across two cwds (so it was really parsed, without jq)"
+
+# A different session_id in the SAME repo is a different session -> prints.
+guard_run "$tmpG/repo-b" '{"source":"startup","session_id":"bbbb-2222"}' "$tmpG/s3.out"
+assert_contains "$(cat "$tmpG/s3.out")" "SKILLS AVAILABLE" \
+  "guard: a new session in the same repo is not swallowed by the previous one"
+
+# Ids are not restricted to [A-Za-z0-9_-]; a rejected id would fall back to the
+# cwd key and silently collapse two distinct sessions in one repo.
+guard_run "$tmpG/repo-b" '{"source":"startup","session_id":"sess.1/2+3="}' "$tmpG/s5.out"
+guard_run "$tmpG/repo-b" '{"source":"startup","session_id":"sess.9/8+7="}' "$tmpG/s6.out"
+assert_contains "$(cat "$tmpG/s5.out")" "SKILLS AVAILABLE" \
+  "guard: a punctuation-bearing session_id is accepted, not dropped to the cwd key"
+assert_contains "$(cat "$tmpG/s6.out")" "SKILLS AVAILABLE" \
+  "guard: a second punctuation-bearing id is still a distinct session"
+
+# A later source under one session_id must not inherit the startup sentinel.
+guard_run "$tmpG/repo-b" '{"source":"compact","session_id":"aaaa-1111"}' "$tmpG/s4.out"
+assert_contains "$(cat "$tmpG/s4.out")" "Context was just compacted" \
+  "guard: compact is keyed apart from startup within one session"
+
+# cksum absent: the documented raw-path degradation must actually happen. Under
+# `set -eo pipefail` an unguarded pipeline here killed the hook outright (exit
+# 127, zero output) — a total banner loss worse than the bug this file fixes.
+shimG=$(mktemp -d)
+printf '#!/bin/bash\nexit 127\n' > "$shimG/cksum"
+chmod +x "$shimG/cksum"
+cd "$tmpG/repo-d"
+printf '{"source":"startup"}' \
+  | PATH="$shimG:$PATH" TMPDIR="$tmpG/tmp2" CLAUDE_SESSION_SENTINEL="$tmpG/tmp/active" \
+    bash "$HOOK" > "$tmpG/nock.out" 2>/dev/null
+nock_rc=$?
+cd "$REPO"
+assert_eq "0" "$nock_rc" "guard: a missing cksum degrades rather than killing the hook"
+assert_contains "$(cat "$tmpG/nock.out")" "SKILLS AVAILABLE" \
+  "guard: the banner still prints when cksum is unavailable"
+rm -rf "$shimG"
+
+cd "$REPO"
+rm -rf "$tmpG"
 
 finish
